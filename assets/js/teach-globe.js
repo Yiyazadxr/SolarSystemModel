@@ -713,6 +713,7 @@ SOLAR.TeachGlobe = (function () {
   var shipLight = null;        // 帆船受光（Lambert）用的方向光，方向跟随太阳
   var eclipseTime = 0;
   var eclipseShadowMaterial = null;
+  var eclipseTmpA = null, eclipseTmpT = null, eclipseTmpE = null;   // 地影轴/切向临时量
 
   /* 3.1.1 远去船只：海面球半径越大，地平线越远，但曲率越小、船下沉越不明显。
      这里取 6R 让地平线更近、弧面更弯，桅杆的「下沉」过程更清楚；
@@ -831,13 +832,21 @@ SOLAR.TeachGlobe = (function () {
     var elcanoSm = buildSegment(elcanoRoute, 0xff9fb5, '埃尔卡诺返航', 8);
 
     /* 行进指示改用小帆船（与远去船只同源模型，亮船体色便于在球面上辨认），
-       替代原来的红色小球；0.7 倍 → 船长 0.13R，够示意又不喧宾夺主 */
-    var dot = buildShipModel(0.7, 0xffc98a);
+       替代原来的红色小球；0.55 倍 → 船长 0.10R，够示意又不喧宾夺主 */
+    var dot = buildShipModel(0.55, 0xffc98a);
     dot.traverse(function (o) { if (o.isMesh) o.renderOrder = 4; });
     voyageGroup.add(dot);
 
-    /* 行进指示点沿「麦哲伦 → 埃尔卡诺」两段连续播放（两段在麦克坦衔接） */
-    voyageGroup.userData.route = magellanSm.concat(elcanoSm);
+    /* 行进指示点沿「麦哲伦 → 埃尔卡诺」两段连续播放（两段在麦克坦衔接）。
+       同时预计算累计弧长：CatmullRom 的均匀 t 采样在弦长不均处会让匀速 t
+       变成忽快忽慢（小船顿挫的根源），运行时按弧长插值保证船速恒定。 */
+    var routeAll = magellanSm.concat(elcanoSm);
+    var cum = [0];
+    for (i = 1; i < routeAll.length; i++) {
+      cum.push(cum[i - 1] + routeAll[i].distanceTo(routeAll[i - 1]));
+    }
+    voyageGroup.userData.route = routeAll;
+    voyageGroup.userData.cum = cum;
     voyageGroup.userData.dot = dot;
 
     voyageGroup.visible = false;
@@ -918,13 +927,21 @@ SOLAR.TeachGlobe = (function () {
     moon.position.set(0, EARTH_R * 0.55, -EARTH_R * 0.35);
     loadRealTexture('moon', 'moon.jpg', function (t) { if (t) { moonMat2.map = t; moonMat2.needsUpdate = true; } });
     eclipseGroup.add(moon);
+    /* 地影锚定「世界几何」而非视空间：轴 = 地心→月球方向（地影从地球伸向
+       月球，阴影永远落在月面朝地球的一面）；扫动方向 = 世界 UP × 轴
+       （近似黄道面内的东西向）。此前阴影沿视空间 X 扫动，本步骤相机
+       target 就是月球，一拖拽月面视角在转、阴影却焊在屏幕右侧，几何脱钩。 */
     eclipseShadowMaterial = track(new THREE.ShaderMaterial({
       transparent: true,
       depthWrite: false,
-      uniforms: { uCenter: { value: 1.5 } },
-      /* 视空间的 XY 就是观察者看到的月盘；除去模型缩放后，两档比例使用相同影子尺寸。 */
-      vertexShader: 'varying vec2 vMoonDisk; void main(){ vec4 viewPosition = modelViewMatrix * vec4(position, 1.0); vec4 viewCenter = modelViewMatrix * vec4(0.0, 0.0, 0.0, 1.0); float scale = length(modelViewMatrix[0].xyz); vMoonDisk = (viewPosition.xy - viewCenter.xy) / scale; gl_Position = projectionMatrix * viewPosition; }',
-      fragmentShader: 'varying vec2 vMoonDisk; uniform float uCenter; void main(){ float d = length(vMoonDisk - vec2(uCenter, 0.0)); float pen = 1.0 - smoothstep(0.76, 0.90, d); float umb = 1.0 - smoothstep(0.65, 0.73, d); if (pen < 0.01) discard; vec3 color = mix(vec3(0.22, 0.10, 0.08), vec3(0.045, 0.012, 0.008), umb); float alpha = mix(0.45, 0.94, umb) * pen; gl_FragColor = vec4(color, alpha); }',
+      uniforms: {
+        uCenter: { value: 1.5 },
+        uAxis: { value: new THREE.Vector3(0, 0, 1) },
+        uTangent: { value: new THREE.Vector3(1, 0, 0) },
+        uMoonR: { value: EARTH_R * 0.55 }
+      },
+      vertexShader: 'varying vec3 vWorldN; void main(){ vWorldN = normalize(mat3(modelMatrix) * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: 'varying vec3 vWorldN; uniform vec3 uAxis; uniform vec3 uTangent; uniform float uCenter; uniform float uMoonR; void main(){ vec3 p = vWorldN * uMoonR + uTangent * uCenter; float d = length(p - uAxis * dot(p, uAxis)) / uMoonR; float pen = 1.0 - smoothstep(0.76, 0.90, d); float umb = 1.0 - smoothstep(0.65, 0.73, d); if (pen < 0.01) discard; vec3 color = mix(vec3(0.22, 0.10, 0.08), vec3(0.045, 0.012, 0.008), umb); float alpha = mix(0.45, 0.94, umb) * pen; gl_FragColor = vec4(color, alpha); }',
       side: THREE.FrontSide
     }));
     var shadowShell = new THREE.Mesh(track(new THREE.SphereGeometry(EARTH_R * 0.555, 48, 32)), eclipseShadowMaterial);
@@ -1390,13 +1407,40 @@ SOLAR.TeachGlobe = (function () {
       if (!built || !root.visible) return;
       updateSatellites(dtSec);
       if (voyageGroup && voyageGroup.visible && voyageGroup.userData.route && voyageGroup.userData.dot) {
-        /* 麦哲伦环球航线小船：航速稍慢，便于课堂沿线讲解 */
-        if (anim.playing) voyageProgress = (voyageProgress + dtSec * 0.06 * anim.speed) % 1;
+        /* 麦哲伦环球航线小船：按累计弧长匀速推进（消除采样弦长不均的顿挫） */
+        if (anim.playing) voyageProgress = (voyageProgress + dtSec * 0.035 * anim.speed) % 1;
         var route = voyageGroup.userData.route;
-        var fi = Math.floor(voyageProgress * (route.length - 1));
-        var ni = Math.min(route.length - 1, fi + 1);
+        var cum = voyageGroup.userData.cum;
         var vship = voyageGroup.userData.dot;
-        vship.position.copy(route[fi]).lerp(route[ni], voyageProgress * (route.length - 1) - fi);
+        var voyDist = voyageProgress * cum[cum.length - 1];
+        var voyLo = 0, voyHi = cum.length - 1, voyMid;
+        while (voyHi - voyLo > 1) {
+          voyMid = (voyLo + voyHi) >> 1;
+          if (cum[voyMid] <= voyDist) voyLo = voyMid; else voyHi = voyMid;
+        }
+        var voySeg = (cum[voyHi] - cum[voyLo]) || 1e-6;
+        var voyFrac = (voyDist - cum[voyLo]) / voySeg;
+        /* 让地球配合小船：把 spinGroup 绕 Y 转到小船始终位于面向相机的一侧。
+           世界方位关系：局部方位 angS 经 rotation.y=θ 后的世界方位为 angS-θ，
+           令其等于相机世界方位 angCam → θ目标 = angS - angCam。
+           用帧率无关的指数平滑逼近（而非逐帧硬对齐），把 CatmullRom 采样
+           弦长不均带来的角速度波动滤成连续转动，消除顿挫；
+           本步骤 spin=false，不会与自转打架。 */
+        var vcam = (SOLAR.Scene && SOLAR.Scene.getCamera) ? SOLAR.Scene.getCamera() : null;
+        var kSmooth = 1 - Math.pow(0.002, dtSec);          /* ≈10%/帧 @60fps */
+        if (vcam && !(anim && anim.spin)) {
+          var cw = vcam.getWorldPosition(new THREE.Vector3());
+          var angCam = Math.atan2(cw.z, cw.x);
+          var dirShip = route[voyLo].clone().normalize();
+          var angS = Math.atan2(dirShip.z, dirShip.x);
+          var dTh = (angS - angCam) - spinGroup.rotation.y;
+          while (dTh > Math.PI) dTh -= 2 * Math.PI;
+          while (dTh < -Math.PI) dTh += 2 * Math.PI;
+          spinGroup.rotation.y += dTh * kSmooth;
+          spinGroup.updateWorldMatrix(true, false);        /* 下一句 localToWorld 需要本帧矩阵 */
+        }
+        var voyNext = Math.min(route.length - 1, voyLo + 1);
+        vship.position.copy(route[voyLo]).lerp(route[voyNext], voyFrac);
         /* 船底必须落到球面上：航线本身画在 1.045R，若船底放在航线点上，
            船会悬浮在地表上方约 0.045R（≈290km），侧看就是一张浮空纸片。
            投影到 1.005R（球面略上方防 z-fighting），船才真正「贴着地球行驶」。 */
@@ -1404,14 +1448,28 @@ SOLAR.TeachGlobe = (function () {
         /* 船头朝行进方向、船底贴球面法线。这里用 makeBasis 直接构造局部旋转
            （不能用 lookAt：它按世界坐标解释参数，而航线点是 spinGroup 局部坐标）。 */
         if (!voyFwd) { voyFwd = new THREE.Vector3(); voyUp = new THREE.Vector3(); voyRight = new THREE.Vector3(); voyZ = new THREE.Vector3(); voyMat = new THREE.Matrix4(); }
-        voyFwd.copy(route[ni]).sub(route[fi]).normalize();
-        voyUp.copy(route[fi]).normalize();          // 球面法线 = 船的「上」
+        voyFwd.copy(route[voyNext]).sub(route[voyLo]).normalize();
+        voyUp.copy(route[voyLo]).normalize();          // 球面法线 = 船的「上」
         /* right = forward × up（不是 up × forward！后者会凑成左手系，
            行列式 -1 使船被镜像渲染，某些角度看着就成了纸片） */
         voyRight.crossVectors(voyFwd, voyUp).normalize();
         voyZ.copy(voyFwd).negate();                 // 模型船头在 -Z，故局部 +Z = -前进方向
         voyMat.makeBasis(voyRight, voyUp, voyZ);
         vship.quaternion.setFromRotationMatrix(voyMat);
+        /* 上下也居中：把 controls.target 与相机一起平滑平移到「地心→小船」
+           方向的 0.35R 处，小船（含垂直方向）回到画面中部。
+           只平移不旋转视线（target 与 camera.position 同加一个增量），
+           OrbitControls 的旋转/缩放手感完全不受影响；
+           离开本步骤时 moveCamera/goToView 会把 target 设回地心，自动复位。 */
+        var vct = (SOLAR.Controls && SOLAR.Controls.getTarget) ? SOLAR.Controls.getTarget() : null;
+        if (vcam && vct) {
+          var goal = route[voyLo].clone().multiplyScalar(0.35);
+          spinGroup.localToWorld(goal);
+          var kPan = 1 - Math.pow(0.02, dtSec);    /* ≈6%/帧 @60fps，约 0.7s 收敛 */
+          var move = goal.sub(vct).multiplyScalar(Math.min(1, kPan));
+          vct.add(move);
+          vcam.position.add(move);
+        }
       }
       if (horizonGroup && horizonGroup.visible && horizonGroup.userData.ship) {
         /* 船沿球面大圆向画面深处（-z）驶去：船身先被球面遮住，桅杆最后消失。
@@ -1430,6 +1488,17 @@ SOLAR.TeachGlobe = (function () {
         var sweep = Math.max(0, Math.min(1, (phase - 0.08) / 0.84));
         /* 本影从月盘外进入、覆盖全月，再退出；循环边界两端均为完整满月。 */
         eclipseGroup.userData.shadowMaterial.uniforms.uCenter.value = (1.5 - sweep * 3.0) * EARTH_R;
+        /* 每帧重算地影轴与扫动方向（世界空间，随月球实际位置更新）：
+           轴 = 地心→月球；切向 = 世界 UP × 轴。相机绕月球拖拽时，
+           阴影始终保持在月面朝地球的一面，不再随屏幕坐标焊死。 */
+        if (!eclipseTmpA) { eclipseTmpA = new THREE.Vector3(); eclipseTmpT = new THREE.Vector3(); eclipseTmpE = new THREE.Vector3(); }
+        eclipseGroup.userData.moon.getWorldPosition(eclipseTmpA);
+        root.getWorldPosition(eclipseTmpE);
+        eclipseTmpA.sub(eclipseTmpE).normalize();          // 地心 → 月球
+        eclipseShadowMaterial.uniforms.uAxis.value.copy(eclipseTmpA);
+        eclipseTmpT.crossVectors(UP_Y, eclipseTmpA);
+        if (eclipseTmpT.lengthSq() < 1e-6) eclipseTmpT.set(1, 0, 0); else eclipseTmpT.normalize();
+        eclipseShadowMaterial.uniforms.uTangent.value.copy(eclipseTmpT);
       }
       if (anim.spin) {
         var deg = (cur.spinDeg || 0) + dtSec * 5 * (anim.speed || 1);

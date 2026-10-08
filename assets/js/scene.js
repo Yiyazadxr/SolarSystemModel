@@ -31,6 +31,7 @@ SOLAR.Scene = (function () {
   var planets = [];            // { id, data, group, mesh, glowMesh, orbitLine, moons[], trail..., rAu }
   var cometObj = null;
   var starfield = null, starSpikes = null;
+  var skyDome = null;              // 阶段5：真实全天银河背景天球（内表面贴全景图）
   var beltObjects = [];
   var pickables = [];
   var bodyIndex = {};
@@ -719,6 +720,7 @@ SOLAR.Scene = (function () {
     buildPlanets();
     buildComet();
     buildStarfield();
+    buildSkyDome();
     buildBelts();
     orbitEpochJd = currentOrbitEpoch();
     updateProjectionScale();
@@ -1599,6 +1601,51 @@ SOLAR.Scene = (function () {
     return new THREE.Vector3(0, Math.cos(a), Math.sin(a));
   }
 
+  /* 阶段5 B3：真实全天银河背景（ESO/S. Brunier，CC BY 4.0，见 NOTICE）
+     用一颗内表面贴 equirect 全景图的天球取代纯色天空：天球每帧跟随相机，
+     等效无限远背景；程序化星点保留（近景仍需），两者叠加。
+     全景图为 2:1 等距圆柱，球面默认 UV 与之对应，无需改 mapping。
+     低画质档不显示（见 update 中的可见性同步），避免额外显存与带宽。 */
+  function buildSkyDome() {
+    if (skyDome) return;
+    var r = (camera && camera.far) ? camera.far * 0.9 : 1e6;
+    /* ESO 全景实测只含「地平线以上」天区：图像下半 50% 平均亮度 0、
+       非黑像素 0%（未拍摄区域）。因此天球只建上半球（北极→赤道 =
+       天顶→地平线）；下半球无数据，沿用场景背景色 + 程序化星点，不编造。 */
+    var geo = new THREE.SphereGeometry(r, 64, 48, 0, Math.PI * 2, 0, Math.PI / 2);
+    /* 顶点 alpha：赤道（地平线）处 0 → 向天顶 15% 高度内平滑升到 1。
+       银河带最亮的部分贴近赤道，直接硬切会与下方深空形成一条割裂的
+       水平分界线；渐隐让它像真实地平线一样柔和沉入背景。
+       r128 支持 4 分量顶点色（含 alpha），配合 transparent 生效。 */
+    var posAttr = geo.attributes.position;
+    var vc = new Float32Array(posAttr.count * 4);
+    for (var vi = 0; vi < posAttr.count; vi++) {
+      var ny = posAttr.getY(vi) / r;                     /* 赤道 0 → 天顶 1 */
+      var a = Math.min(1, ny / 0.15);
+      a = a * a * (3 - 2 * a);                           /* smoothstep */
+      vc[vi * 4] = 1; vc[vi * 4 + 1] = 1; vc[vi * 4 + 2] = 1; vc[vi * 4 + 3] = a;
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(vc, 4));
+    var mat = new THREE.MeshBasicMaterial({
+      color: 0x0a0f18, side: THREE.BackSide, depthWrite: false, fog: false,
+      transparent: true, vertexColors: true
+    });
+    skyDome = new THREE.Mesh(geo, mat);
+    skyDome.frustumCulled = false;
+    skyDome.renderOrder = -1;        // 最先绘制（背景层）
+    scene.add(skyDome);
+    safeTexture('milkyway', function (t) {
+      if (!t || !skyDome) return;
+      if (THREE.sRGBEncoding) t.encoding = THREE.sRGBEncoding;
+      /* 只采样图像上半（v ∈ [0.5,1] = 地平线→天顶）：下半是未拍摄的黑区 */
+      t.repeat.set(1, 0.5);
+      t.offset.set(0, 0.5);
+      skyDome.material.map = t;
+      skyDome.material.color.set(0xffffff);
+      skyDome.material.needsUpdate = true;
+    });
+  }
+
   function buildStarfield() {
     disposePoints(starfield);
     disposePoints(starSpikes);
@@ -1841,6 +1888,11 @@ SOLAR.Scene = (function () {
        但整体跟随相机平移（恒星在无穷远，避免拉远时星穹出现空洞） */
     if (starfield) starfield.position.copy(camera.position);
     if (starSpikes) starSpikes.position.copy(camera.position);
+    /* 天球随相机移动（等效无限远），可见性跟随星点开关；低画质档不显示 */
+    if (skyDome) {
+      skyDome.position.copy(camera.position);
+      skyDome.visible = (!starfield || starfield.visible) && qualityName !== 'low';
+    }
     /* 日期跳转后的下一帧会立即刷新；连续播放时按 epoch 阈值节流。 */
     refreshOrbitLines(jd, false);
     if (labelUpdateAccum >= 1 / 20) {
@@ -2672,6 +2724,7 @@ SOLAR.Scene = (function () {
     init: init, update: update, resize: resize, setAlign: setAlign, isAligned: isAligned,
     setQuality: setQuality, get: get, getPlanets: getPlanets, getPickables: getPickables,
     getSunMesh: getSunMesh, getTriangleCount: getTriangleCount, getQuality: getQuality,
+    getCamera: function () { return camera; },
     setSunView: setSunView, getSunView: getSunView,
     getEffectivePixelRatio: function () { return effectivePixelRatio; },
     getSunScreenFraction: getSunScreenFraction,

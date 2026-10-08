@@ -200,18 +200,8 @@ SOLAR.Teach = (function () {
     field.appendChild(range);
     field.appendChild(speedValue);
 
-    var seg = h('div', 'teach-seg');
-    seg.id = 'teach-scale-seg';
-    /* 初始不高亮任何一档：进入教学后 applyStep 会按当前步骤的实际
-       state.scale 同步高亮（教学步骤默认示意比例）。 */
-    var segReal = h('button', 'teach-seg-btn', '真实比例');
-    segReal.setAttribute('data-scale', 'real');
-    var segIconic = h('button', 'teach-seg-btn', '示意比例');
-    segIconic.setAttribute('data-scale', 'iconic');
-    segReal.addEventListener('click', function () { setScale('real'); });
-    segIconic.addEventListener('click', function () { setScale('iconic'); });
-    seg.appendChild(segReal);
-    seg.appendChild(segIconic);
+    /* 「真实比例 / 示意比例」分段已移除：教学装置统一使用示意比例
+       （各步骤 state.scale 均为 'iconic'，teach-scenes 默认档同为 iconic）。 */
 
     var reset = h('button', 'teach-btn', '复位'); reset.id = 'teach-reset';
     reset.addEventListener('click', resetStep);
@@ -226,7 +216,6 @@ SOLAR.Teach = (function () {
     grpMid.appendChild(field);
 
     var grpRight = h('div', 'teach-bar-group');
-    grpRight.appendChild(seg);
     grpRight.appendChild(reset);
     grpRight.appendChild(prog);
 
@@ -240,8 +229,6 @@ SOLAR.Teach = (function () {
     el.play = play;
     el.speed = range;
     el.speedValue = speedValue;
-    el.segReal = segReal;
-    el.segIconic = segIconic;
     el.progress = prog;
 
     document.body.appendChild(root);
@@ -314,15 +301,6 @@ SOLAR.Teach = (function () {
     curStep = step;
 
     if (SOLAR.TeachScenes) SOLAR.TeachScenes.applyState(stepState());
-
-    /* 分段按钮高亮跟随本步骤实际生效的比例档：applyState 直接改内部 scale、
-       不走 setScale（那里才更新按钮），必须在这里补同步，否则按钮与画面不一致。 */
-    var stepScale = scaleOverride || (step.state && step.state.scale) ||
-      (SOLAR.TeachScenes && SOLAR.TeachScenes.getScale ? SOLAR.TeachScenes.getScale() : 'iconic');
-    if (el.segReal && el.segIconic) {
-      el.segReal.classList.toggle('is-active', stepScale === 'real');
-      el.segIconic.classList.toggle('is-active', stepScale === 'iconic');
-    }
 
     el.stepTitle.textContent = step.title;
     el.text.textContent = step.text || '';
@@ -469,7 +447,6 @@ SOLAR.Teach = (function () {
 
   var playing = false;
   var speed = 1;
-  var scaleOverride = null;
 
   function currentAnim() {
     var st = curStep ? (curStep.state || {}) : {};
@@ -488,7 +465,7 @@ SOLAR.Teach = (function () {
     var st = curStep.state || {};
     return {
       rig: st.rig || null,
-      scale: scaleOverride || st.scale || 'iconic',
+      scale: st.scale || 'iconic',
       anim: currentAnim(),
       params: st.params || {}
     };
@@ -513,22 +490,10 @@ SOLAR.Teach = (function () {
     pushAnim();
   }
 
-  function setScale(mode) {
-    if (!active || !SOLAR.TeachScenes || !curStep) return;
-    scaleOverride = mode === 'real' ? 'real' : 'iconic';
-    /* 教学装置用「真实比例 / 示意比例」，与演示模式的「压缩示意 / 弱压缩示意」是两套
-       独立语义（后者因深度缓冲限制无法真实），因此这里不再联动演示模式与设置面板。 */
-    el.segReal.classList.toggle('is-active', scaleOverride === 'real');
-    el.segIconic.classList.toggle('is-active', scaleOverride === 'iconic');
-    SOLAR.TeachScenes.applyState(stepState());
-    moveCamera(curStep);
-  }
-
   function resetStep() {
     if (!active || !curStep) return;
     setPlaying(true);
     speed = 1;
-    scaleOverride = null;
     el.speed.value = '2';
     el.speedValue.textContent = '1×';
     if (SOLAR.TeachScenes && SOLAR.TeachScenes.resetMotion) SOLAR.TeachScenes.resetMotion();
@@ -595,7 +560,6 @@ SOLAR.Teach = (function () {
     infoCollapsed = false;
     setPlaying(true);
     speed = 1;
-    scaleOverride = null;
     el.speed.value = '2';
     el.speedValue.textContent = '1×';
     gotoLesson(data.chapters[0].sections[0].lessons[0].id);

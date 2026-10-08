@@ -1445,6 +1445,7 @@ SOLAR.Controls = (function () {
     resetView: resetView,
     setFollow: setFollow,
     getFollow: getFollow,
+    getTarget: function () { return controls ? controls.target : null; },
     setCruise: setCruise,
     toggleCruise: toggleCruise,
     isCruising: isCruising,

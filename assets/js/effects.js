@@ -29,6 +29,7 @@ SOLAR.Effects = (function () {
   var bloomRT = null;                // 分层 bloom：只渲自发光物体的半分辨率 RT
   var bloomRTSize = { w: 0, h: 0 };  // bloomRT 当前尺寸（像素）
   var finalPass = null;
+  var fxaaPass = null;               // FXAA：最后一道抗锯齿（在 FinalShader 之后）
 
   var available = false;      // 后期管线是否可用
   var bloomOn = true;         // 泛光开关
@@ -321,6 +322,7 @@ SOLAR.Effects = (function () {
     bloomRTSize.w = 0;
     bloomRTSize.h = 0;
     finalPass = null;
+    fxaaPass = null;
     available = false;
 
     try {
@@ -363,8 +365,19 @@ SOLAR.Effects = (function () {
       if (typeof bloomPass.setSize === 'function') bloomPass.setSize(bs.w, bs.h);
 
       finalPass = new T.ShaderPass(FinalShader);
-      finalPass.renderToScreen = true;
+      /* FXAA 必须是最后一道：FinalShader 先渲到 RT，再由 FXAA 输出到屏幕，
+         否则抗锯齿会把暗角/颗粒/色散等收尾效果一起抹平。 */
+      finalPass.renderToScreen = false;
       composer.addPass(finalPass);
+
+      if (T.FXAAShader) {
+        fxaaPass = new T.ShaderPass(T.FXAAShader);
+        fxaaPass.renderToScreen = true;
+        composer.addPass(fxaaPass);
+        updateFxaaResolution();
+      } else {
+        finalPass.renderToScreen = true;   // 未加载 FXAA 时回退：FinalShader 直接出屏
+      }
 
       if (finalPass.uniforms && finalPass.uniforms.uBloomMap) {
         finalPass.uniforms.uBloomMap.value = bloomRT.texture;
@@ -387,6 +400,7 @@ SOLAR.Effects = (function () {
       bloomRTSize.w = 0;
       bloomRTSize.h = 0;
       finalPass = null;
+      fxaaPass = null;
       if (window.console && console.warn) console.warn('[SOLAR.Effects] 后期管线不可用，已降级为直接渲染：', e);
     }
 
@@ -479,6 +493,20 @@ SOLAR.Effects = (function () {
     renderer.render(scene, camera);
   }
 
+  /* FXAA 的 resolution = 绘制缓冲像素尺寸的倒数（含 pixelRatio）。
+     步长不对会让抗锯齿失效或过度模糊，故每次尺寸变化都要同步。 */
+  function updateFxaaResolution() {
+    if (!fxaaPass || !fxaaPass.uniforms || !fxaaPass.uniforms.resolution) return;
+    var pw = 1, ph = 1;
+    if (renderer && renderer.getDrawingBufferSize) {
+      var dsz = renderer.getDrawingBufferSize(new T.Vector2());
+      pw = dsz.x; ph = dsz.y;
+    }
+    if (!(pw > 0)) pw = 1;
+    if (!(ph > 0)) ph = 1;
+    fxaaPass.uniforms.resolution.value.set(1 / pw, 1 / ph);
+  }
+
   /* 窗口尺寸变化 */
   function resize() {
     if (!available || !composer) return;
@@ -488,6 +516,7 @@ SOLAR.Effects = (function () {
         composer.setPixelRatio(renderer.getPixelRatio ? renderer.getPixelRatio() : 1);
       }
       composer.setSize(w, h);
+      updateFxaaResolution();
       /* 分层 bloom 走半分辨率，尺寸与 composer 的全分辨率无关，单独维护 */
       var bs = bloomSize();
       if (bloomRT && (bs.w !== bloomRTSize.w || bs.h !== bloomRTSize.h)) {
@@ -549,7 +578,7 @@ SOLAR.Effects = (function () {
       try {
         if (composer && typeof composer.dispose === 'function') composer.dispose();
       } catch (e) { /* 忽略 */ }
-      composer = null; renderPass = null; bloomPass = null; finalPass = null;
+      composer = null; renderPass = null; bloomPass = null; finalPass = null; fxaaPass = null;
       bloomRT = null; bloomRTSize.w = 0; bloomRTSize.h = 0;
       available = false;
       syncOverlay();
