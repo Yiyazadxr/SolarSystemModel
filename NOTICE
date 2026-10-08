@@ -41,6 +41,18 @@ Bundled in assets/vendor/ (all MIT License):
 - EffectComposer, RenderPass, ShaderPass, MaskPass, CopyShader, UnrealBloomPass,
   LuminosityHighPassShader (examples/js/postprocessing, examples/js/shaders) —
   Copyright (c) three.js authors.
+- FXAAShader (assets/vendor/FXAAShader.js): written for this project, following
+  the classic NVIDIA FXAA 3.11 algorithm and the three.js FXAAShader interface
+  (uniforms tDiffuse / resolution). Distributed under the same MIT License as
+  three.js. It runs as the last pass of the effect chain.
+
+Bundled in assets/fonts/ (SIL Open Font License 1.1):
+
+- Orbitron (latin subset, weights 400 and 700) — Copyright (c) Matt McInerney,
+  licensed under the SIL Open Font License 1.1. Source: Google Fonts, mirrored
+  as @fontsource/orbitron (https://fonts.google.com/specimen/Orbitron). Used for
+  HUD Latin letters and numerals only; CJK text falls back to system fonts and
+  is unaffected.
 
 No runtime dependency is fetched from the network: everything is vendored
 locally so the page works offline and over the file:// protocol.
@@ -59,6 +71,17 @@ are credited to:
   https://www.nasa.gov/media-guidelines/ and https://astroweb.usgs.gov/
 - Solar System Scope (https://www.solarsystemscope.com/textures/) — CC BY 4.0,
   used for several planet maps.
+
+Sky background:
+
+- milkyway.webp — "The Milky Way panorama", ESO / S. Brunier, CC BY 4.0
+  (https://www.eso.org/public/images/eso0932a/). Downscaled to 4096x2048
+  equirectangular and re-encoded as WebP (quality 90). Used as the sky dome in
+  assets/js/scene.js; the procedural star points are kept and overlaid on top,
+  so the near-field star field is unchanged.
+
+All maps above are stored as WebP (lossy, quality ~90) to shrink the embedded
+payload; the original JPEG/PNG sources in assets/textures/ were replaced.
 
 assets/js/textures.js is a generated artifact: the base64 encoding of the
 files above, produced by scripts/generate-textures.js. It is committed so that

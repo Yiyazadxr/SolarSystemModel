@@ -1,6 +1,24 @@
 /* ===========================================================
    太阳系 3D — 黑白科幻 HUD 样式
    =========================================================== */
+/* 阶段6 B5：HUD 科幻字体 Orbitron（OFL 1.1 许可，来源 @fontsource/google-fonts）
+   仅内嵌 latin 子集（400/700 各约 6KB）；中文与其余字符回退系统字体，不受影响。
+   file:// 下与页面同源，直接加载，无外部请求。 */
+@font-face {
+  font-family: "Orbitron";
+  src: url("../fonts/orbitron-latin-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Orbitron";
+  src: url("../fonts/orbitron-latin-700.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --accent: #7ffcd8;
   --accent-dim: rgba(127, 252, 216, .45);
@@ -10,7 +28,12 @@
   --text: #e9ecef;
   --text-dim: rgba(233, 236, 239, .48);
   --warn: #ffb86b;                 /* 时间倒流时的强调色 */
-  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  /* 拉丁/数字优先用 Orbitron（科幻 HUD 气质），其后为系统等宽与中文兜底 */
+  --mono: "Orbitron", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  /* 动态读数专用：纯系统等宽（不含 Orbitron）。Orbitron 是比例字体，
+     数字宽度不等，时间/速度/天体读数逐帧变化时容器会一长一短地抖动；
+     读数必须用等宽字形 + tabular-nums 才能保证宽度恒定。 */
+  --mono-num: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   --sans: "Inter", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
 
   /* 两侧面板几何：宽度是连珠切换箭头的避让依据，改这里即可全局同步 */
@@ -885,4 +908,16 @@ body.align-mode .align-arrow { display: flex; }
 /* 小屏：底部时间条恢复通栏，避免溢出 */
 @media (max-width: 1040px) {
   .hud-bottom { left: 22px; right: 22px; transform: none; width: auto; }
+}
+
+/* ---------- 动态读数：等宽数字，避免比例字形造成宽度震荡 ----------
+   Orbitron 是比例字体（数字宽度不等），时间 / 速度 / 天体读数逐帧变化时，
+   容器宽度会一长一短地抖动（#time-bar 与 #galaxy-hud 尤其明显）。
+   读数元素统一改用系统等宽（--mono-num）+ tabular-nums，保证宽度恒定；
+   静态文本（品牌 / 标题 / 按钮 / 标签）仍用 Orbitron，保留科幻观感。 */
+.time-date, .time-clock, .time-jd, .speed-value,
+.galaxy-hud span, .debug-panel i {
+  font-family: var(--mono-num);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
 }
