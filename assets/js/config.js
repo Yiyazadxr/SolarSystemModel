@@ -15,7 +15,7 @@ SOLAR.CONFIG = {
     maxRenderPixels: 16777216,
     antialias: true,
     near: 0.1,
-    far: 160000,   // 相机 maxDistance 80000，远端还要容纳银河盘面（半径约 4 万单位）
+    far: 160000,   // 相机 maxDistance 80000；远端还要容纳银河盘面（可见盘缘约 50200 单位）
     fov: 50
   },
 
@@ -30,7 +30,7 @@ SOLAR.CONFIG = {
     sizeExp: 0.5,
 
     // 观感修正
-    sunSizeFactor: 0.45,  // 压缩太阳半径（真实比例下太阳直径是地球轨道的 1/10，不压缩会吞掉内行星）
+    sunSizeFactor: 0.45,  // 压缩太阳半径（真实比例下日径约为地球轨道半径的 1/100，不压缩会吞掉内行星）
     moonSizeFactor: 0.75, // 卫星额外缩小，避免比行星还显眼
     // 卫星轨道：以宿主行星半径为单位的对数压缩距离
     moonDistBase: 1.6,
@@ -48,14 +48,13 @@ SOLAR.CONFIG = {
   },
 
   /* ---------- 显示比例档案（演示模式） ----------
-     演示模式**无法**使用真实比例，这不是偷懒而是硬约束：真实比例下 1 AU = 23481 个地球半径，
-     海王星远在 80 万场景单位之外，而相机 near=0.05 / far=26000，把 far 提到 2e6 才能装下，
-     24 位深度缓冲在这个跨度上会满屏 z-fighting。要真做必须引入 logarithmic depth buffer
-     （需改写所有材质的深度输出，影响面极大）。
-     因此提供两档「示意压缩」，faithful 档更接近真实：
-        compact  : 压缩更强，内行星舒展、便于整体观察（默认，保持原有观感）
+     演示模式无法使用真实比例：真实比例下 1 AU = 23481 个地球半径，海王星在约 70 万单位外，
+     按 near=0.1 / far=160000 根本装不下；把 far 提到 1e6 量级后，24 位深度缓冲又会满屏 z-fighting。
+     真要做必须引入 logarithmic depth buffer（需改写所有材质的深度输出）。
+     因此提供两档「示意压缩」，faithful 更接近真实：
+        compact  : 压缩更强，内行星舒展、便于整体观察（默认）
         faithful : 压缩更弱，外行星更远、半径更接近真实、卫星距离按幂律适度还原
-     压缩倍数随天体而不同（幂律映射的结果），逐项标注在天体信息卡里，不含糊其辞。 */
+     压缩倍数随天体不同（幂律映射的结果），逐项标注在天体信息卡里。 */
   profiles: {
     compact: {
       distanceBase: 42, distanceExp: 0.62, sizeBase: 0.015, sizeExp: 0.50,
@@ -63,29 +62,24 @@ SOLAR.CONFIG = {
       moonDistBase: 1.6, moonDistLog: 1.1, moonDistPow: 0,
       moonSizeFactor: 0.75
     },
-    /* faithful：靠 distanceBase=2000 把轨道整体推远，给日面留出充分空间；
-       太阳 sunSizeFactor=1.0（半径 ≈63 单位）——"轨道优先、日面让步"：
-         水星轨道 = 2000×0.387^0.85 ≈ 893 ≈ 14.2 倍太阳半径
-         （compact 基准 4.1 = 不被日面辉光覆盖的下限，远超之，太阳无需再缩）；
+    /* faithful：distanceBase=2000 把轨道整体推远，给日面留出空间。
+       太阳 sunSizeFactor=1.0（半径≈63 单位），取"轨道优先、日面让步"：
+         水星轨道 = 2000×0.387^0.85 ≈ 893 ≈ 14.2 倍太阳半径（compact 基准下限 4.1）；
          地球 2000、木星 ≈8126、海王星 ≈36095、柯伊伯带外缘 50AU ≈55610。
-       distanceBase 上限论证（2026-10-07 用户拍板）：
+       distanceBase 取 2000 的依据：
          下限 1214~1340 = FOV50°/maxDistance80000 下最远机位仍能全览太阳系；
-         上限 2877 = 80000+柯伊伯外缘 ≤ far160000 的硬顶；
-         取 2000：极限拉远远端 135610，far 余量 15%；海王星 36095 仍可一屏
-         全览，柯伊伯带需平移查看。银河视角已由用户明确放弃——太阳系云
-         外缘 55610 超过日心距银心 25000 与可见盘缘（diskEdgeKpc16 ≈50200），
-         拉远时行星轨道会横穿银心标注方向、伸出星盘。
-       轨道比例只由 distanceExp 决定：base 是统一乘数，行星间比例
-         （木星/地球 = 5.203^0.85 ≈4.06）在任何 base 下恒定。
+         上限 2877 = maxDistance80000 + 柯伊伯外缘 ≤ far160000 的硬顶；
+         取 2000：极限拉远近端 135610，far 余量 15%；海王星 36095 仍可一屏全览，
+         柯伊伯带需平移查看。银河视角已放弃——柯伊伯外缘 55610 超过日心距银心 25000
+         与可见盘缘（diskEdgeKpc16 ≈50200），拉远时轨道会横穿银心标注方向、伸出星盘。
+       轨道比例只由 distanceExp 决定：base 是统一乘数，行星间比例（木星/地球 = 5.203^0.85 ≈4.06）恒定。
        太阳/地球尺寸比 = 63/3.4 ≈ 18（真实 109、compact 4.7）。
-       orbitSegments 1024：海王星弧垂 = 36095×(2π/1024)²/8 ≈ 0.17 < 行星半径
-         7.9，"行星不在轨道上"的折线锯齿（早年 distanceBase=200 事故）不成立。
-       地月关系（moonDistPow / moonSizeFactor）：moonDistFor 锚定母星半径、
-       与 distanceBase 无关（base 越大越安全）；最紧个例 Callisto 月轨 809 单位，
-       包络 7317~8935，距土星轨道 13601 余量 4666——11 颗均不碰邻轨。
-         pow=1.0（月距=真实 60.3×地球半径=206 单位，地球轨道的 10%）
-           在本档也已安全（包络介于金星/火星之间），但未授权切换，保守保留 0.7；
-         pow=0.7：月距 = 17.6× 地球半径（占地球轨道 3.0%）；
+       orbitSegments 1024：海王星弧垂 = 36095×(2π/1024)²/8 ≈ 0.17 < 行星半径 7.9，
+         不出现"行星不在轨道上"的折线锯齿（早年 distanceBase=200 的教训）。
+       地月关系：moonDistFor 锚定母星半径、与 distanceBase 无关（base 越大越安全）；
+         最紧个例 Callisto 月轨 809 单位，包络 7317~8935，距土星轨道 13601 余量 4666，11 颗均不碰邻轨。
+         moonDistPow=0.7：月距 = 17.6× 地球半径（占地球轨道 3.0%）；pow=1.0 在本档也安全
+           （包络介于金星/火星之间），但未授权切换，保守保留 0.7；
          moonSizeFactor=0.61 把月/地大小比正好还原到真实的 0.273。 */
     faithful: {
       distanceBase: 2000, distanceExp: 0.85, sizeBase: 0.015, sizeExp: 0.62,
@@ -106,12 +100,10 @@ SOLAR.CONFIG = {
   },
 
   /* ---------- 相机预设 ---------- */
-  /* !! 坐标陷阱：下面 pos / target 全是「相对太阳系（systemRoot）的局部坐标」，不是世界坐标 !!
-     太阳系整体随银河系公转平移，其世界坐标随时间变化，且默认已偏离原点
-      （默认已偏离原点约 25000 单位，量级由 galaxy.radiusUnits 决定）。
-     因此：任何绝对定位（相机摆放、自动测试断言、预设视角换算）都必须先调用
-     SOLAR.Scene.getSolarBasis() 取得基准 position，再做加法/换算。
-      直接把这些数字当世界坐标用，结果会整体偏移约 25000 单位。 */
+  /* !! 坐标陷阱：pos / target 是「相对太阳系（systemRoot）的局部坐标」，不是世界坐标 !!
+     太阳系整体随银河系公转平移，世界坐标随时间变化，默认已偏离原点约 25000 单位
+     （量级由 galaxy.radiusUnits 决定）。任何绝对定位（相机摆放、自动测试断言、预设视角换算）
+     都必须先经 SOLAR.Scene.getSolarBasis() 取基准 position 再换算；直接当世界坐标用会整体偏移约 25000 单位。 */
   views: {
     home: { pos: [0, 220, 520], target: [0, 0, 0] },        // 俯视 45° 全览
     ecliptic: { pos: [0, 8, 700], target: [0, 0, 0] },      // 黄道侧视
@@ -137,7 +129,7 @@ SOLAR.CONFIG = {
   },
   camera: {
     minDistance: 3,
-    maxDistance: 80000,  // 拉远可见太阳系在银河系中的位置（银河轨道环已放大到 25000 单位）
+    maxDistance: 80000,  // 拉远可见太阳系在银河系中的位置（太阳的银心轨道半径为 25000 单位）
     flyDuration: 1600,    // 飞行基础时长（ms），远距离会在此基础上适度延长
     followLerp: 0.08,
 
@@ -205,7 +197,7 @@ SOLAR.CONFIG = {
   },
 
   /* ---------- 画质档位 ---------- */
-quality: {
+  quality: {
     ultra:  { bloom: true,  pixelRatio: 4,   asteroidCount: 40000, kuiperCount: 24000, starCount: 60000, trails: true,  vignette: true,  scanline: true },
     high:   { bloom: true,  pixelRatio: 2,   asteroidCount: 6000,  kuiperCount: 4000,  starCount: 12000, trails: true,  vignette: true,  scanline: true },
     medium: { bloom: true,  pixelRatio: 1.5, asteroidCount: 3000,  kuiperCount: 2000,  starCount: 8000,  trails: true,  vignette: true,  scanline: false },

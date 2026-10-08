@@ -5,8 +5,8 @@
  * 统一按 kpc 比例映射。模型包含盒状/棒状核球、薄盘/厚盘、两条主旋臂、Sagittarius
  * 次臂、太阳所在的 Local/Orion Spur、旋臂内侧尘埃带以及分层差动自转。
  *
- * 演示仍使用 orbitSeconds 将一个约 2.3 亿年的银河年压缩到数十秒；恒星盘的可见自转
- * 另乘较小显示系数，既保留 v≈220 km/s 所给出的 omega∝1/R 关系，也避免旋臂迅速卷散。
+ * 演示模式用 orbitSeconds 将一个约 2.3 亿年的银河年压缩到数十分钟；恒星盘的可见自转
+ * 另乘较小显示系数，既保留平坦旋转曲线（v≈常数，omega∝1/R）的关系，也避免旋臂迅速卷散。
  */
 window.SOLAR = window.SOLAR || {};
 
@@ -40,7 +40,7 @@ SOLAR.Galaxy = (function () {
   var group = null;
   var coreGlow = null;
   var solarIndicator = null;
-  var sunTrail = null;              // 太阳公转拖尾（世界坐标采样点）
+  var sunTrail = null;              // 太阳公转拖尾（挂在银河 group 下的局部坐标采样点）
   var velocityVectors = null;
   var armPatternGroup = null;
   var starLayers = [];
@@ -717,7 +717,7 @@ SOLAR.Galaxy = (function () {
     textures.length = 0;
     starLayers.length = 0;
     coreGlow = null;
-    /* 拖尾挂在 scene 下（不在 group 子树内），需单独摘除 */
+    /* 拖尾挂在 group 下；group 子树已整体摘除，这里兜底再摘一次（防御性）。 */
     if (sunTrail && sunTrail.line && sunTrail.line.parent) {
       sunTrail.line.parent.remove(sunTrail.line);
     }

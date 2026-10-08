@@ -1,16 +1,13 @@
 /**
  * 后期特效管线：Bloom 泛光 + 自定义收尾 Shader（暗角 / 扫描线 / 轻微色散 / 胶片颗粒 / 高光压缩）
- * 依赖：three.min.js 与 assets/vendor 下的后期脚本（CopyShader / LuminosityHighPassShader /
- *       EffectComposer / RenderPass / ShaderPass / MaskPass / UnrealBloomPass）
- * 说明：任一依赖缺失或初始化异常，自动降级为 renderer.render(scene, camera)，绝不抛错。
+ * 依赖：assets/vendor 下的 CopyShader / LuminosityHighPassShader / EffectComposer / RenderPass /
+ *       ShaderPass / MaskPass / UnrealBloomPass；任一缺失或初始化异常都降级为 renderer.render，不抛错。
  *
- * 自适应策略：
- *   - Bloom 采用分层（选择性）方案：先把「自发光物体」单独渲到一张半分辨率 RT（bloomRT），
- *     行星/卫星被临时涂黑只当遮挡体，因此行星受光面根本不在这张图里，阈值可以稳定取 0.10，
- *     不必再靠抬高阈值去排除行星。纯 bloom 结果由收尾 shader 加性合成回主画面。
- *   - 靠近太阳时（由 SOLAR.Scene.getSunScreenFraction 提供屏幕占比）只压低 bloom 强度并
- *     加强高光压缩来避免大面积死白过曝；阈值保持恒定，不会再越过亮度上限把太阳辉光掐死。
- *   - 暗角 / 扫描线 / 颗粒强度随画质档位与沉浸模式（#hud.immersive）变化，并做平滑过渡。
+ * 分层 Bloom：先把自发光物体单独渲到半分辨率 RT（bloomRT），行星 / 卫星临时涂黑只当遮挡体，
+ * 因此行星受光面不在图里，阈值可稳定取 0.10，不必靠抬高阈值排除行星；纯 bloom 由收尾 shader 加性合成。
+ * 靠近太阳时（SOLAR.Scene.getSunScreenFraction）只压低强度并加强高光压缩，阈值恒定，
+ * 避免大面积死白，也避免抬高阈值把太阳辉光掐死。
+ * 暗角 / 扫描线 / 颗粒强度随画质档位与沉浸模式（#hud.immersive）变化，并做平滑过渡。
  *
  * 语法：ES5 + IIFE
  */
@@ -41,7 +38,7 @@ SOLAR.Effects = (function () {
   var lastTime = 0;
   var immersive = false;      // 沉浸模式（隐藏 HUD）
   var immersiveChecked = -1;  // 上次检测时间（秒）
-  /* 界面开关（扫描线 / 暗角）：与画质档位取“与”关系 */
+  /* 界面开关（扫描线 / 暗角）：与画质档位取「与」关系 */
   var overlayPrefs = { scanline: true, vignette: true };
 
   /* 当前值与目标值：平滑过渡，避免切换画质/靠近太阳时突变。
@@ -50,11 +47,9 @@ SOLAR.Effects = (function () {
   var dst = { strength: 0.85, threshold: 0.20, radius: 0.55, highlight: 0.35, vig: 1, scan: 1, ab: 1, grain: 0.03, mix: 1 };
 
   /* 各档位基础参数 */
-  /* Bloom 走分层（选择性）路线：bloomRT 里只有自发光物体与涂黑的遮挡体，
-     行星受光面压根不在画面里（实测土星受光面 P90≈0.93、太阳盘面 P90≈0.62，
-     两条分布大幅重叠，单一阈值在数学上无法同时「含太阳、排土星」）。
-     所以阈值不必再抬到 0.90 去硬排行星，统一取 0.10 即可，死结消失。
-     档位差异交给 strength / radius，而不是靠阈值。 */
+  /* 分层 Bloom：bloomRT 里只有自发光物体与涂黑的遮挡体，行星受光面不在画面内
+     （实测土星受光面 P90≈0.93、太阳盘面 P90≈0.62，分布重叠，单一阈值无法同时「含太阳、排土星」）。
+     故阈值统一取 0.10，档位差异只交给 strength / radius。 */
   var BLOOM_BASE = {
     ultra:  { strength: 1.15, radius: 0.80, threshold: 0.10 },
     high:   { strength: 0.95, radius: 0.62, threshold: 0.10 },
@@ -304,7 +299,7 @@ SOLAR.Effects = (function () {
    * @param {THREE.Scene} scn
    * @param {THREE.Camera} cam
    * @param {THREE.WebGLRenderer} rnd
-   * @param {string} qName high / medium / low
+   * @param {string} qName ultra / high / medium / low
    * @returns {boolean} 是否启用了后期管线
    */
   function init(scn, cam, rnd, qName) {

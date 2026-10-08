@@ -1,6 +1,6 @@
 /**
- * 教学装置之二：三球仪（日—地—月）+ 地月系
- * 用途：七年级「四季成因 / 节气 / 月相 / 日月食」的课堂演示。
+ * 教学装置：三球仪（日—地—月）+ 地月系，面向「四季成因 / 节气 / 月相 / 日月食」的课堂演示。
+ * 现状：当前教学步骤（第 3 章第 1 节《认识地球》）未使用本装置，保留为兼容层。
  *
  * 坐标与天文约定（与 teach-globe.js 保持同一套哲学，务必看懂再改）：
  *   - Y 轴向上，**黄道面 = XZ 平面**，太阳位于原点，地球沿该平面内的圆轨道运行（自西向东）；
@@ -516,7 +516,7 @@ SOLAR.TeachOrrery = (function () {
       return v;
     },
 
-    /* 供界面显示：当前 orbital day 对应的太阳直射点纬度（度） */
+    /* 供界面显示：当前 dayOfYear 对应的太阳直射点纬度（度） */
     getSubSolarLatitude: function () {
       if (!built) return 0;
       var lam = lambdaOf(cur.dayOfYear === undefined ? 80 : cur.dayOfYear) * DEG;

@@ -1,7 +1,7 @@
 /**
- * 教学装置之一：地球仪（globe）
- * 用途：七年级「地球与地球仪」「时差与节气」两节的课堂演示。
- *       一个大地球 + 经纬网 + 地轴 + 重要经纬线高亮 + 晨昏线 + 太阳直射点 + 城市标记 + 极昼极夜区域。
+ * 教学装置：地球仪（globe）
+ * 用途：第 3 章第 1 节《认识地球》的课堂演示——地球形状、大小与地球仪。
+ *       一个大地球 + 经纬网 + 地轴 + 重要经纬线高亮 + 晨昏线 + 太阳直射点 + 城市标记 + 极昼极夜。
  *
  * 坐标约定（务必看懂再改）：
  *   - 场景里 Y 轴向上，**黄道面 = XZ 平面（水平）**，太阳全年在这个平面内绕行；
@@ -699,10 +699,11 @@ SOLAR.TeachGlobe = (function () {
      spinGroup），无需随太阳方向或自转逐帧更新——build 时一次摆好。 */
 
   /* ============ 教学用附加图层 ============
-     voyage        3.1.1 环球航行航线（倾斜大圆 + 起终点）
-     satellites    3.1.3 人造地球卫星（逐帧公转）
-     sizeRings     3.1.4 / 3.1.6 赤道周长环 + 表面积标注
-     degreeLabels  3.1.8 / 3.1.9 经纬度度数标注（字号小，专门给后排看） */
+     horizon / eclipse  3.1.1 远去船只 / 3.1.2 月食地影（shapeScene）
+     voyage             3.1.3 麦哲伦环球航线（大圆航线 + 行进船只）
+     sizeRings          3.2.1 赤道半径 / 极半径 / 赤道周长标注
+     degreeLabels       3.3.1 / 3.3.2 经纬度度数标注（字号小，专门给后排看）
+     satellites         人造地球卫星（逐帧公转；当前课程未使用） */
   var extraGroup = null, voyageGroup = null, satGroup = null, sizeGroup = null, degreeGroup = null, degreeLatGroup = null, degreeLonGroup = null, horizonGroup = null, eclipseGroup = null;
   var satNodes = [];
   var satSpin = 0;
@@ -717,10 +718,10 @@ SOLAR.TeachGlobe = (function () {
      这里取 6R 让地平线更近、弧面更弯，桅杆的「下沉」过程更清楚；
      相位上限 0.60 远大于完全遮挡所需角度，保证船一直开到船身与桅杆都被挡住，
      并在被挡住后才复位，避免复位瞬间在近处弹出来。 */
-  var HORIZON_SEA_R = EARTH_R * 6;    // 原 7：曲率略强，桅杆下沉更明显
-  var HORIZON_SHIP_SCALE = 1.6;       // 原 1：船相对海面更大，遮挡过程看得更清
-  var HORIZON_SHIP_MAX_TH = 0.60;     // 原 0.30：开到完全没入地平线之后才循环
-  var HORIZON_SHIP_SPEED = 0.15;      // 原 0.11：略快但仍能看清船身先没、桅杆后没
+  var HORIZON_SEA_R = EARTH_R * 6;    // 曲率较强，桅杆下沉更明显
+  var HORIZON_SHIP_SCALE = 1.6;       // 船相对海面更大，遮挡过程看得更清
+  var HORIZON_SHIP_MAX_TH = 0.60;     // 相位上限：完全没入地平线之后才循环
+  var HORIZON_SHIP_SPEED = 0.15;      // 略快，但仍能看清船身先没、桅杆后没
 
   function placeLatLon(out, latDeg, lonDeg, radius) {
     var phi = latDeg * DEG, theta = lonDeg * DEG;
@@ -1023,7 +1024,6 @@ SOLAR.TeachGlobe = (function () {
     }
   }
 
-  /* ---- 地球大小：赤道周长 + 表面积 ---- */
   /* ---- 地球的尺寸（教材图 3.1-5）：赤道半径、极半径、赤道周长 ---- */
   function buildSizeRings() {
     sizeGroup = new THREE.Group();
@@ -1227,7 +1227,7 @@ SOLAR.TeachGlobe = (function () {
     var p = {};
     for (var k in cur) { if (Object.prototype.hasOwnProperty.call(cur, k)) p[k] = cur[k]; }
     for (var k2 in params) { if (Object.prototype.hasOwnProperty.call(params, k2)) p[k2] = params[k2]; }
-  /* eratosthenes 是一次性示意叠加层，不做跨步骤粘滞：未显式打开即隐藏 */
+    /* eratosthenes 是一次性示意叠加层，不做跨步骤粘滞：未显式打开即隐藏 */
     p.eratosthenes = !!params.eratosthenes;
     /* highlight / cities 同理不做粘滞：否则上一步的北极圈高亮、城市红点
        会残留在下一步（如「地球的尺寸」里冒出北极圈和亚历山大/塞尼红点）。 */
@@ -1297,7 +1297,7 @@ SOLAR.TeachGlobe = (function () {
       var show = !!p.polarDayNight && absDelta > 0.001;
       polarDayNode.visible = show;
       polarNightNode.visible = show;
-      /* 忽略显示 ulcers：用 rotation 把同一顶帽子翻转到对应半球 */
+      /* 南北极冠共用同一顶帽子：用 rotation.x 翻转 180° 切到对应半球 */
       polarDayNode.rotation.x = st.delta >= 0 ? 0 : Math.PI;
       polarNightNode.rotation.x = st.delta >= 0 ? Math.PI : 0;
       setCapAngle(polarDayNode, capAngle);
@@ -1390,7 +1390,7 @@ SOLAR.TeachGlobe = (function () {
       if (!built || !root.visible) return;
       updateSatellites(dtSec);
       if (voyageGroup && voyageGroup.visible && voyageGroup.userData.route && voyageGroup.userData.dot) {
-        /* 麦哲伦环球航线小船：0.08 → 0.06，航速稍慢，便于课堂沿线讲解 */
+        /* 麦哲伦环球航线小船：航速稍慢，便于课堂沿线讲解 */
         if (anim.playing) voyageProgress = (voyageProgress + dtSec * 0.06 * anim.speed) % 1;
         var route = voyageGroup.userData.route;
         var fi = Math.floor(voyageProgress * (route.length - 1));
