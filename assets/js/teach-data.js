@@ -1,16 +1,15 @@
 /**
  * 教学模式 · 教学内容数据（纯数据模块，供 teach.js 主控读取）
  *
- * 当前范围：科学教材 第3章 第1节《认识地球》。
- * 按用户要求，其余章节与课节已暂时移除，后续按教材逐节补回。
+ * 当前范围：科学教材 第3章 第1节《认识地球》；其余章节与课节已移除，后续按教材逐节补回。
  *
  * 使用说明：
- *   1. 章节 chapters -> 课 lessons -> 步骤 steps，步骤顺序即课堂讲解顺序。
- *   2. 每个步骤的 state 传给 SOLAR.TeachScenes.applyState(state)，字段名与 teach-scenes.js 严格一致。
- *   3. src 字段引用 meta.sources 中的 key，界面据此显示数值来源。
- *   4. 数值口径：正文采用教材常用近似值，src 保存权威值与教材依据。
- *   3. 个别步骤需要定点机位时，可在该 step 加 cameraOverride：
- *      { polar: 度, azim: 度, dist: 地球半径倍数 }，只覆盖对应步骤相机，不改状态。
+ *   1. 层级为 chapters → lessons → steps，steps 顺序即课堂讲解顺序。
+ *   2. 每个 step 的 state 传给 SOLAR.TeachScenes.applyState，字段名与 teach-scenes.js 严格一致。
+ *   3. src 引用 meta.sources 中的 key，界面据此显示数值来源。
+ *   4. 数值口径：正文用教材常用近似值，src 保存权威值与教材依据。
+ *   5. 需要定点机位时在该 step 加 cameraOverride：{ polar: 度, azim: 度, dist: 地球半径倍数 }，
+ *      只覆盖该步骤相机，不改 state。
  *
  * state 字段含义：
  *   rig          当前演示装置：'globe' 地球仪 / 'moon' 月相三球 / 'orrery' 地球公转 / null 不切换

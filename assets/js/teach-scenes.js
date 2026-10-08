@@ -1,14 +1,9 @@
 /**
  * 教学装置调度层：把 teach-data.js 的 step.state 分发给具体装置。
- *
- * 装置清单（各自独立，互不依赖）：
- *   - SOLAR.TeachGlobe   地球仪：经纬网 / 地轴 / 重要经纬线 / 晨昏线 / 直射点 / 城市 / 极昼极夜
- *   - SOLAR.TeachOrrery  三球仪（日—地—月）：公转轨道 / 二十四节气刻度 / 地轴锁定 / 月相
- *
- * rig 取值：'globe' 地球仪、'orrery' 三球仪、'moon' 地月系（复用三球仪，取景更近）、null 全部隐藏。
- * scale 取值：'real' 真实比例档、'iconic' 示意比例档——**只改显示尺寸与显示距离，
- * 两个装置内部都不会因此改变任何物理规律**（方向、周期、相位成因、直射点纬度算法均一致）。
- *
+ * 装置：SOLAR.TeachGlobe（地球仪）、SOLAR.TeachOrrery（三球仪，'moon' 复用之）。
+ * rig：'globe' | 'orrery' | 'moon' | null（全部隐藏）。
+ * scale：'real' | 'iconic'，只改显示尺寸与距离，不改变任何物理规律
+ * （方向、周期、相位成因、直射点纬度算法均一致）。
  * 依赖：THREE、SOLAR.TeachGlobe、SOLAR.TeachOrrery。
  * 语法：ES5 + IIFE
  */
@@ -18,8 +13,8 @@ SOLAR.TeachScenes = (function () {
   'use strict';
 
   var ready = false;
-  /* 默认示意比例档：教学步骤的 state.scale 绝大多数是 'iconic'（示意比例），
-     这里必须与之同值，否则进入教学时「按钮显示的档位」和「画面实际档位」不一致。 */
+  /* 默认示意比例档：与教学步骤 state.scale 的多数取值 'iconic' 同值，
+     否则进入教学时按钮显示档位与画面实际档位不一致。 */
   var scale = 'iconic';
   var curRig = null;
 

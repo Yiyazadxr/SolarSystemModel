@@ -1,9 +1,10 @@
 /**
  * 场景构建：太阳、行星、卫星、轨道、小行星带、星空、彗星
  * 依赖：three.min.js（全局 THREE，r128）、config.js、data.js、astro.js、textures.js
+ * 可选：effects.js / galaxy.js / i18n.js（分别提供后期、银河、双语标签，缺失时各有兜底）
  *
  * 渲染质感策略（全部程序化 / 内嵌 base64，file:// 下零网络请求）：
- *   1. 太阳：程序化噪声表面 + 米粒组织 + 临边昏暗 + 分层日冕 + 自适应光晕
+ *   1. 太阳：程序化噪声表面 + 米粒组织 + 临边昏暗 + 日冕外壳 + 自适应光晕
  *   2. 行星/卫星：统一程序化着色器（纬向条纹、极区色差、凹凸、柔化终结线、
  *      菲涅尔大气边缘、环影、卫星投影、月食本影、夜面城市灯、云层、海面高光）
  *   3. 星空：按星等分布 + B-V 色温 + 银道面增密（与 galaxy.js 的 60.2° 一致）+ 亮星十字星芒
@@ -62,6 +63,7 @@ SOLAR.Scene = (function () {
   var orbitEpochJd = null;
   /* 轨道线重采样的真实时间节流：避免连续播放时每帧重建几何 */
   var ORBIT_REBUILD_MIN_MS = 200;
+  /* 拖尾按 30Hz 采样：够平滑，又能限制顶点写入频率 */
   var TRAIL_SAMPLE_INTERVAL = 1 / 30;
 
   /* 主星场与两条粒子带使用固定种子：切画质、切比例、刷新页面都生成同一批
@@ -192,11 +194,11 @@ SOLAR.Scene = (function () {
     '  float gran = fbm3(q * 26.0 + vec3(0.0, uTime * 0.10, 0.0)) - 0.45;',
     '  float t = clamp(n1 * 0.66 + n2 * 0.30 + gran * 0.55 * uDetail + 0.02, 0.0, 1.0);',
     '  vec3 col = mix(uColorA, uColorB, smoothstep(0.16, 0.88, t));',
-    /* 太阳黑子：离散小黑点群。真实黑子只在"活动区"里成群出现，且本影极黑、
-       半影围绕——低频活动区掩码限制分布，高频噪声过高阈值产生小黑点核。
-       旧的低频大面积压暗看起来像一团灰斑，而不是黑子。 */
+    /* 太阳黑子：离散小黑点群。真实黑子只在「活动区」成群出现，且本影极黑、半影环绕。
+       低频活动区掩码限制分布范围，高频噪声取高阈值产生离散黑点核；低频大面积
+       压暗会糊成一团灰斑，不成其为黑子。 */
     /* 黑子的关键是先把 fbm 拉伸到全动态范围：它的输出集中在 0.3~0.7，
-       直接抬阈值会什么都没有。act 只保留少数几片"活动区"，
+       直接抬阈值会什么都没有。act 只保留少数几片「活动区」，
        hn 的高值区就是离散的黑点核；阈值由此都在 0..1 域上真正可控。 */
     '  float act = clamp((fbm3(q * 2.3 + vec3(31.7, 0.0, 0.0)) - 0.32) / 0.34, 0.0, 1.0);',
     '  float actMask = smoothstep(0.62, 0.86, act) * uSpot;',
@@ -215,7 +217,7 @@ SOLAR.Scene = (function () {
     '}'
   ].join('\n');
 
-  /* --- 日冕壳（分层：内层紧致、外层弥散） --- */
+  /* --- 日冕壳（单层紧致内壳） --- */
   var CORONA_FRAG = [
     'uniform vec3 uColor; uniform float uStrength; uniform float uPower; uniform float uTime;',
     'varying vec3 vLP; varying vec3 vN; varying vec3 vWP;',
@@ -409,9 +411,7 @@ SOLAR.Scene = (function () {
     '    vec3 rimCol = mix(uSunset, uAtmo, smoothstep(-0.06, 0.44, d));',
     '    col += rimCol * fres * uAtmoStrength * smoothstep(-0.5, 0.12, d) * sh;',
     '  }',
-    /* 亮部软膝：亮贴图（土星、海王星）的受光面叠加凹凸增益与环境光后会冲破
-       1.0，在 8 位渲染目标里被硬截断成死白、丢掉云带与纬向条纹。这里把超出的
-       部分平滑收敛到 1.0 的渐近线；阈值以下保持原值，避免整体被抬亮。 */
+    /* 直接输出最终颜色；受光面超过 1 的亮部由 8 位渲染目标截断。 */
     '  gl_FragColor = vec4(col, 1.0);',
     '}'
   ].join('\n');
@@ -632,7 +632,7 @@ SOLAR.Scene = (function () {
 
   /* ============ 初始化 ============ */
 
-  /* 画质档给出的是"希望的 DPR"，不是无条件承诺。EffectComposer 和分层 bloom
+  /* 画质档给出的是「希望的 DPR」，并非无条件承诺。EffectComposer 和分层 bloom
      会额外持有全/半分辨率 RenderTarget；仅在 4K 面板上使用 4× DPR 就可能超过
      数亿像素，context lost 发生时自适应降档已经来不及补救。
      这里同时受配置像素预算、MAX_TEXTURE_SIZE 和 MAX_RENDERBUFFER_SIZE 约束。 */
@@ -764,9 +764,9 @@ SOLAR.Scene = (function () {
 
     sunUniforms = {
       uTime: U.time,
-      /* 恒星表面亮度物理上远高于行星。1.45 时盘面峰值仅 0.80，永远到不了白热，
-         在全局阈值方案里反而亮不过土星受光面（P90≈0.93）。分层 Bloom 之后阈值
-         不再承担「排除行星」的职责，这里可以把太阳真正提到过曝的白热核心。 */
+      /* 恒星表面亮度物理上远高于行星。取 2.15 让盘面核心过曝成白热；若只给到约 1.4，
+         峰值尚不足 0.80，在全局阈值方案里反而亮不过土星受光面（P90≈0.93）。
+         改分层 Bloom 后阈值不再承担「排除行星」的职责，太阳可直接提到白热核心。 */
       uIntensity: { value: 2.15 },
       uSpot: { value: 1.0 },
       uDetail: { value: 1.0 },
@@ -782,7 +782,7 @@ SOLAR.Scene = (function () {
     );
     sunMesh.userData.bodyId = 'sun';
     sunMesh.userData.sunRadius = radius;
-    sunMesh.userData.sunBaseRadius = radius;   // 建日时的烘焙半径，切档以此为基准，避免累计放大
+    sunMesh.userData.sunBaseRadius = radius;   // 建模时的烘焙半径，切档以此为基准，避免逐次累乘放大
     sunGroup.add(sunMesh);
     pickables.push(sunMesh);
 
@@ -817,8 +817,8 @@ SOLAR.Scene = (function () {
     }
     updateSunSpots();
 
-    /* 日冕只保留一层紧致外壳：两层叠加会把示意比例的太阳撑成发光大环，
-       也会让压缩档与弱压缩档的边缘观感不一致。 */
+    /* 日冕只保留一层紧致外壳（1.20 倍太阳半径）：两层叠加会把示意比例的
+       太阳撑成发光大环，也会让压缩档与弱压缩档的边缘观感不一致。 */
     coronaShells = [];
     addCoronaShell(radius * 1.20, 0xffcf80, 1.7, 0.62, 1);
 
@@ -970,7 +970,7 @@ SOLAR.Scene = (function () {
       coronaShells[0].scale.setScalar(profileSunScale * profileSunFactor * st.s0.k);
     }
     if (sunGlow) sunGlow.scale.set(st.glow, st.glow, 1);
-    /* 日珥可见性由 updateSunProminences 每帧控制（贴轮廓放置） */
+    /* 日珥/耀斑的显隐由 updateSunProminences 每帧控制；位置不逐帧重算 */
     for (var j = 0; j < sunFlares.length; j++) sunFlares[j].visible = !!st.flare;
     return mode;
   }
@@ -990,10 +990,9 @@ SOLAR.Scene = (function () {
     }
   }
 
-  /* 日珥每帧贴着「可见轮廓」放置：真实日珥只在边缘才看得见，
-     固定在球面某处时，转到盘面正面就会被透视压成一小片贴在表面。
-     相机方向 cd 的两个切向（右/上）各取一个偏角，让日珥始终出现在
-     轮廓的左上/右上两侧；色球层模式下才可见。 */
+  /* 日珥/耀斑只在色球层视图可见，此处仅逐帧切换显隐。
+     位置与缩放不逐帧更新——它们在 buildSun 建好、切档时由 applyScaleMode
+     按烘焙法线与半径重算，因此固定贴在球面同一处。 */
   var _promTmp = null;
   function updateSunProminences() {
     if (!sunGroup || !sunProminences.length) return;
@@ -1151,7 +1150,7 @@ SOLAR.Scene = (function () {
         ringRec = buildRing(data, radius, tilt);
         if (ringRec) {
           /* 记下建几何时的烘焙半径与内外缘：切档一律以它为基准，
-             避免"上一次档位值"被当成基准、来回切换后环越放越大。 */
+             避免把「上一次档位值」当成基准、来回切换后环越放越大。 */
           ringRec.baseRadius = radius;
           ringRec.baseInner = ringRec.uniforms.uInner.value;
           ringRec.baseOuter = ringRec.uniforms.uOuter.value;
@@ -1359,6 +1358,7 @@ SOLAR.Scene = (function () {
      线挂在 periGroup 下，与卫星共用 nodeGroup>orbitGroup>periGroup 朝向链路
      （Ω 升交点、i 倾角、ω 近心点幅角一并继承，如月球 5.145°+Ω125.08° 相对黄道）。
      dist 随显示档位变化，由 refreshMoonOrbitLine 原地重写顶点。 */
+  /* 160 段足以让近看时的月轨平滑，又不至于让每次切档重写过多顶点。 */
   var MOON_ORBIT_SEGMENTS = 160;
   function makeMoonOrbitLine(mo, bodyColor) {
     var geo = new THREE.BufferGeometry();
@@ -1472,10 +1472,11 @@ SOLAR.Scene = (function () {
     var mesh = new THREE.Mesh(sphereGeo(moonSegLevel()), new THREE.ShaderMaterial({
       uniforms: uniforms, vertexShader: PLANET_VERT, fragmentShader: PLANET_FRAG
     }));
+    /* 彗核真实半径仅 5.5 km，映射后过小，固定放大到 0.35 场景单位才可见。 */
     mesh.scale.setScalar(0.35);
     mesh.userData.bodyId = 'halley';
     systemRoot.add(mesh);
-    /* 彗核不参与拾取（保持原有行为） */
+    /* 彗核不参与拾取 */
 
     var headGlow = new THREE.Sprite(new THREE.SpriteMaterial({
       map: radialTexture('180,225,255', 2.4), transparent: true,
@@ -1492,9 +1493,9 @@ SOLAR.Scene = (function () {
     halo.scale.set(0.05, 0.05, 1);
     mesh.add(halo);
 
-    /* 彗尾：WebGL 线宽恒为 1，用线画出来永远是一根细丝，没有"拖尾"的体量感。
-       改用加性粒子沿尾轴分布：靠近彗核小而亮，越往尾端越大越淡（尘埃向外扩散），
-       离子尾 ×3（不同波幅与相位，蓝色等离子体束）+ 尘埃尾 ×3（不同弯曲，扇形暖白尾）。 */
+    /* 彗尾：WebGL 线宽恒为 1，画出来只能是一根细丝，缺少「拖尾」的体量感。
+       改用加性粒子沿尾轴分布：靠近彗核小而亮，越往尾端越大越淡（尘埃向外扩散）。
+       离子尾 ×3（不同波幅相位，蓝色等离子体束）+ 尘埃尾 ×3（不同弯曲度，扇形暖白尾）。 */
     function cometTail(color, count) {
       var geo = new THREE.BufferGeometry();
       var pos = new Float32Array(count * 3);
@@ -2002,9 +2003,8 @@ SOLAR.Scene = (function () {
     sunGlow.scale.set(s, s, 1);
     sunGlow.material.opacity = 0.95 - 0.72 * smoothstep(0.02, 0.45, angFrac);
 
-    /* 表面强度：贴近时略降，避免整屏过曝 */
-    /* 基值 2.15 让盘面核心过曝成白热（原 1.45 时盘面峰值仅 0.80，无法白热），
-       near=1 时降到 1.70 避免近景全屏死白 */
+    /* 表面强度：贴近时略降，避免整屏过曝。基值 2.15 让盘面核心过曝成白热，
+       near=1 时降到 1.70，避免近景全屏死白。 */
     sunUniforms.uIntensity.value = 2.15 - 0.45 * near;
     /* 米粒组织只在太阳足够大时开启，远处关闭高频细节以避免闪烁 */
     sunUniforms.uDetail.value = smoothstep(0.02, 0.16, angFrac);
@@ -2062,16 +2062,17 @@ SOLAR.Scene = (function () {
     cometObj.hasPrev = true;
 
     /* 活动强度随日心距衰减：近日点长尾、远日点几乎无尾。
-       注意 act 同时决定"尾长/亮度"，远日点（哈雷 2026 年约 34 AU）物理上应无尾，
-       但那样课堂上完全看不到尾部结构，故保留 0.12 的演示下限（界面口径应视为示意）。 */
+       act 同时决定尾长与亮度；远日点（哈雷 2026 年约 34 AU）物理上应无尾，
+       但那样课堂上完全看不到尾部结构，故保留 0.10 的演示下限（界面上应视为示意）。 */
     var r = Math.max(pos.r, 0.4);
 
-    /* 尾长与亮度都按真实天文量给出，不再用固定值：
+    /* 尾长与亮度都按真实天文量给出：
          - 尾长 ≈ 0.9 / r^1.2 AU，上限 1.6 AU（真实哈雷在 0.6 AU 附近的可见尾
-           就是 1 AU 量级，1986 年那次尘埃尾超过 1 AU），随日心距快速缩短；
+           即 1 AU 量级，1986 年那次尘埃尾超过 1 AU），随日心距快速缩短；
          - 活动度在约 10 AU 内衰减，远日点只保留演示下限（真实早已无尾）。
-       尾长必须经与轨道一致的距离映射换算成场景单位——本项目距离是幂律压缩
-       （42 × AU^0.62），直接给场景单位会让近日点的尾横向拉长近十倍。 */
+       尾长必须经与轨道一致的距离映射换算成场景单位——距离是幂律压缩
+       （distanceBase × AU^distanceExp，档位不同参数不同），直接当作场景单位
+       会让近日点的尾横向拉长近十倍。 */
     var tailAU = 0.9 / Math.pow(r, 1.2);
     tailAU = tailAU < 0.02 ? 0.02 : (tailAU > 1.6 ? 1.6 : tailAU);
     var len = SOLAR.auToScene(r + tailAU) - SOLAR.auToScene(r);
@@ -2097,7 +2098,7 @@ SOLAR.Scene = (function () {
 
     var t = elapsed;
     /* 尾的起点从彗核表面之外开始：特写距离下彗核会挡住中心处的粒子，
-       视觉上像"尾巴和彗核分了家"。 */
+       视觉上像「尾巴和彗核分了家」。 */
     var head = tmpV2.set(sp.x, sp.y, sp.z).addScaledVector(dir, cometObj.mesh.scale.x * 0.55);
 
     /* 离子尾：笔直背离太阳，三条叠加形成发散的等离子体束（波幅/相位/横向张开各不相同） */
@@ -2127,7 +2128,7 @@ SOLAR.Scene = (function () {
     }
 
     /* 尘埃尾：滞后于运动方向并弯曲，三条不同弯曲度叠成扇形。
-       混合系数 0.75：越偏向 -velocity，"拖在飞行后方"的感觉越强。 */
+       混合系数 0.75：越偏向 -velocity，「拖在飞行后方」的感觉越强。 */
     var back = tmpV3.copy(cometObj.vel);
     if (back.lengthSq() > 1e-10) back.normalize(); else back.set(0, 0, 0);
     var dx = dir.x - back.x * 0.75, dy = dir.y - back.y * 0.75, dz = dir.z - back.z * 0.75;
@@ -2277,7 +2278,7 @@ SOLAR.Scene = (function () {
   };
   var scaleMode = 'compact';
 
-  /* 卫星轨道距离：弱压缩档用幂律 ratio^pow，压缩档沿用对数公式（保持原有观感） */
+  /* 卫星轨道距离：弱压缩档用幂律 ratio^pow，压缩档用对数公式 */
   function moonDistFor(p, m) {
     var ratio = Math.max(m.data.orbitKm / p.data.radiusKm, 1.01);
     if (C.scale.moonDistPow > 0) return p.radius * Math.pow(ratio, C.scale.moonDistPow);
@@ -2298,7 +2299,7 @@ SOLAR.Scene = (function () {
     C.scale.moonDistPow = pf.moonDistPow;
     if (typeof pf.moonSizeFactor === 'number') C.scale.moonSizeFactor = pf.moonSizeFactor;
     /* 轨道采样密度跟随档位：faithful 把轨道推远约 47 倍（2000/42），采样必须同步加密，
-       否则折线弧长超过行星半径，近看会出现"行星不在轨道上"的锯齿。 */
+       否则折线弧长超过行星半径，近看会出现「行星不在轨道上」的锯齿。 */
     C.scale.orbitSegments = (typeof pf.orbitSegments === 'number') ? pf.orbitSegments : 512;
 
     var i, j;
@@ -2321,8 +2322,8 @@ SOLAR.Scene = (function () {
         p.glowMesh.userData.glowScaleBase = p.radius * p.glowMesh.userData.glowRatio;
       }
       if (p.ring) {
-        /* 环半径与行星半径成正比（inner = 行星半径 × 环内缘km/行星半径km）。
-           基准永远是建几何时的烘焙值，用乘法反推，绝不用"上次档位值"当基准，
+        /* 环半径与行星半径成正比（inner = 行星半径 × 环内缘 km / 行星半径 km）。
+           基准永远是建几何时的烘焙值，用乘法反推，绝不用「上次档位值」当基准，
            否则 faithful→compact 会叠乘成天文数字。 */
         var ringBase = p.ring.baseRadius || p.radius;
         var k = p.radius / ringBase;
@@ -2332,7 +2333,7 @@ SOLAR.Scene = (function () {
         p.uniforms.uRingInner.value = p.ring.uniforms.uInner.value;
         p.uniforms.uRingOuter.value = p.ring.uniforms.uOuter.value;
         /* 行星本影半径必须跟着新行星半径走，否则切档后会留下一圈过大的假影
-           （表现为星环"按一条直线分阴阳"、甚至看起来比真实环还大）。 */
+           （表现为星环「按一条直线分阴阳」、甚至看起来比真实环还大）。 */
         if (p.ring.uniforms.uPlanetRadius) p.ring.uniforms.uPlanetRadius.value = p.radius;
       }
       for (j = 0; j < p.moons.length; j++) {
@@ -2396,7 +2397,7 @@ SOLAR.Scene = (function () {
       coronaShells[k].scale.setScalar(sunScale * f.sun * (coronaShells[k].userData.viewScale || 1));
     }
     /* 弱压缩档会把太阳本体放大约两倍，色球层配件也必须同步移动和缩放。
-       日珥/耀斑各自保存建模时的法线与半径，避免沿用压缩档的旧位置导致漂移。 */
+       日珥/耀斑各自保存建模时的法线与半径，切档后据此重算，避免位置漂移。 */
     var attachedSunScale = sunScale * f.sun;
     for (k = 0; k < sunProminences.length; k++) {
       var prom = sunProminences[k];
@@ -2634,7 +2635,7 @@ SOLAR.Scene = (function () {
 
   function radiusOf(id) {
     if (id === 'sun') return SOLAR.kmToScene(D.sun.radiusKm) * C.scale.sunSizeFactor;
-    /* 哈雷彗核不在 planets 里；返回"观赏半径"（显示半径 ×2），
+    /* 哈雷彗核不在 planets 里；返回「观赏半径」（显示半径 ×2），
        让点击彗星时的取景距离能同时容纳彗核、彗发与彗尾起点，
        否则会落到 0.35 的默认值，相机怼到彗核上什么结构都看不见。 */
     if (id === 'halley' && cometObj) return cometObj.mesh.scale.x * 2;
