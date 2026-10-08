@@ -1,0 +1,111 @@
+NOTICE
+======
+
+SOLAR SYSTEM · 太阳系 3D 展示
+Copyright (c) 2026-present Yiyazadxr
+Contact: 412110785@qq.com
+
+This NOTICE describes the repository's licensing scope, the origin of the
+bundled textures and astronomical data, and the bundled third-party components.
+It is informational. It does not modify the MIT License in LICENSE, except to
+identify materials that are NOT licensed under MIT.
+
+--------------------------------------------------------------------------------
+1. Scope of licensing
+--------------------------------------------------------------------------------
+
+This repository contains materials under different licenses:
+
+- Source code (all files except those listed below): MIT License, see LICENSE.
+- Bundled textures in assets/textures/ and their base64 form in
+  assets/js/textures.js: derived from public-domain NASA / USGS / JPL imagery.
+  See section 3. Redistribution of derivative images may be subject to the
+  source agency's media-usage policy; attribution is retained here.
+- Astronomical constants and orbital elements: factual data, not copyrightable.
+  Sources listed in section 4 for attribution.
+- Third-party components in assets/vendor/: licensed by their respective
+  authors. See section 2.
+
+If there is any conflict between this NOTICE and the LICENSE file regarding the
+source code, the LICENSE file governs the source code.
+
+--------------------------------------------------------------------------------
+2. Third-party components
+--------------------------------------------------------------------------------
+
+Bundled in assets/vendor/ (all MIT License):
+
+- three.js r128 — Copyright (c) 2010-2021 three.js authors.
+  https://github.com/mrdoob/three.js
+- OrbitControls (examples/js/controls) — Copyright (c) three.js authors.
+- EffectComposer, RenderPass, ShaderPass, MaskPass, CopyShader, UnrealBloomPass,
+  LuminosityHighPassShader (examples/js/postprocessing, examples/js/shaders) —
+  Copyright (c) three.js authors.
+
+No runtime dependency is fetched from the network: everything is vendored
+locally so the page works offline and over the file:// protocol.
+
+--------------------------------------------------------------------------------
+3. Textures
+--------------------------------------------------------------------------------
+
+Planet and satellite surface maps in assets/textures/ are downscaled crops of
+public-domain imagery produced by NASA and USGS missions (e.g. Messenger,
+Magellan / Pioneer Venus, MODIS Blue Marble, Mars Global Surveyor, Cassini,
+Voyager 2, New Horizons, Galileo). They are included as-is (resized only) and
+are credited to:
+
+- NASA / JPL / USGS Astrogeology Science Center — public domain, see
+  https://www.nasa.gov/media-guidelines/ and https://astroweb.usgs.gov/
+- Solar System Scope (https://www.solarsystemscope.com/textures/) — CC BY 4.0,
+  used for several planet maps.
+
+assets/js/textures.js is a generated artifact: the base64 encoding of the
+files above, produced by scripts/generate-textures.js. It is committed so that
+opening index.html over file:// works without a server. Do not hand-edit it.
+
+Missing maps fall back to procedural rendering (solid color + shader detail);
+no runtime error is produced.
+
+--------------------------------------------------------------------------------
+4. Astronomical data sources
+--------------------------------------------------------------------------------
+
+- JPL / NASA "Keplerian Elements for Approximate Positions of the Major Planets"
+  (https://ssd.jpl.nasa.gov/planets/approx_pos.html) — J2000 elements, centennial
+  rates and the outer-planet additional terms (b, c, s, f) used in
+  assets/js/astro.js and assets/js/data.js.
+- JPL "Planetary Satellite Mean Elements" (https://ssd.jpl.nasa.gov/sats/elem/)
+  — satellite mean elements (ascending node, argument of periapsis, mean
+  anomaly) at epoch 2000-01-01.5 TDB, used for satellite orbit orientation
+  in assets/js/data.js and assets/js/scene.js.
+- IAU / IAU Minor Planet Center — dwarf-planet and comet elements (1P/Halley).
+- NASA Planetary Fact Sheets (https://nssdc.gsfc.nasa.gov/planetary/factsheet/)
+  — radii, masses, gravity, density, escape velocity, temperatures.
+- Milky Way structural parameters (R0 ≈ 8 kpc, bar ≈ 4.6 kpc, pitch ≈ 13°,
+  flat rotation curve v ≈ 220 km/s) used in assets/js/galaxy.js follow published
+  review values; the galaxy model is a stylized statistical model, not a
+  catalog-based reconstruction.
+
+Values are cross-checked but not guaranteed to survey precision. See
+"Known limitations" in README.md.
+
+--------------------------------------------------------------------------------
+5. Brand and attribution
+--------------------------------------------------------------------------------
+
+The MIT License grants rights to the source code only. It does NOT grant rights
+to use the project's name, branding, or logo.
+
+You may state factually that your work is "based on SOLAR SYSTEM by Yiyazadxr"
+and must retain the copyright and license notices as required by the MIT
+License. You may not use the project name or logo in a way that suggests
+sponsorship or endorsement without prior written permission.
+
+--------------------------------------------------------------------------------
+6. No warranty
+--------------------------------------------------------------------------------
+
+All materials are provided "AS IS," without warranty of any kind, as stated in
+the MIT License. Third-party components are provided under their authors' own
+terms and warranties, if any.
