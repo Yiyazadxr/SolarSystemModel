@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SOLAR SYSTEM · 太阳系</title>
+<link rel="icon" href="data:," />
+<link rel="stylesheet" href="assets/css/style.css" />
+<link rel="stylesheet" href="assets/css/teach.css" />
+</head>
+<body>
+
+<!-- ============ 3D 画布 ============ -->
+<canvas id="scene-canvas"></canvas>
+
+<!-- ============ 科幻质感覆盖层 ============ -->
+<div class="fx-layer" id="fx-scanline" aria-hidden="true"></div>
+<div class="fx-layer" id="fx-vignette" aria-hidden="true"></div>
+
+<!-- ============ HUD ============ -->
+<div id="hud">
+
+  <!-- 顶部 -->
+  <header class="hud-top">
+    <div class="brand">
+      <h1 data-i18n="ui.title">SOLAR SYSTEM</h1>
+      <p data-i18n="ui.subtitle">REAL-TIME 3D ORRERY · J2000 EPHEMERIS</p>
+    </div>
+
+    <!-- 银河系运动数据：放进顶部 flex 流，由浏览器分配剩余空间（不再绝对居中，
+         英文文案变长时不会和右侧按钮互相遮挡） -->
+    <div id="galaxy-hud" class="galaxy-hud">
+      <span class="mini-label" data-i18n="ui.galaxy">GALAXY</span>
+      <span><b data-i18n="galaxy.speed">220 km/s</b> <i id="gx-speed">220 km/s</i></span>
+      <span><b data-i18n="galaxy.distance">26,000 ly</b> <i id="gx-dist">26,000 ly</i></span>
+      <span><b data-i18n="galaxy.year">230 Myr</b> <i id="gx-year">230 Myr</i></span>
+      <span><b data-i18n="galaxy.progress">0%</b> <i id="gx-progress">0%</i></span>
+      <span><b data-i18n="galaxy.plane">+65 ly</b> <i id="gx-height">+65 ly</i></span>
+      <span><b data-i18n="galaxy.travelled">0 ly</b> <i id="gx-travel">0 ly</i></span>
+    </div>
+
+    <nav class="top-actions">
+      <div class="btn-group">
+        <select id="view-select" class="select" data-i18n-title="ui.viewTitle">
+          <option value="home" data-i18n="views.home">HOME VIEW</option>
+          <option value="ecliptic" data-i18n="views.ecliptic">ECLIPTIC VIEW</option>
+          <option value="inner" data-i18n="views.inner">INNER-SYSTEM VIEW</option>
+          <option value="outer" data-i18n="views.outer">OUTER-SYSTEM VIEW</option>
+          <option value="top" data-i18n="views.top">TOP-DOWN VIEW</option>
+        </select>
+        <button class="btn" id="btn-align" data-i18n="ui.align">ORBIT ALIGN</button>
+        <button class="btn" id="btn-cruise" data-i18n="ui.cruise">CRUISE</button>
+        <button class="btn" id="btn-reset" data-i18n-title="ui.reset">&#10227;&nbsp;<span data-i18n="ui.resetLabel">RESET</span></button>
+        <button class="btn" id="btn-immersive" data-i18n-title="ui.immersive">&#9974;&nbsp;<span data-i18n="ui.immersiveLabel">IMMERSIVE</span></button>
+        <button class="btn btn-icon" id="btn-settings" data-i18n-title="ui.settings">&#9881;</button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- 左侧天体导航（可收起 + 搜索） -->
+  <aside class="hud-left" id="body-nav">
+    <div class="panel-title-row">
+      <h2 class="panel-head" data-i18n="ui.navTitle">BODIES</h2>
+      <button class="panel-toggle" id="btn-nav-toggle" data-i18n-title="ui.navToggle">&#8249;</button>
+    </div>
+
+    <div class="search-row" id="search-row">
+      <input type="text" id="body-search" class="input search-input" autocomplete="off" spellcheck="false" />
+      <button class="search-clear" id="btn-search-clear" data-i18n-title="ui.searchClear" hidden>&#10005;</button>
+    </div>
+    <p class="search-empty" id="search-empty" hidden data-i18n="ui.searchEmpty">NO MATCH</p>
+
+    <ul id="body-list"></ul>
+  </aside>
+
+  <!-- 右侧信息面板（分组 + 可折叠） -->
+  <aside class="hud-right" id="info-panel">
+    <div class="panel-empty" id="panel-empty">
+      <p data-i18n="ui.selectHint">Click a body to lock camera</p>
+      <p class="dim" data-i18n="ui.emptyHint">Click empty space to deselect</p>
+    </div>
+
+    <div class="panel-body" id="panel-body" hidden>
+      <header class="info-head">
+        <div class="info-head-main">
+          <span class="info-type" id="info-type"></span>
+          <h2 id="info-name"></h2>
+        </div>
+        <span class="badge-follow" id="info-follow" hidden data-i18n="ui.follow">FOLLOWING</span>
+        <button class="info-close" id="btn-info-close" data-i18n-title="ui.close">&#10005;</button>
+      </header>
+
+      <div class="info-tags" id="info-tags"></div>
+
+      <section class="info-sec" id="sec-overview" data-sec="overview">
+        <button class="sec-head" id="sec-head-overview" type="button" aria-expanded="true">
+          <span class="sec-caret" id="sec-caret-overview" aria-hidden="true">&#9656;</span>
+          <h3 id="sec-title-overview" data-i18n="ui.descTitle">OVERVIEW</h3>
+        </button>
+        <div class="sec-body" id="sec-body-overview">
+          <p id="info-desc" class="desc"></p>
+        </div>
+      </section>
+
+      <section class="info-sec" id="sec-compare" data-sec="compare">
+        <button class="sec-head" id="sec-head-compare" type="button" aria-expanded="true">
+          <span class="sec-caret" id="sec-caret-compare" aria-hidden="true">&#9656;</span>
+          <h3 id="sec-title-compare" data-i18n="ui.compareTitle">RELATIVE TO EARTH</h3>
+        </button>
+        <div class="sec-body" id="sec-body-compare">
+          <div id="info-compare" class="compare"></div>
+        </div>
+      </section>
+
+      <section class="info-sec" id="sec-orbit" data-sec="orbit">
+        <button class="sec-head" id="sec-head-orbit" type="button" aria-expanded="true">
+          <span class="sec-caret" id="sec-caret-orbit" aria-hidden="true">&#9656;</span>
+          <h3 id="sec-title-orbit" data-i18n="ui.orbitTitle">ORBIT</h3>
+        </button>
+        <div class="sec-body" id="sec-body-orbit">
+          <table id="info-orbit" class="data-table"></table>
+        </div>
+      </section>
+
+      <section class="info-sec" id="sec-physical" data-sec="physical">
+        <button class="sec-head" id="sec-head-physical" type="button" aria-expanded="true">
+          <span class="sec-caret" id="sec-caret-physical" aria-hidden="true">&#9656;</span>
+          <h3 id="sec-title-physical" data-i18n="ui.physicalTitle">PHYSICAL</h3>
+        </button>
+        <div class="sec-body" id="sec-body-physical">
+          <table id="info-physical" class="data-table"></table>
+        </div>
+      </section>
+
+      <section class="info-sec" id="sec-atmosphere" data-sec="atmosphere">
+        <button class="sec-head" id="sec-head-atmosphere" type="button" aria-expanded="false">
+          <span class="sec-caret" id="sec-caret-atmosphere" aria-hidden="true">&#9656;</span>
+          <h3 id="sec-title-atmosphere" data-i18n="ui.atmosphereTitle">ATMOSPHERE</h3>
+        </button>
+        <div class="sec-body" id="sec-body-atmosphere">
+          <table id="info-atmosphere" class="data-table"></table>
+        </div>
+      </section>
+
+      <section class="info-sec" id="sec-moons" data-sec="moons">
+        <button class="sec-head" id="sec-head-moons" type="button" aria-expanded="true">
+          <span class="sec-caret" id="sec-caret-moons" aria-hidden="true">&#9656;</span>
+          <h3 id="sec-title-moons" data-i18n="ui.moonsTitle">MOONS</h3>
+        </button>
+        <div class="sec-body" id="sec-body-moons">
+          <ul class="moon-list" id="info-moons"></ul>
+          <p class="moon-note" id="info-moons-note" hidden></p>
+        </div>
+      </section>
+
+      <section class="info-sec" id="sec-discovery" data-sec="discovery">
+        <button class="sec-head" id="sec-head-discovery" type="button" aria-expanded="false">
+          <span class="sec-caret" id="sec-caret-discovery" aria-hidden="true">&#9656;</span>
+          <h3 id="sec-title-discovery" data-i18n="ui.discoveryTitle">DISCOVERY</h3>
+        </button>
+        <div class="sec-body" id="sec-body-discovery">
+          <table id="info-discovery" class="data-table"></table>
+        </div>
+      </section>
+
+      <section class="info-sec" id="sec-fact" data-sec="fact">
+        <button class="sec-head" id="sec-head-fact" type="button" aria-expanded="true">
+          <span class="sec-caret" id="sec-caret-fact" aria-hidden="true">&#9656;</span>
+          <h3 id="sec-title-fact" data-i18n="ui.factTitle">DID YOU KNOW</h3>
+        </button>
+        <div class="sec-body" id="sec-body-fact">
+          <p id="info-fact" class="fact"></p>
+        </div>
+      </section>
+
+      <section class="info-sec" id="sec-data" data-sec="data">
+        <button class="sec-head" id="sec-head-data" type="button" aria-expanded="false">
+          <span class="sec-caret" id="sec-caret-data" aria-hidden="true">&#9656;</span>
+          <h3 id="sec-title-data" data-i18n="ui.panelTitle">DATA</h3>
+        </button>
+        <div class="sec-body" id="sec-body-data">
+          <table id="info-table" class="data-table"></table>
+        </div>
+      </section>
+
+      <button class="btn btn-wide" id="btn-unfollow" data-i18n="ui.unfollow">EXIT FOLLOW</button>
+    </div>
+  </aside>
+
+  <!-- 设置面板（齿轮按钮弹出） -->
+  <section class="settings-panel" id="settings-panel" hidden>
+    <header class="settings-head">
+      <h3 id="settings-title" data-i18n="ui.settings">SETTINGS</h3>
+      <button class="panel-toggle" id="btn-settings-close" data-i18n-title="ui.close">&#10005;</button>
+    </header>
+
+    <div class="settings-group" id="group-scene">
+      <h4 id="group-title-scene" data-i18n="ui.groupScene">SCENE</h4>
+
+      <div class="set-row" id="row-orbits">
+        <span class="set-label" id="lbl-orbits" data-i18n="ui.orbits">ORBIT LINES</span>
+        <button class="switch" id="sw-orbits" type="button" role="switch" aria-checked="true" data-i18n-title="ui.orbits"><i id="sw-knob-orbits"></i></button>
+      </div>
+      <div class="set-row" id="row-labels">
+        <span class="set-label" id="lbl-labels" data-i18n="ui.labels">LABELS</span>
+        <button class="switch" id="sw-labels" type="button" role="switch" aria-checked="true" data-i18n-title="ui.labels"><i id="sw-knob-labels"></i></button>
+      </div>
+      <div class="set-row" id="row-trails">
+        <span class="set-label" id="lbl-trails" data-i18n="ui.trails">TRAILS</span>
+        <button class="switch" id="sw-trails" type="button" role="switch" aria-checked="true" data-i18n-title="ui.trails"><i id="sw-knob-trails"></i></button>
+      </div>
+      <div class="set-row" id="row-stars">
+        <span class="set-label" id="lbl-stars" data-i18n="ui.stars">STARFIELD</span>
+        <button class="switch" id="sw-stars" type="button" role="switch" aria-checked="true" data-i18n-title="ui.stars"><i id="sw-knob-stars"></i></button>
+      </div>
+      <div class="set-row" id="row-belts">
+        <span class="set-label" id="lbl-belts" data-i18n="ui.belts">ASTEROID BELT</span>
+        <button class="switch" id="sw-belts" type="button" role="switch" aria-checked="true" data-i18n-title="ui.belts"><i id="sw-knob-belts"></i></button>
+      </div>
+    </div>
+
+    <div class="settings-group" id="group-effects">
+      <h4 id="group-title-effects" data-i18n="ui.groupEffects">EFFECTS</h4>
+
+      <div class="set-row" id="row-bloom">
+        <span class="set-label" id="lbl-bloom" data-i18n="ui.bloom">BLOOM</span>
+        <button class="switch" id="sw-bloom" type="button" role="switch" aria-checked="true" data-i18n-title="ui.bloom"><i id="sw-knob-bloom"></i></button>
+      </div>
+      <div class="set-row" id="row-scanline">
+        <span class="set-label" id="lbl-scanline" data-i18n="ui.scanline">SCANLINES</span>
+        <button class="switch" id="sw-scanline" type="button" role="switch" aria-checked="true" data-i18n-title="ui.scanline"><i id="sw-knob-scanline"></i></button>
+      </div>
+      <div class="set-row" id="row-vignette">
+        <span class="set-label" id="lbl-vignette" data-i18n="ui.vignette">VIGNETTE</span>
+        <button class="switch" id="sw-vignette" type="button" role="switch" aria-checked="true" data-i18n-title="ui.vignette"><i id="sw-knob-vignette"></i></button>
+      </div>
+    </div>
+
+    <div class="settings-group" id="group-prefs">
+      <h4 id="group-title-prefs" data-i18n="ui.groupPrefs">PREFERENCES</h4>
+
+      <div class="set-row" id="row-unit">
+        <span class="set-label" id="lbl-unit" data-i18n="ui.unitTitle">DISTANCE UNIT</span>
+        <div class="seg" id="seg-unit">
+          <button class="seg-btn active" id="seg-unit-au" type="button" data-value="au" data-i18n="ui.unitAu">AU</button>
+          <button class="seg-btn" id="seg-unit-km" type="button" data-value="km" data-i18n="ui.unitKm">KM</button>
+        </div>
+      </div>
+      <div class="set-row" id="row-lang">
+        <span class="set-label" id="lbl-lang" data-i18n="ui.langTitle">LANGUAGE</span>
+        <div class="seg" id="seg-lang">
+          <button class="seg-btn" id="seg-lang-en" type="button" data-value="en">EN</button>
+          <button class="seg-btn active" id="seg-lang-zh" type="button" data-value="zh">中文</button>
+        </div>
+      </div>
+      <div class="set-row" id="row-quality">
+        <span class="set-label" id="lbl-quality" data-i18n="ui.quality">QUALITY</span>
+        <div class="seg" id="seg-quality">
+          <button class="seg-btn" id="seg-q-ultra" type="button" data-value="ultra">ULTRA</button>
+          <button class="seg-btn active" id="seg-q-high" type="button" data-value="high">HIGH</button>
+          <button class="seg-btn" id="seg-q-medium" type="button" data-value="medium">MEDIUM</button>
+          <button class="seg-btn" id="seg-q-low" type="button" data-value="low">LOW</button>
+        </div>
+      </div>
+      <div class="set-row" id="row-scale">
+        <span class="set-label" id="lbl-scale" data-i18n="ui.scaleTitle">SCALE</span>
+        <div class="seg" id="seg-scale">
+          <button class="seg-btn active" id="seg-scale-compact" type="button" data-value="compact" data-i18n="ui.scaleCompact">压缩示意</button>
+          <button class="seg-btn" id="seg-scale-faithful" type="button" data-value="faithful" data-i18n="ui.scaleFaithful">弱压缩示意</button>
+        </div>
+      </div>
+      <p class="set-note dim" id="scale-note" data-i18n="ui.scaleNote">Schematic enlarges bodies for visibility; orbits and physics are unchanged.</p>
+    </div>
+
+    <p class="settings-note" id="settings-note" hidden data-i18n="ui.needApi"></p>
+  </section>
+
+  <!-- 底部时间控制 -->
+  <footer class="hud-bottom" id="time-bar">
+    <div class="time-left">
+      <span class="mini-label" data-i18n="ui.timeTitle">TIME</span>
+      <div class="time-main">
+        <span class="time-date num" id="time-date">--</span>
+        <span class="time-clock num" id="time-clock">--:--:--</span>
+      </div>
+      <span class="mini-label dim" id="time-utc" data-i18n="ui.utc">UTC</span>
+      <span class="time-jd num" id="time-jd">JD —</span>
+    </div>
+
+    <div class="time-center">
+      <button class="btn" id="btn-reverse" data-i18n="ui.reverse">REVERSE</button>
+      <button class="btn btn-primary" id="btn-play" data-i18n="ui.pause">PAUSE</button>
+      <button class="btn" id="btn-now" data-i18n="ui.now">NOW</button>
+      <input type="range" id="speed-range" class="range" min="0" max="9" step="1" value="0" />
+      <span class="speed-value num" id="speed-value">1×</span>
+      <span class="speed-hint num" id="speed-hint"></span>
+    </div>
+
+    <div class="time-right">
+      <input type="text" id="date-input" class="input" placeholder="YYYY-MM-DD" />
+      <button class="btn" id="btn-jump" data-i18n="ui.jump">JUMP</button>
+      <span class="date-hint" id="date-hint"></span>
+    </div>
+  </footer>
+
+
+
+  <!-- 行星连珠模式：左右切换天体 -->
+  <button class="align-arrow left" id="align-prev" data-i18n-title="ui.alignPrev">&#8249;</button>
+  <button class="align-arrow right" id="align-next" data-i18n-title="ui.alignNext">&#8250;</button>
+
+  <!-- 悬停浮标 / 调试面板 / 快捷键 -->
+  <div id="tooltip" class="tooltip"></div>
+
+  <div class="corner-tools">
+    <div id="debug-panel" class="debug-panel">
+      <span><b data-i18n="ui.fps">FPS</b> <i id="dbg-fps">0</i></span>
+      <span><b data-i18n="ui.triangles">TRIS</b> <i id="dbg-tris">0</i></span>
+      <span><b data-i18n="ui.bodies">BODIES</b> <i id="dbg-bodies">0</i></span>
+    </div>
+    <button class="btn btn-help" id="btn-help" data-i18n-title="ui.shortcuts">?</button>
+  </div>
+
+  <!-- 太阳观测视图：跟随太阳时出现（光球层/色球层/日冕），离开自动恢复 -->
+  <div class="sun-view-bar is-hidden" id="sun-view-bar">
+    <button class="sun-view-btn is-active" data-mode="photosphere" data-i18n="ui.sunPhotosphere">光球层</button>
+    <button class="sun-view-btn" data-mode="chromosphere" data-i18n="ui.sunChromosphere">色球层</button>
+    <button class="sun-view-btn" data-mode="corona" data-i18n="ui.sunCorona">日冕</button>
+  </div>
+
+  <div class="shortcuts" id="shortcuts" hidden>
+    <h4 data-i18n="ui.shortcuts">SHORTCUTS</h4>
+    <ul>
+      <li data-i18n="ui.scPause">Space — Play / Pause</li>
+      <li data-i18n="ui.scSpeedUp">↑ / ↓ — Time speed</li>
+      <li data-i18n="ui.scStep">← / → — Prev / next body</li>
+      <li data-i18n="ui.scSearch">/ — Search bodies</li>
+      <li data-i18n="ui.scSettings">S — Settings</li>
+      <li data-i18n="ui.scReset">R — Reset view</li>
+      <li data-i18n="ui.scHud">H — Immersive mode</li>
+      <li data-i18n="ui.scEsc">Esc — Deselect</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============ 沉浸模式提示（HUD 隐藏时显示） ============ -->
+<div id="immersive-hint" class="immersive-hint" hidden data-i18n="ui.immersiveHint"></div>
+
+<!-- ============ 加载动画 ============ -->
+<div id="loading-screen">
+  <div class="loader">
+    <div class="loader-orbit"><span class="loader-dot"></span></div>
+    <div class="loader-text">
+      <p class="loader-title" data-i18n="ui.loading">正在初始化</p>
+      <p class="loader-tip" data-i18n="ui.loadingTip">正在构建太阳系…</p>
+      <div class="loader-bar"><i id="loader-fill"></i></div>
+      <p class="loader-pct"><span id="loader-pct">0%</span><span class="loader-stage" id="loader-stage"></span></p>
+      <div class="loader-ticks" id="loader-ticks"><i></i><i></i><i></i><i></i><i></i></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 模式选择（加载完成后出现：演示 / 教学 二选一） ============ -->
+<div id="mode-layer" hidden>
+  <div class="mode-card">
+    <p class="mode-title" data-i18n="ui.modeTitle">选择模式</p>
+    <div class="mode-btns">
+      <button class="btn mode-btn" id="btn-mode-demo" type="button">
+        <span class="mode-btn-main" data-i18n="ui.modeDemo">演示模式</span>
+        <span class="mode-btn-sub" data-i18n="ui.modeDemoHint">自由探索太阳系</span>
+      </button>
+      <button class="btn mode-btn" id="btn-mode-teach" type="button">
+        <span class="mode-btn-main" data-i18n="ui.modeTeach">教学模式</span>
+        <span class="mode-btn-sub" data-i18n="ui.modeTeachHint">按章节逐步讲解</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 依赖（全部本地化） ============ -->
+<script src="assets/vendor/three.min.js"></script>
+<script src="assets/vendor/OrbitControls.js"></script>
+<script src="assets/vendor/CopyShader.js"></script>
+<script src="assets/vendor/LuminosityHighPassShader.js"></script>
+<script src="assets/vendor/EffectComposer.js"></script>
+<script src="assets/vendor/RenderPass.js"></script>
+<script src="assets/vendor/ShaderPass.js"></script>
+<script src="assets/vendor/MaskPass.js"></script>
+<script src="assets/vendor/UnrealBloomPass.js"></script>
+
+<!-- ============ 应用模块 ============ -->
+<script src="assets/js/config.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/i18n.js"></script>
+<script src="assets/js/astro.js"></script>
+<script src="assets/js/textures.js"></script>
+<script src="assets/js/effects.js"></script>
+<script src="assets/js/scene.js"></script>
+<script src="assets/js/galaxy.js"></script>
+<script src="assets/js/controls.js"></script>
+<script src="assets/js/ui.js"></script>
+<script src="assets/js/main.js"></script>
+
+<!-- 教学模式：内容数据 -> 两套教学装置 -> 调度层 -> 主控（依赖主场景就绪，故在 load 后初始化） -->
+<script src="assets/js/teach-data.js"></script>
+<script src="assets/js/teach-globe.js"></script>
+<script src="assets/js/teach-orrery.js"></script>
+<script src="assets/js/teach-scenes.js"></script>
+<script src="assets/js/teach.js"></script>
+<script>
+  window.addEventListener('load', function () {
+    if (window.SOLAR && SOLAR.Teach && typeof SOLAR.Teach.init === 'function') {
+      try { SOLAR.Teach.init(); }
+      catch (e) { if (window.console && console.warn) console.warn('[Teach] 教学模式初始化失败，演示模式不受影响：', e); }
+    }
+  });
+</script>
+</body>
+</html>

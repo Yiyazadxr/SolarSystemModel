@@ -1,0 +1,704 @@
+/* ===========================================================
+   教学模式（Teach Mode）— 电子白板 / 投影专用 HUD
+
+   设计语言与演示模式**同源**：黑白科幻 + 单一强调色 #7ffcd8 + 玻璃拟态。
+   两者的差异只允许出现在「尺寸」上（字号 / 触摸目标 / 面板宽度），
+   视觉语言（圆角、玻璃、描边、投影、发光、动效节奏）必须与演示模式一致。
+
+   实现方式：所有质感令牌直接取自 style.css :root（第二处定义），
+   本文件不再各写一套回退值 —— 旧实现正是因为各自持有回退值
+   （2px 硬直角 / blur(6px) / 无投影），才出现
+   「教学模式硬边扁平、演示模式玻璃胶囊」的割裂感。
+
+   去廉价感的具体做法：
+     1) 面板用玻璃渐变 + 内高光 + 外投影，而不是纯色实底
+     2) 排版分主次：等宽大标题发光、正文大字但字重正常、来源弱化
+     3) 控件有微交互：hover 上浮 + 发光描边，按下有反馈
+     4) 当前步骤用「左侧发光条 + 渐变底衬」而非整块色块
+   =========================================================== */
+
+/* ---------- 变量：与演示模式共享同一套令牌 ---------- */
+#teach-root {
+  /* 颜色 */
+  --teach-accent: var(--accent, #7ffcd8);
+  --teach-accent-dim: var(--accent-dim, rgba(127, 252, 216, .45));
+  --teach-line: var(--line, rgba(255, 255, 255, .14));
+  --teach-line-strong: var(--line-strong, rgba(255, 255, 255, .32));
+  --teach-text: var(--text, #e9ecef);
+  --teach-text-dim: var(--text-dim, rgba(233, 236, 239, .48));
+  --teach-ink: #04120e;                       /* 强调色底上的文字色（与 .btn.active 一致） */
+
+  /* 字体 */
+  --teach-sans: var(--sans, "Inter", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif);
+  --teach-mono: var(--mono, ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace);
+
+  /* 圆角 / 玻璃 / 投影：全部取自全局，不再自带回退值 */
+  --teach-radius-s: var(--radius-s, 6px);      /* 小控件：按钮 / 分段 / 滑块 */
+  --teach-radius-m: var(--radius-m, 10px);
+  --teach-radius-l: var(--radius-l, 14px);      /* 面板：目录 / 信息窗 / 控制条 */
+  --teach-glass: var(--glass, linear-gradient(160deg, rgba(18, 22, 26, .78), rgba(6, 8, 10, .66)));
+  --teach-glass-strong: var(--glass-strong, linear-gradient(160deg, rgba(20, 24, 29, .94), rgba(7, 9, 12, .88)));
+  --teach-blur: blur(14px) saturate(1.25);   /* 与演示模式面板同款 */
+  --teach-edge: var(--edge, inset 0 1px 0 rgba(255, 255, 255, .07));
+  --teach-shadow: var(--shadow-m, 0 10px 34px rgba(0, 0, 0, .52));
+  --teach-glow: 0 0 12px rgba(127, 252, 216, .18);
+
+  /* 几何 */
+  --teach-edge-gap: 22px;         /* 距视口边缘，与 --hud-edge 对齐 */
+  --teach-w-panel: 300px;         /* 左侧目录宽度 */
+  --teach-w-info: 420px;          /* 右下信息窗宽度 */
+  --teach-top-h: 100px;           /* 顶部横条避让高度 */
+  --teach-bar-h: 96px;            /* 底部控制条避让高度 */
+  --teach-tap: 44px;              /* 最小触摸尺寸 */
+  --teach-range-w: 200px;         /* 滑块宽度 */
+
+  /* 字号体系（教室后排可读）——差异只在尺寸，不在视觉语言 */
+  --teach-fs-display: 30px;       /* 顶部课时标题 */
+  --teach-fs-title: 26px;         /* 章节标题 / 信息窗步骤标题 */
+  --teach-fs-sub: 22px;           /* 节标题 / 要点条 */
+  --teach-fs-body: 21px;          /* 讲解正文 */
+  --teach-fs-ui: 20px;            /* 按钮 / 步骤条目 */
+  --teach-fs-mini: 16px;          /* 数据来源等小字 */
+
+  position: fixed;
+  inset: 0;
+  z-index: 14;                    /* 高于 HUD(5)，低于加载屏(20) */
+  pointer-events: none;           /* 默认不挡 3D 画面操作，交互元素单独开启 */
+  font-family: var(--teach-sans);
+  color: var(--teach-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 只有这些元素接收点击/拖拽 */
+#teach-root .teach-panel,
+#teach-root .teach-info,
+#teach-root .teach-bar,
+#teach-root .teach-btn,
+#teach-root .teach-lesson-title,
+#teach-root .teach-step,
+#teach-root .teach-range,
+#teach-root .teach-seg-btn,
+#teach-root .teach-enter,
+#teach-root .teach-to-demo { pointer-events: auto; }
+
+/* 隐藏约定：必须 !important —— .teach-panel{display:flex} 等组件规则写在本条之后，
+   同优先级下会覆盖 display:none，导致"退出教学"后 UI 仍然留在屏幕上。 */
+#teach-root.is-hidden { display: none !important; }
+#teach-root .is-hidden { display: none !important; }
+
+/* ---------- 滚动条：与演示模式同款细样式 ---------- */
+#teach-root .teach-toc,
+#teach-root .teach-info {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, .22) transparent;
+}
+#teach-root .teach-toc::-webkit-scrollbar,
+#teach-root .teach-info::-webkit-scrollbar { width: 6px; }
+#teach-root .teach-toc::-webkit-scrollbar-track,
+#teach-root .teach-info::-webkit-scrollbar-track { background: transparent; }
+#teach-root .teach-toc::-webkit-scrollbar-thumb,
+#teach-root .teach-info::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .18); border-radius: 3px; }
+#teach-root .teach-toc::-webkit-scrollbar-thumb:hover,
+#teach-root .teach-info::-webkit-scrollbar-thumb:hover { background: var(--teach-accent-dim); }
+
+/* 键盘可见焦点（教室常用键盘翻页） */
+#teach-root .teach-btn:focus-visible,
+#teach-root .teach-lesson-title:focus-visible,
+#teach-root .teach-step:focus-visible,
+#teach-root .teach-seg-btn:focus-visible,
+#teach-root .teach-range:focus-visible {
+  outline: 3px solid var(--teach-accent);
+  outline-offset: 3px;
+  border-radius: var(--teach-radius-s);
+}
+
+/* ===========================================================
+   通用按钮 —— 与演示模式 .btn 同一套语言
+   =========================================================== */
+#teach-root .teach-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: var(--teach-tap);          /* 触摸目标：白板上好点 */
+  min-width: var(--teach-tap);
+  padding: 6px 16px;
+  font-family: var(--teach-mono);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--teach-text);
+  background: rgba(255, 255, 255, .05);
+  border: 1px solid var(--teach-line);
+  border-radius: var(--teach-radius-s);
+  box-shadow: var(--teach-edge);
+  cursor: pointer;
+  user-select: none; -webkit-user-select: none;
+  transition: transform .18s cubic-bezier(.22,.8,.3,1), color .18s ease,
+              background .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+#teach-root .teach-btn:hover {
+  color: var(--teach-accent);
+  border-color: var(--teach-accent-dim);
+  background: rgba(127, 252, 216, .08);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .5), 0 0 0 1px var(--teach-accent-dim), var(--teach-glow);
+  transform: translateY(-1px);
+}
+#teach-root .teach-btn:active {
+  background: rgba(127, 252, 216, .16);
+  transform: scale(.97);
+}
+#teach-root .teach-btn.is-active {
+  color: var(--teach-ink);
+  background: var(--teach-accent);
+  border-color: var(--teach-accent);
+  font-weight: 600;
+  box-shadow: var(--teach-glow);
+}
+#teach-root .teach-btn:disabled,
+#teach-root .teach-btn.is-disabled {
+  opacity: .32; cursor: not-allowed;
+  transform: none; color: var(--teach-text-dim);
+  background: rgba(255, 255, 255, .03); border-color: var(--teach-line);
+  box-shadow: none;
+}
+/* 方形图标按钮（☰ / —） */
+#teach-root .teach-btn.teach-icon {
+  width: var(--teach-tap);
+  padding: 0;
+  font-family: var(--teach-mono);
+  font-size: 22px;
+  line-height: 1;
+}
+
+/* ===========================================================
+   左侧目录面板
+   =========================================================== */
+#teach-root .teach-panel {
+  position: absolute;
+  left: var(--teach-edge-gap);
+  top: var(--teach-top-h);
+  bottom: var(--teach-bar-h);
+  width: var(--teach-w-panel);
+  max-height: calc(100% - var(--teach-top-h) - var(--teach-bar-h));
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  background: var(--teach-glass);
+  border: 1px solid var(--teach-line);
+  /* 与演示模式 .hud-left 的玻璃拟态规则同款：14px 圆角 + 层次阴影 */
+  border-radius: var(--teach-radius-l);
+  backdrop-filter: var(--teach-blur);
+  -webkit-backdrop-filter: var(--teach-blur);
+  box-shadow: var(--teach-shadow);
+  transition: width .25s ease, padding .25s ease;
+  animation: teachIn .5s cubic-bezier(.22, .8, .3, 1) both;
+}
+@keyframes teachIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* 面板头部：与演示模式 .panel-title-row 同款——左小字标签 + 右 ‹ 折叠钮 */
+#teach-root .teach-panel-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 0 0 10px;
+  flex: none;
+}
+#teach-root .teach-panel-title {
+  margin: 0;
+  font-family: var(--teach-mono);
+  font-size: var(--teach-fs-mini);
+  font-weight: 500;
+  letter-spacing: .18em;
+  color: var(--teach-text-dim);
+}
+/* 折叠钮：与演示模式 .panel-toggle 同款 22px 小方块（覆盖 teach-btn 的 44px 触摸尺寸） */
+#teach-root .teach-btn.teach-panel-toggle {
+  width: 22px; height: 22px; min-width: 22px; min-height: 22px;
+  padding: 0;
+  font-size: 13px; line-height: 1;
+  color: var(--teach-text-dim);
+  background: none;
+  border: 1px solid var(--teach-line);
+  border-radius: 2px;
+  box-shadow: none;
+}
+#teach-root .teach-btn.teach-panel-toggle:hover {
+  color: var(--teach-accent);
+  border-color: var(--teach-accent-dim);
+  background: none;
+  box-shadow: none;
+  transform: none;
+}
+
+/* 目录滚动区 */
+#teach-root .teach-toc {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+}
+
+/* 章容器：只作分组，标题不带"第X章"前缀（前缀已在数据里去掉） */
+#teach-root .teach-chapter { margin-bottom: 18px; }
+#teach-root .teach-chapter:last-child { margin-bottom: 0; }
+#teach-root .teach-chapter-title {
+  margin: 0 0 8px;
+  padding: 2px 0 2px 12px;
+  border-left: 2px solid var(--teach-accent);
+  font-family: var(--teach-mono);
+  font-size: var(--teach-fs-title);
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: .12em;
+  color: #fff;
+  text-shadow: 0 0 18px rgba(127, 252, 216, .20);
+}
+
+/* 节（可点）：只显示课节名，不带"3.1"前缀 */
+#teach-root .teach-lesson { margin-bottom: 6px; }
+#teach-root .teach-lesson-title {
+  display: flex; align-items: center;
+  min-height: var(--teach-tap);
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--teach-radius-s);
+  font-size: var(--teach-fs-sub);
+  font-weight: 600;
+  line-height: 1.35;
+  color: rgba(233, 236, 239, .90);
+  cursor: pointer;
+  user-select: none; -webkit-user-select: none;
+  transition: background .18s ease, color .18s ease, border-color .18s ease;
+}
+#teach-root .teach-lesson-title:hover {
+  background: rgba(255, 255, 255, .06);
+  color: var(--teach-accent);
+}
+#teach-root .teach-lesson-title.is-active {
+  color: var(--teach-accent);
+  background: linear-gradient(90deg, rgba(127, 252, 216, .14), rgba(127, 252, 216, .04));
+  border-color: rgba(127, 252, 216, .18);
+  box-shadow: inset 0 0 0 1px rgba(127, 252, 216, .12), var(--teach-glow);
+}
+
+/* 步骤（可点） */
+#teach-root .teach-steps {
+  margin: 4px 0 10px;
+  padding-left: 14px;
+  border-left: 1px solid rgba(255, 255, 255, .10);
+}
+#teach-root .teach-step {
+  position: relative;
+  display: flex; align-items: center;
+  min-height: var(--teach-tap);
+  padding: 9px 12px;
+  border-radius: var(--teach-radius-s);
+  font-size: var(--teach-fs-ui);
+  font-weight: 400;
+  line-height: 1.4;
+  color: rgba(233, 236, 239, .82);
+  cursor: pointer;
+  user-select: none; -webkit-user-select: none;
+  transition: background .18s ease, color .18s ease, box-shadow .18s ease;
+}
+#teach-root .teach-step + .teach-step { margin-top: 4px; }
+#teach-root .teach-step:hover {
+  background: rgba(255, 255, 255, .06);
+  color: var(--teach-accent);
+}
+/* 当前步骤：左侧发光的强调色条 + 渐变底衬（替代整块色块，避免塑料感）*/
+#teach-root .teach-step.is-active {
+  color: var(--teach-accent);
+  font-weight: 600;
+  background: linear-gradient(90deg, rgba(127, 252, 216, .16), rgba(127, 252, 216, .04));
+  box-shadow: var(--teach-glow);
+}
+#teach-root .teach-step.is-active::before {
+  content: '';
+  position: absolute; left: -15px; top: 50%;
+  width: 2px; height: 62%;
+  transform: translateY(-50%);
+  background: var(--teach-accent);
+  box-shadow: 0 0 10px var(--teach-accent);
+}
+
+/* 收起：与演示模式 .hud-left.collapsed 同款——40px 自适应小方块（bottom:auto 脱离全高），
+   藏目录与标题，折叠钮旋转 180° */
+#teach-root .teach-panel.is-collapsed,
+#teach-root .teach-panel.collapsed {
+  width: 40px;
+  bottom: auto;
+  max-height: none;
+  padding: 12px 6px;
+  overflow: hidden;
+  align-items: center;
+}
+#teach-root .teach-panel.is-collapsed .teach-toc,
+#teach-root .teach-panel.collapsed .teach-toc,
+#teach-root .teach-panel.is-collapsed .teach-panel-title,
+#teach-root .teach-panel.collapsed .teach-panel-title { display: none; }
+#teach-root .teach-panel.is-collapsed .teach-panel-head,
+#teach-root .teach-panel.collapsed .teach-panel-head {
+  justify-content: center; margin-bottom: 0;
+}
+#teach-root .teach-panel.is-collapsed .teach-panel-toggle,
+#teach-root .teach-panel.collapsed .teach-panel-toggle { transform: rotate(180deg); }
+
+/* ===========================================================
+   顶部标题：教学模式 + 副标题（与演示模式品牌区同款）
+   =========================================================== */
+#teach-root .teach-topbar {
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  display: flex; align-items: flex-start;
+  padding: 16px var(--teach-edge-gap);
+  background: linear-gradient(to bottom, rgba(0, 0, 0, .82), rgba(0, 0, 0, .45) 70%, transparent);
+  pointer-events: none;           /* 纯展示，不挡相机拖拽 */
+}
+#teach-root .teach-brand {
+  display: flex; flex-direction: column; gap: 4px;
+}
+#teach-root .teach-brand-title {
+  margin: 0;
+  font-family: var(--teach-sans);
+  font-size: var(--teach-fs-display);
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: .16em;
+  color: #fff;
+  text-shadow: 0 0 18px rgba(127, 252, 216, .22);
+}
+#teach-root .teach-brand-sub {
+  margin: 0;
+  font-family: var(--teach-mono);
+  font-size: var(--teach-fs-mini);
+  letter-spacing: .14em;
+  color: rgba(233, 236, 239, .62);
+}
+
+/* ===========================================================
+   右下角信息窗 —— 与演示模式 .info-panel 同源
+   =========================================================== */
+#teach-root .teach-info {
+  position: absolute;
+  right: var(--teach-edge-gap);
+  bottom: var(--teach-bar-h);
+  width: var(--teach-w-info);
+  max-width: calc(100% - var(--teach-edge-gap) * 2);
+  max-height: calc(100% - var(--teach-top-h) - var(--teach-bar-h));
+  overflow-y: auto;
+  padding: 16px 18px;
+  background: var(--teach-glass);
+  border: 1px solid var(--teach-line);
+  border-radius: var(--teach-radius-l);
+  backdrop-filter: var(--teach-blur);
+  -webkit-backdrop-filter: var(--teach-blur);
+  box-shadow: var(--teach-shadow);
+  user-select: text; -webkit-user-select: text;
+  animation: teachIn .5s cubic-bezier(.22, .8, .3, 1) .08s both;
+}
+/* 信息窗收起后只留下独立的恢复按钮，避免标题条继续遮挡画面。 */
+#teach-root .teach-info-open {
+  position: absolute;
+  right: var(--teach-edge-gap);
+  bottom: var(--teach-bar-h);
+  z-index: 1;
+  background: var(--teach-glass-strong);
+  backdrop-filter: var(--teach-blur);
+  -webkit-backdrop-filter: var(--teach-blur);
+  box-shadow: var(--teach-shadow);
+}
+/* 信息窗头部：与演示模式 .info-head 同款渐变底衬 */
+#teach-root .teach-info-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin: -6px -6px 12px;
+  padding: 10px 10px 12px;
+  background: linear-gradient(90deg, rgba(127, 252, 216, .10), transparent 70%);
+  border-radius: var(--teach-radius-s);
+}
+#teach-root .teach-info-title {
+  flex: 1 1 auto; min-width: 0;
+  font-family: var(--teach-mono);
+  font-size: var(--teach-fs-title);
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: .1em;
+  color: #fff;
+  text-shadow: 0 0 16px rgba(127, 252, 216, .20);
+}
+
+/* 讲解正文：字号大但字重正常、行高舒适 —— 避免"放大即粗糙" */
+#teach-root .teach-text {
+  margin: 0;
+  font-size: var(--teach-fs-body);
+  font-weight: 400;
+  line-height: 1.7;
+  letter-spacing: .01em;
+  color: rgba(233, 236, 239, .92);
+}
+
+/* 思考与讨论：左侧 3px 强调色条 + 淡底 */
+#teach-root .teach-ask {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border-left: 3px solid var(--teach-accent);
+  border-radius: var(--teach-radius-s);
+  background: rgba(127, 252, 216, .08);
+  font-size: var(--teach-fs-body);
+  line-height: 1.6;
+  color: rgba(233, 236, 239, .94);
+}
+
+/* 数据来源：等宽小字，弱化为背景信息 */
+#teach-root .teach-src {
+  margin: 14px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, .08);
+  font-family: var(--teach-mono);
+  font-size: var(--teach-fs-mini);
+  line-height: 1.5;
+  letter-spacing: .04em;
+  color: var(--teach-text-dim);
+}
+
+/* 引导提示小面板（如太阳系章节「切换到演示模式」）：与演示模式面板同质感 */
+#teach-root .teach-tip {
+  display: flex; align-items: center; gap: 12px;
+  margin-top: 12px; padding: 10px 12px;
+  border-radius: var(--teach-radius-s);
+  background: rgba(127, 252, 216, .08);
+  border: 1px solid rgba(127, 252, 216, .26);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .28);
+  font-size: var(--teach-fs-mini);
+  line-height: 1.5;
+}
+#teach-root .teach-tip .teach-tip-text { flex: 1 1 auto; }
+#teach-root .teach-tip .teach-btn { flex: none; margin-left: auto; }
+#teach-root .teach-tip.is-hidden { display: none; }
+
+/* solo 步骤（如「太阳系的组成与结构」）：隐藏常规面板后，
+   引导小面板单独浮在屏幕正中——柔光描边 + 玻璃底，成为画面焦点 */
+#teach-root .teach-tip.teach-solo-tip {
+  position: fixed;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 560px;
+  padding: 20px 26px;
+  font-size: var(--teach-fs-body);
+  line-height: 1.6;
+  border-radius: var(--teach-radius-l);
+  background: var(--teach-glass-strong);
+  backdrop-filter: var(--teach-blur);
+  -webkit-backdrop-filter: var(--teach-blur);
+  border-color: rgba(127, 252, 216, .30);
+  box-shadow:
+    0 0 0 1px rgba(127, 252, 216, .10),
+    0 0 44px rgba(127, 252, 216, .10),
+    0 18px 48px rgba(0, 0, 0, .55);
+}
+
+/* ===========================================================
+   底部控制条
+   =========================================================== */
+#teach-root .teach-bar {
+  position: absolute;
+  /* 与演示模式 .hud-bottom 一致：居中悬浮胶囊，不是左右撑满的直角条 */
+  left: 50%;
+  right: auto;
+  bottom: 18px;
+  transform: translateX(-50%);
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 18px;
+  width: max-content;
+  max-width: calc(100% - 44px);
+  padding: 12px 22px;
+  background: var(--teach-glass-strong);
+  border: 1px solid rgba(255, 255, 255, .10);
+  border-radius: var(--teach-radius-l);
+  backdrop-filter: var(--teach-blur);
+  -webkit-backdrop-filter: var(--teach-blur);
+  box-shadow: var(--teach-shadow);
+  animation: teachBarIn .5s cubic-bezier(.22, .8, .3, 1) .16s both;
+}
+#teach-root .teach-bar-group {
+  display: flex; align-items: center; gap: 10px;
+  flex: none;
+}
+/* 入场动画：保留 translateX(-50%) 居中，否则动画结束态 transform:none 会顶掉居中导致溢出 */
+@keyframes teachBarIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  to   { opacity: 1; transform: translateX(-50%); }
+}
+
+/* 速度字段 */
+#teach-root .teach-field {
+  display: flex; align-items: center; gap: 10px;
+  min-height: var(--teach-tap);
+  padding: 0 6px;
+}
+#teach-root .teach-field > span {
+  font-family: var(--teach-mono);
+  font-size: 11px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--teach-text-dim);
+  white-space: nowrap;
+}
+
+/* 滑块：与演示模式同一套视觉，加宽加粗便于触摸拖动 */
+#teach-root .teach-range {
+  -webkit-appearance: none; appearance: none;
+  width: var(--teach-range-w);
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--teach-accent-dim), var(--teach-line-strong));
+  outline: none;
+  cursor: pointer;
+}
+#teach-root .teach-range::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 13px; height: 13px;
+  border: none; border-radius: 50%;
+  background: var(--teach-accent);
+  box-shadow: 0 0 10px var(--teach-accent), 0 0 0 3px rgba(127, 252, 216, .18);
+  cursor: pointer;
+  transition: transform .15s ease;
+}
+#teach-root .teach-range::-webkit-slider-thumb:hover { transform: scale(1.2); }
+#teach-root .teach-range::-moz-range-thumb {
+  width: 13px; height: 13px;
+  border: none; border-radius: 50%;
+  background: var(--teach-accent);
+  box-shadow: 0 0 10px var(--teach-accent);
+  cursor: pointer;
+}
+#teach-root .teach-range::-moz-range-track { height: 4px; border-radius: 2px; background: transparent; }
+
+/* 速度数值：与演示模式 .speed-value 同样式 */
+#teach-root .teach-speed-value {
+  font-family: var(--teach-mono);
+  font-size: 12px;
+  min-width: 44px;
+  color: var(--teach-accent);
+  text-shadow: 0 0 10px rgba(127, 252, 216, .30);
+}
+
+/* 分段按钮：与演示模式 .seg 一致 */
+#teach-root .teach-seg {
+  display: flex; flex: none;
+  border: 1px solid var(--teach-line);
+  border-radius: var(--teach-radius-s);
+  overflow: hidden;
+}
+#teach-root .teach-seg-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 32px;
+  padding: 5px 12px;
+  font-family: var(--teach-mono);
+  font-size: 13px;
+  letter-spacing: .1em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  color: var(--teach-text-dim);
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--teach-line);
+  cursor: pointer;
+  transition: all .18s ease;
+}
+#teach-root .teach-seg-btn:first-child { border-left: none; }
+#teach-root .teach-seg-btn:hover { color: var(--teach-accent); background: rgba(127, 252, 216, .08); }
+#teach-root .teach-seg-btn.is-active {
+  color: var(--teach-ink);
+  background: var(--teach-accent);
+  font-weight: 600;
+  box-shadow: 0 0 12px var(--teach-accent-dim);
+}
+
+/* 进度：等宽数字（避免逐帧跳动）+ 强调色 */
+#teach-root .teach-progress {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 26px;
+  min-width: 62px;
+  padding: 0 6px;
+  font-family: var(--teach-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  letter-spacing: .1em;
+  color: var(--teach-accent);
+  text-shadow: 0 0 10px rgba(127, 252, 216, .30);
+}
+
+/* ===========================================================
+   右下角模式切换按钮（演示 ⇄ 教学，互为镜像）
+   =========================================================== */
+#teach-root .teach-enter,
+#teach-root .teach-to-demo {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 16;
+}
+/* 教学模式下底部控制条在窄屏会撑到两边，返回按钮上移让位 */
+@media (max-width: 900px) {
+  #teach-root .teach-to-demo { bottom: calc(var(--teach-bar-h) + 8px); }
+  #teach-root .teach-info-open { bottom: calc(var(--teach-bar-h) + var(--teach-tap) + 16px); }
+}
+
+/* ===========================================================
+   响应式：缩尺寸，但保住教室可读性（正文永不低于 20px）
+   =========================================================== */
+@media (max-width: 1200px) {
+  #teach-root {
+    --teach-w-panel: 260px;
+    --teach-w-info: 380px;
+    --teach-top-h: 92px;
+    --teach-range-w: 180px;
+    --teach-fs-display: 26px;
+    --teach-fs-title: 24px;
+    --teach-fs-sub: 21px;
+    --teach-fs-body: 20px;
+    --teach-fs-ui: 19px;
+    --teach-fs-mini: 15px;
+  }
+  #teach-root .teach-btn { padding: 10px 14px; }
+  #teach-root .teach-bar { gap: 10px 12px; padding: 10px 14px; }
+  #teach-root .teach-seg-btn { padding: 10px 12px; font-size: 17px; }
+}
+
+@media (max-width: 900px) {
+  #teach-root {
+    --teach-w-panel: 240px;
+    --teach-w-info: 360px;
+    --teach-top-h: 116px;      /* 顶部要点条换行后变高 */
+    --teach-fs-display: 24px;
+    --teach-fs-title: 22px;
+    --teach-fs-sub: 20px;
+    --teach-fs-body: 20px;
+    --teach-fs-ui: 18px;
+    --teach-fs-mini: 15px;
+  }
+  #teach-root .teach-info { width: calc(100% - var(--teach-edge-gap) * 2); }
+}
+
+@media (max-height: 720px) {
+  #teach-root {
+    --teach-top-h: 84px;
+    --teach-bar-h: 84px;
+  }
+  #teach-root .teach-bar { bottom: 12px; }
+  #teach-root .teach-topbar { padding-top: 10px; padding-bottom: 10px; }
+}
+
+/* 小屏：底部控制条恢复通栏，与演示模式一致 */
+@media (max-width: 1040px) {
+  #teach-root .teach-bar { left: 22px; right: 22px; transform: none; width: auto; }
+}
+
+/* 无障碍：降低动效 */
+@media (prefers-reduced-motion: reduce) {
+  #teach-root, #teach-root * { animation: none !important; transition: none !important; }
+}

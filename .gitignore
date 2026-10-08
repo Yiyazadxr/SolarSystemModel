@@ -1,0 +1,36 @@
+# dependencies（本项目零依赖，仅保留本地工具链可能产生的目录）
+/node_modules
+/.pnpm-store
+
+# build / generated（textures.js 由脚本生成但需提交，故不忽略）
+/dist
+/out
+/build
+
+# 日志与调试
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# 编辑器与系统
+.idea/
+.vscode/
+!.vscode/settings.example.json
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+
+# 本地临时与私有文件
+.env
+.env.*
+*.tmp
+*.bak
+_legacy/
+tmp/
+
+# 注：assets/textures/（原始贴图）与 assets/js/textures.js（生成物）
+#     均纳入版本管理，用于离线运行与离线重建，请勿忽略。
