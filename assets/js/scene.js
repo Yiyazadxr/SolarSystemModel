@@ -29,10 +29,11 @@ SOLAR.Scene = (function () {
   var UPY = new THREE.Vector3(0, 1, 0);      // 世界 up（日珥切向基构造用）
   var sunUniforms = null, coronaShells = [];
   var planets = [];            // { id, data, group, mesh, glowMesh, orbitLine, moons[], trail..., rAu }
-  var cometObj = null;
+  var cometObjs = [];            // 彗星：数据驱动，D.comets 全量构建（支持多颗）
   var starfield = null, starSpikes = null;
-  var skyDome = null;              // 阶段5：真实全天银河背景天球（内表面贴全景图）
+  var skyDome = null;              // 真实全天银河背景天球（内表面贴全景图）
   var beltObjects = [];
+  var bandObjects = [];           // 辉带：补正俯视与远观时点云的亮度缺口
   var pickables = [];
   var bodyIndex = {};
 
@@ -558,6 +559,81 @@ SOLAR.Scene = (function () {
     '}'
   ].join('\n');
 
+  /* --- 小行星带 / 柯伊伯带辉带 ---
+     点云在正俯视与远观时彼此分离、每点被 clamp 到 1px，亮度不足；侧视时粒子沿视线
+     重叠积分，反而亮。辉带用与粒子相同的密度曲线（高斯主体 + Kirkwood 空隙）补上这段
+     积分亮度，并按摄像机仰角淡入淡出：侧视让位点云，也避免贴近盘面时糊屏。
+     密度之上叠无接缝团块（细尘埃 + 大尺度「族」状浓淡），弱压缩档放大后仍有质感。 */
+  var BAND_VERT = [
+    'varying vec2 vP;',
+    'void main(){',
+    /* 插值位置而非半径：position 是仿射量，在片元里反算才准；
+       角度若在顶点插值，跨 ±π 的三角形会烧出接缝 */
+    '  vP = position.xz;',
+    '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+    '}'
+  ].join('\n');
+
+  var BAND_FRAG = [
+    'uniform float uOpacity; uniform float uFade; uniform float uSeed;',
+    'uniform float uDistBase; uniform float uDistExp;',
+    'uniform float uInnerAu; uniform float uOuterAu;',
+    'uniform float uKind;',
+    'uniform vec3 uColor;',
+    'varying vec2 vP;',
+    'float gapAt(float au, float c, float w){',
+    '  float t = (au - c) / w;',
+    '  return 1.0 - 0.92 * exp(-t * t);',
+    '}',
+    /* 周期哈希噪声：角度坐标乘整数频率后对 2π 取模，环带无接缝 */
+    'float hashA(float i, float j){ return fract(sin(i * 127.1 + j * 311.7) * 43758.5453123); }',
+    'float noiseRing(float ang, float rad, float fa, float fr){',
+    '  float pa = floor(6.2831853 * fa + 0.5);',
+    '  vec2 q = vec2(ang * fa, rad * fr);',
+    '  vec2 i = floor(q);',
+    '  vec2 f = q - i;',
+    '  f = f * f * (3.0 - 2.0 * f);',
+    '  float i0 = mod(i.x, pa);',
+    '  float i1 = mod(i.x + 1.0, pa);',
+    '  float a = hashA(i0, i.y);',
+    '  float b = hashA(i1, i.y);',
+    '  float c = hashA(i0, i.y + 1.0);',
+    '  float d = hashA(i1, i.y + 1.0);',
+    '  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);',
+    '}',
+    'void main(){',
+    '  float r = length(vP);',
+    '  float ang = atan(vP.y, vP.x) + uSeed;',
+    '  float au = pow(max(r / uDistBase, 1e-6), 1.0 / uDistExp);',
+    '  float d;',
+    '  if (uKind > 0.5) {',
+    '    float t1 = (au - 2.72) / 0.62;',
+    '    d = exp(-t1 * t1) * 0.55 + 0.45;',
+    '    d *= gapAt(au, 2.06, 0.035);',
+    '    d *= gapAt(au, 2.50, 0.055);',
+    '    d *= gapAt(au, 2.82, 0.045);',
+    '    d *= gapAt(au, 3.27, 0.050);',
+    '  } else {',
+    '    float t2 = (au - 44.5) / 9.5;',
+    '    d = 0.35 + 0.65 * exp(-t2 * t2);',
+    '    float t3 = (au - 39.4) / 1.1;',
+    '    d *= 1.0 - 0.42 * exp(-t3 * t3);',
+    '  }',
+    /* 柯伊伯带密度函数外缘不收窄（0.35 + 0.65×高斯），需显式柔化；
+       否则辉带会是硬边的「甜甜圈」 */
+    '  float span = uOuterAu - uInnerAu;',
+    '  float edge = smoothstep(uInnerAu, uInnerAu + 0.10 * span, au)',
+    '             * (1.0 - smoothstep(uOuterAu - 0.10 * span, uOuterAu, au));',
+    '  float n1 = noiseRing(ang, au, 24.0, 16.0);',
+    '  float n2 = noiseRing(ang, au, 61.0, 44.0);',
+    '  float n3 = noiseRing(ang, au, 7.0, 5.0);',
+    '  float clump = 0.30 + 0.60 * n1 + 0.40 * n2 + 0.55 * n3;',
+    '  float a = d * edge * clump * uOpacity * uFade;',
+    '  if (a < 0.004) discard;',
+    '  gl_FragColor = vec4(uColor * a, a);',
+    '}'
+  ].join('\n');
+
   /* --- 拖尾 / 彗尾（顶点透明度沿长度衰减） --- */
   var TRAIL_VERT = [
     'attribute float aFade;',
@@ -718,7 +794,7 @@ SOLAR.Scene = (function () {
     buildLights();
     buildSun();
     buildPlanets();
-    buildComet();
+    buildComets();
     buildStarfield();
     buildSkyDome();
     buildBelts();
@@ -1430,7 +1506,9 @@ SOLAR.Scene = (function () {
       var p = planets[i];
       p.orbitLine = refreshOrbitLine(p.orbitLine, p.data.orbital, p.data.color, jd);
     }
-    if (cometObj) cometObj.orbitLine = refreshOrbitLine(cometObj.orbitLine, cometObj.data.orbital, 0x9fe8ff, jd);
+    for (var ci2 = 0; ci2 < cometObjs.length; ci2++) {
+      cometObjs[ci2].orbitLine = refreshOrbitLine(cometObjs[ci2].orbitLine, cometObjs[ci2].data.orbital, 0x9fe8ff, jd);
+    }
     orbitEpochJd = jd;
     orbitLastRebuildMs = stamp;
     return true;
@@ -1463,8 +1541,14 @@ SOLAR.Scene = (function () {
   }
 
   /* ---------- 彗星 ---------- */
-  function buildComet() {
-    var cd = D.comets[0];
+  /* 多颗彗星：D.comets 里的每一条数据都构建一套独立对象
+     （彗核 + 彗发 + 离子尾/尘埃尾 + 轨道线），互不共享状态。 */
+  function buildComets() {
+    cometObjs = [];
+    for (var bi = 0; bi < D.comets.length; bi++) buildOneComet(D.comets[bi]);
+  }
+
+  function buildOneComet(cd) {
     /* 彗核真实外观是暗灰、不规则、坑坑洼洼的岩质体，不该像气态行星那样呈彩色条纹。
        这里强制暗灰基色 + 更强的程序化凹凸（不改变任何轨道与光照关系）。 */
     var sp = { base: 0x7d746a, bump: 0.16, term: 0.10, atmoS: 0, amb: 0.05 };
@@ -1476,7 +1560,7 @@ SOLAR.Scene = (function () {
     }));
     /* 彗核真实半径仅 5.5 km，映射后过小，固定放大到 0.35 场景单位才可见。 */
     mesh.scale.setScalar(0.35);
-    mesh.userData.bodyId = 'halley';
+    mesh.userData.bodyId = cd.id;
     systemRoot.add(mesh);
     /* 彗核不参与拾取 */
 
@@ -1526,12 +1610,12 @@ SOLAR.Scene = (function () {
     var orbitLine = makeOrbitLine(cd.orbital, 0x9fe8ff);
     orbitLine.material.opacity = 0.18;
 
-    cometObj = {
+    cometObjs.push({
       data: cd, mesh: mesh, uniforms: uniforms, glow: headGlow, halo: halo,
       ions: ions, dusts: dusts, orbitLine: orbitLine,
       pos: new THREE.Vector3(), prev: new THREE.Vector3(), hasPrev: false,
       side: new THREE.Vector3(), dir: new THREE.Vector3(), vel: new THREE.Vector3()
-    };
+    });
   }
 
   /* ---------- 星空 ---------- */
@@ -1758,8 +1842,45 @@ SOLAR.Scene = (function () {
   function buildBelts() {
     beltObjects.forEach(function (b) { disposePoints(b); });
     beltObjects = [];
+    bandObjects.forEach(function (b) { disposePoints(b); });   /* disposePoints 只管 geometry/material 与摘除父节点，网格同样适用 */
+    bandObjects = [];
     addBelt(D.belts.asteroid, quality.asteroidCount, true, 0x41535452);
     addBelt(D.belts.kuiper, quality.kuiperCount, false, 0x4b554950);
+    addBand(D.belts.asteroid, true);
+    addBand(D.belts.kuiper, false);
+  }
+
+  /* 辉带半径按当前档位的距离映射现算；轴对称，不必随粒子自转 */
+  function addBand(cfg, isAsteroid) {
+    var rIn = SOLAR.auToScene(cfg.innerAu);
+    var rOut = SOLAR.auToScene(cfg.outerAu);
+    var pad = 0.05 * (rOut - rIn);
+    /* 几何在 XZ 平面烘焙，着色器由 position.xz 反算半径，故不能用 scale 缩放
+       （会把半径一起缩掉），档位变化只能整体重建 */
+    var geo = new THREE.RingGeometry(rIn - pad, rOut + pad, 192, 1);
+    geo.rotateX(-Math.PI / 2);
+    var col = new THREE.Color(cfg.color);
+    col.multiplyScalar(1.12);
+    var mesh = new THREE.Mesh(geo, new THREE.ShaderMaterial({
+      uniforms: {
+        uColor: { value: col },
+        uOpacity: { value: cfg.bandOpacity !== undefined ? cfg.bandOpacity : 0.22 },
+        uFade: { value: 0 },
+        uDistBase: { value: C.scale.distanceBase },
+        uDistExp: { value: C.scale.distanceExp },
+        uInnerAu: { value: cfg.innerAu },
+        uOuterAu: { value: cfg.outerAu },
+        uKind: { value: isAsteroid ? 1 : 0 },
+        uSeed: { value: isAsteroid ? 0.0 : 1.73 }
+      },
+      vertexShader: BAND_VERT, fragmentShader: BAND_FRAG,
+      transparent: true, blending: THREE.AdditiveBlending,
+      depthWrite: false, side: THREE.DoubleSide
+    }));
+    mesh.frustumCulled = false;
+    systemRoot.add(mesh);
+    mesh.visible = beltsVisible;
+    bandObjects.push(mesh);
   }
 
   /* Kirkwood 空隙等径向结构（简化） */
@@ -1859,8 +1980,23 @@ SOLAR.Scene = (function () {
     U.sunPos.value.copy(systemRoot.position);
 
     var i, p;
+
+    /* 辉带按仰角淡入淡出：正俯视与远观时点云亮度不足，靠辉带补；
+       侧视时粒子沿视线重叠已够亮，且贴近盘面会让辉带糊屏 */
+    if (bandObjects.length) {
+      var camY = camera.position.y - systemRoot.position.y;
+      var camX = camera.position.x - systemRoot.position.x;
+      var camZ = camera.position.z - systemRoot.position.z;
+      var elev = Math.abs(camY) / Math.max(Math.sqrt(camX * camX + camY * camY + camZ * camZ), 1e-3);
+      var ft = (elev - 0.05) / 0.45;
+      ft = ft < 0 ? 0 : (ft > 1 ? 1 : ft);
+      var bandFade = ft * ft * (3 - 2 * ft);
+      for (i = 0; i < bandObjects.length; i++) {
+        bandObjects[i].material.uniforms.uFade.value = bandFade;
+      }
+    }
     for (i = 0; i < planets.length; i++) updatePlanet(planets[i], jd, dt);
-    updateComet(jd);
+    updateComets(jd);
     /* 卫星可挂在母星赤道 tilt 子树内，阴影 uniform 必须读取最终世界矩阵。 */
     systemRoot.updateMatrixWorld(true);
     updateShadowUniforms();
@@ -2018,9 +2154,9 @@ SOLAR.Scene = (function () {
       }
     }
 
-    if (cometObj) {
-      cometObj.uniforms.uCenter.value.copy(cometObj.pos).add(sys);
-      cometObj.uniforms.uRadius.value = 0.35;
+    for (var ci3 = 0; ci3 < cometObjs.length; ci3++) {
+      cometObjs[ci3].uniforms.uCenter.value.copy(cometObjs[ci3].pos).add(sys);
+      cometObjs[ci3].uniforms.uRadius.value = 0.35;
     }
   }
 
@@ -2099,8 +2235,20 @@ SOLAR.Scene = (function () {
     p.trail.geometry.attributes.aFade.needsUpdate = true;
   }
 
-  function updateComet(jd) {
-    if (!cometObj) return;
+  /* 按 id 取彗星对象（供取景 / 世界坐标 / 半径等接口使用，支持多颗彗星） */
+  function cometById(id) {
+    for (var ci = 0; ci < cometObjs.length; ci++) {
+      if (cometObjs[ci].data.id === id) return cometObjs[ci];
+    }
+    return null;
+  }
+
+  function updateComets(jd) {
+    for (var ci4 = 0; ci4 < cometObjs.length; ci4++) updateOneComet(cometObjs[ci4], jd);
+  }
+
+  /* 形参命名为 cometObj：下面整段函数体原样复用，逐颗调用即可（无需改动内部逻辑）。 */
+  function updateOneComet(cometObj, jd) {
     var pos = A.heliocentric(cometObj.data.orbital, jd);
     var sp = A.toScene(pos);
 
@@ -2244,12 +2392,15 @@ SOLAR.Scene = (function () {
         p.moons[j].uniforms.uBump.value = (surfaceParams(p.moons[j].data.id).bump || 0) * (qv.bump ? 1 : 0);
       }
     }
-    if (cometObj) cometObj.mesh.geometry = sphereGeo(moonSegLevel());
+    for (var ci5 = 0; ci5 < cometObjs.length; ci5++) cometObjs[ci5].mesh.geometry = sphereGeo(moonSegLevel());
 
-    /* 太阳网格细分 */
+    /* 太阳网格细分：几何半径必须用「建模时的烘焙基准半径」，不能用当前世界半径。
+       sunMesh.scale 是相对烘焙基准的倍率（建几何=基准、scale=倍率）；若把已经
+       放大的世界半径再烘进几何，切档/切画质会把它乘第二遍，每次画质重建再乘一次，
+       太阳会滚雪球式变大，黑子与日珥被埋进球体内部。 */
     if (sunMesh) {
       var seg = SUN_SEGMENTS[qv.seg] || SUN_SEGMENTS.m;
-      var r = sunMesh.userData.sunRadius || 1;
+      var r = sunMesh.userData.sunBaseRadius || sunMesh.userData.sunRadius || 1;
       sunMesh.geometry.dispose();
       sunMesh.geometry = new THREE.SphereGeometry(r, seg[0], seg[1]);
     }
@@ -2399,7 +2550,9 @@ SOLAR.Scene = (function () {
     }
 
     /* 彗星轨道线与小行星带 / 柯伊伯带同样依赖距离映射 */
-    if (cometObj) cometObj.orbitLine = refreshOrbitLine(cometObj.orbitLine, cometObj.data.orbital, 0x9fe8ff, orbitEpochJd || currentOrbitEpoch());
+    for (var ci6 = 0; ci6 < cometObjs.length; ci6++) {
+      cometObjs[ci6].orbitLine = refreshOrbitLine(cometObjs[ci6].orbitLine, cometObjs[ci6].data.orbital, 0x9fe8ff, orbitEpochJd || currentOrbitEpoch());
+    }
     buildBelts();
   }
 
@@ -2468,7 +2621,7 @@ SOLAR.Scene = (function () {
         flare.scale.set(flareSize, flareSize, 1);
       }
     }
-    if (cometObj) cometObj.mesh.scale.setScalar(0.35 * f.comet);
+    for (var ci7 = 0; ci7 < cometObjs.length; ci7++) cometObjs[ci7].mesh.scale.setScalar(0.35 * f.comet);
   }
 
   function setScaleMode(mode) {
@@ -2488,7 +2641,9 @@ SOLAR.Scene = (function () {
         if (ms[j].orbitLine) ms[j].orbitLine.visible = !!on;
       }
     }
-    if (cometObj && cometObj.orbitLine) cometObj.orbitLine.visible = !!on;
+    for (var ci8 = 0; ci8 < cometObjs.length; ci8++) {
+      if (cometObjs[ci8].orbitLine) cometObjs[ci8].orbitLine.visible = !!on;
+    }
   }
 
   function setTrailsVisible(on) {
@@ -2517,6 +2672,7 @@ SOLAR.Scene = (function () {
   function setBeltsVisible(on) {
     beltsVisible = !!on;
     for (var i = 0; i < beltObjects.length; i++) beltObjects[i].visible = beltsVisible;
+    for (var j = 0; j < bandObjects.length; j++) bandObjects[j].visible = beltsVisible;
   }
 
   /* ---------- 天体标签（Canvas 文字精灵，屏幕恒定尺寸） ---------- */
@@ -2637,7 +2793,8 @@ SOLAR.Scene = (function () {
         }
       }
     }
-    if (cometObj && id === 'halley') { target.copy(cometObj.pos).add(systemRoot.position); return true; }
+    var co1 = cometById(id);
+    if (co1) { target.copy(co1.pos).add(systemRoot.position); return true; }
     return false;
   }
 
@@ -2655,7 +2812,8 @@ SOLAR.Scene = (function () {
         if (m.data.id === id) return m.mesh.getWorldPosition(new THREE.Vector3());
       }
     }
-    if (cometObj && id === 'halley') return cometObj.pos.clone().add(off);
+    var co2 = cometById(id);
+    if (co2) return co2.pos.clone().add(off);
     return null;
   }
 
@@ -2687,10 +2845,11 @@ SOLAR.Scene = (function () {
 
   function radiusOf(id) {
     if (id === 'sun') return SOLAR.kmToScene(D.sun.radiusKm) * C.scale.sunSizeFactor;
-    /* 哈雷彗核不在 planets 里；返回「观赏半径」（显示半径 ×2），
+    /* 彗核不在 planets 里；返回「观赏半径」（显示半径 ×2），
        让点击彗星时的取景距离能同时容纳彗核、彗发与彗尾起点，
        否则会落到 0.35 的默认值，相机怼到彗核上什么结构都看不见。 */
-    if (id === 'halley' && cometObj) return cometObj.mesh.scale.x * 2;
+    var co3 = cometById(id);
+    if (co3) return co3.mesh.scale.x * 2;
     var p = bodyIndex[id];
     if (p) return p.radius;
     for (var i = 0; i < planets.length; i++) {

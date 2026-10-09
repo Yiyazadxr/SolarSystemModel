@@ -762,10 +762,14 @@ SOLAR.UI = (function () {
     }
 
     if (data.orbital) {
-      var a = data.orbital.a, e = data.orbital.e;
+      var el = A.planetElements ? A.planetElements(data.orbital, SOLAR.time.jd) : data.orbital;
+      var a = el.a, e = el.e;
+      var source = A.orbitSource ? A.orbitSource(data.orbital) : 'jpl';
+      addRow(table, 'orbitSource', SOLAR.t('fields.source_' + source));
+      rows++;
       addRow(table, 'semiMajor', formatAu(a));
       addRow(table, 'eccentricity', formatDecimal(e, 6));
-      addRow(table, 'inclination', formatAngle(data.orbital.i, 6));
+      addRow(table, 'inclination', formatAngle(el.i, 6));
 
       var peri = numOrNull(pick(data, ['perihelionAu', 'perihelion', 'qAu']));
       var aph = numOrNull(pick(data, ['aphelionAu', 'aphelion', 'QAu']));
@@ -1631,12 +1635,14 @@ SOLAR.UI = (function () {
   function updateEphemerisHint() {
     if (!els.dateHint || dateHintTransient) return;
     var status = A.ephemerisStatus ? A.ephemerisStatus(SOLAR.time.jd) : { level: 'short' };
-    var key = status.level === 'long' ? 'ui.ephemerisLong' :
-      (status.level === 'extrapolated' ? 'ui.ephemerisExtrapolated' : 'ui.ephemerisShort');
+    var key = status.level === 'vsop' ? 'ui.ephemerisVsop' :
+      (status.level === 'vsopOutside' ? 'ui.ephemerisVsopOutside' :
+      (status.level === 'long' ? 'ui.ephemerisLong' :
+      (status.level === 'extrapolated' ? 'ui.ephemerisExtrapolated' : 'ui.ephemerisShort')));
     els.dateHint.textContent = SOLAR.t(key);
     setClass(els.dateHint, 'error', status.level === 'extrapolated');
-    setClass(els.dateHint, 'warn', status.level === 'long');
-    setClass(els.dateHint, 'ok', status.level === 'short');
+    setClass(els.dateHint, 'warn', status.level === 'long' || status.level === 'vsopOutside');
+    setClass(els.dateHint, 'ok', status.level === 'short' || status.level === 'vsop');
   }
 
   function jumpToDate() {

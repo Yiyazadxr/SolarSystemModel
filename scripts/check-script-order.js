@@ -3,7 +3,7 @@
  * 规则：
  *  1. vendor 脚本必须在前（three.min.js 是根依赖）
  *  2. 自定义脚本顺序需与 EXPECTED_ORDER 一致
- *  3. 依赖方向：config → data → i18n → astro → textures → effects → scene → galaxy → controls → ui → main
+ *  3. 依赖方向：config → data → i18n → vsop87 → astro → textures → effects → scene → galaxy → controls → ui → main
  *     teach-data → teach-globe → teach-orrery → teach-scenes → teach
  */
 'use strict';
@@ -19,6 +19,7 @@ const EXPECTED_ORDER = [
   'config.js',
   'data.js',
   'i18n.js',
+  'vsop87.js',
   'astro.js',
   'textures.js',
   'effects.js',

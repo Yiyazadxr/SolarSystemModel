@@ -674,7 +674,6 @@ SOLAR.Teach = (function () {
     },
     next: function () { gotoStepIndex(stepIdx + 1); },
     prev: function () { gotoStepIndex(stepIdx - 1); },
-    setScale: setScale,
     getLesson: function () { return curLesson; },
     getStep: function () { return curStep; }
   };

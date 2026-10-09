@@ -2,7 +2,7 @@
 
 # SOLAR SYSTEM · 太阳系 3D 展示
 
-一个开箱即用的单页 3D 太阳系：真实 J2000 轨道根数、太阳系整体绕银心公转、科幻黑白 HUD、中英双语，全部资源本地化（**运行时不访问外网**）。
+一个开箱即用的单页 3D 太阳系：八行星使用 VSOP87 J2000 要素星历、太阳系整体绕银心公转、科幻黑白 HUD、中英双语，全部资源本地化（**运行时不访问外网**）。
 
 [![Stars](https://img.shields.io/github/stars/Yiyazadxr/SolarSystemModel?style=flat-square)](https://github.com/Yiyazadxr/SolarSystemModel/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](./LICENSE)
@@ -23,7 +23,7 @@
 
 ## 功能特性
 
-- **真实天体** 🪐 — 太阳、八大行星、冥王星、11 颗主要卫星、小行星带、柯伊伯带与 1P/Halley 彗星；行星用 J2000 六根数 + 每世纪变化率（外行星叠加 JPL 附加摄动），卫星朝向三根数取自 JPL 行星卫星平根数
+- **真实天体** 🪐 — 太阳、八大行星、冥王星、11 颗主要卫星、小行星带、柯伊伯带与 1P/Halley 彗星；八行星用 VSOP87 要素级数（地球轨道为地月质心），其他天体沿用 JPL 近似根数
 - **程序化渲染** ☀️ — 太阳米粒组织 / 临边昏暗 / 黑子 / 日冕，行星凹凸、纬向条纹、大红斑、菲涅尔大气辉光、日落色、环影与日月食投影，全部手写 GLSL
 - **银河公转与拖尾** 🌌 — 太阳系沿**真实倾角 60.2°** 的银道面绕银心公转（233 km/s，一个银河年约 50 分钟）；太阳**实际走过**的银心轨迹（含进动与振荡）任何机位**始终显示**、随距离提亮
 - **显示比例两档** 📏 — **压缩示意**（默认，便于整体观察）与**弱压缩示意**（更接近真实）可切换，只改距离与尺寸映射、**轨道周期与光照关系不变**，每个天体的压缩倍数在信息卡如实标注
@@ -52,6 +52,8 @@
 > [!TIP]
 > `assets/js/textures.js` 是生成物。改动 `assets/textures/` 下的贴图后，执行 `node scripts/generate-textures.js` 重新内嵌（`--check` 校验一致性）。
 
+`assets/js/vsop87.js` 也是生成物。官方原始文件保存在 `assets/vsop87/`；运行 `node scripts/generate-vsop87.js --check` 可离线核验数据和官方主版本 80 组基准。
+
 ## 快捷键
 
 | 键 | 功能 | 键 | 功能 |
@@ -66,7 +68,7 @@
 - **渲染**：Three.js r128（`assets/vendor/` 本地化 UMD）+ WebGL2 / WebGL1
 - **材质**：全部 `ShaderMaterial` 手写 GLSL（行星表面、大气、日冕、星点、拖尾、彗尾、环）
 - **后期**：`EffectComposer` + 分层 `UnrealBloomPass`（自发光物体渲到半分辨率 RT）+ 自定义收尾 `ShaderPass`（暗角 / 扫描线 / 色散 / 颗粒）
-- **天文算法**：开普勒方程（牛顿迭代 + 二分回退）、JPL 近似星历（含附加摄动项）、儒略日换算
+- **天文算法**：VSOP87 八行星要素级数、开普勒方程（牛顿迭代 + 二分回退）、其他天体 JPL / SBDB 近似根数、儒略日换算
 - **工程**：零构建、ES5、IIFE、`window.SOLAR` 命名空间、base64 内嵌资源
 
 ## 目录结构
@@ -75,7 +77,8 @@
 .
 ├── index.html               单页入口（HUD 结构 + 加载动画 + 脚本装配）
 ├── assets/
-│   ├── css/ js/             HUD 与教学样式；配置 / 数据 / 天文 / i18n / 贴图 / 后期 / 场景 / 银河 / 控制 / UI / 主循环 / teach-*
+│   ├── css/ js/             HUD 与教学样式；配置 / 数据 / VSOP87 / 天文 / i18n / 贴图 / 后期 / 场景 / 银河 / 控制 / UI / 主循环 / teach-*
+│   ├── vsop87/              IMCCE 官方原始要素文件及校验文件（仅供离线生成）
 │   └── textures/ vendor/    原始贴图 19 张（textures.js 的来源）；Three.js r128 + OrbitControls + 后期
 ├── scripts/                 贴图生成 + 7 个零依赖自检门禁（语法 / ES5 / 离线 / 顺序 / i18n / 数据 / 资产）
 ├── docs/screenshots/        README 截图
@@ -89,6 +92,7 @@
 | 内容 | 来源 |
 | --- | --- |
 | 行星轨道根数与摄动项 | JPL / NASA *Keplerian Elements for Approximate Positions of the Major Planets* |
+| 八行星演示轨道 | IMCCE / Bretagnon & Francou (1988) VSOP87 主版本（地球轨道使用 EMB） |
 | 卫星朝向三根数（Ω / ω / M₀） | JPL *Planetary Satellite Mean Elements*（历元 2000-01-01.5 TDB） |
 | 物理参数、矮行星 / 彗星根数 | NASA Planetary Fact Sheets、IAU 与 IAU Minor Planet Center |
 | 行星与卫星贴图 | NASA / USGS Astrogeology（公有领域）、Solar System Scope（CC BY 4.0） |
@@ -116,6 +120,9 @@
 
 **验证状态**：自动化验证均在 **Chromium 无头环境**（SwiftShader 软件渲染）完成，覆盖脚本门禁与主要演示路径。2026-10-07 的 `distanceBase 2000` 尺度重构与太阳公转拖尾改动**尚未**经无头截图复核，正在人工验证中；教学场景的逐步回归待单独执行。**Firefox / Safari 与真实 GPU 环境尚未实测**。
 
+VSOP87 原始级数对 IMCCE 官方主版本 80 组历元 × 6 要素对拍最大差 4.975e-11；生成版保留 23,103 项（942,392 B），相对全量在 J2000 ±4,000 年网格上的最大单要素差 1.206e-5（a 为 AU，其余为弧度）。
+本次 VSOP87 接入的浏览器画面与交互尚待人工复核。
+
 ## 已知限制
 
 - `callisto.jpg`、`uranus_ring.png` 无可靠公开源，回退纯色 / 程序化渲染
@@ -123,6 +130,7 @@
 - 演示模式**无法实现严格 1:1 真实比例**（需对数深度缓冲，见 `config.js`）：弱压缩档已尽量接近真实，但天体半径 ∶ 轨道半径仍被压缩（地球约 40 倍），太阳系外缘超出银河模型的银心距标注（推导见 `config.js` → `profiles.faithful`）
 - 最高倍速（1e9）下单步推进限制在 4 个模拟日，外行星仍有轻微步进感（刻意的平滑策略）
 - 银河系为**有观测依据的程序化统计模型**，非真实巡天目录重建
+- VSOP87 主版本地球位置是地月质心，不是地心；界面 UTC 近似 TT，未采用 ΔT 模型。官方原始级数的所有行星共同 1″ 参考跨度为 J2000 ±2,000 年，截断版不继承这项精度保证；超出该跨度时继续计算并显示提示。冥王星、矮行星、彗星和卫星仍用各自近似模型
 - 不做移动端 / 触屏、音效、截图导出，也不把视角状态写入 URL
 
 ## 规模

@@ -1,6 +1,6 @@
 /**
  * 天体真实数据
- * 轨道根数：J2000 平均根数 + 每儒略世纪变化率（JPL Standish 近似表）
+ * 轨道根数：JPL 近似表（八行星的 VSOP87 不可用时回落；其他天体直接使用）
  *   a 半长轴(AU)  e 偏心率  i 轨道倾角(°)  L 平黄经(°)  peri 近日点黄经(°)  node 升交点黄经(°)
  * 物理参数：半径(km)、质量(kg)、表面重力(m/s²)、密度(g/cm³)、逃逸速度(km/s)、平均温度(℃)
  * 自转：rotationH 为恒星自转周期(小时)，负值表示逆向自转；solarDayH 为太阳日长度（正值）
@@ -193,7 +193,67 @@ SOLAR.DATA = {
                    peri: 224.09702598, periRate: -0.00968827, node: 110.30167986, nodeRate: -0.00809981,
                    validTMin: -50, validTMax: 10 } },
       periodDays: 90560
-    }
+    },
+    /* ---- 矮行星：谷神星 / 灶神星（Dawn 真实影像）与三个外海王星天体 ----
+       轨道要素取自 JPL SBDB（当前历元回推至 J2000；LRate = 360/周期 × 36525，
+       单位度/世纪）；半径 / GM / 密度 / 自转取自 SBDB phys-par（文献已在报告标注）
+       与 JPL 卫星参数换算，质量 = GM/G（G = 6.67430e-20 km³·kg⁻¹·s⁻²）。 */
+    { id: 'ceres', type: 'dwarf', texture: 'assets/textures/ceres.jpg', color: 0x9c8f7f,
+      radiusKm: 469.7, massKg: 9.3835e20, gravity: 0.28, density: 2.162, escapeVel: 0.51,
+      tempC: -105, rotationH: 9.074170, solarDayH: 9.0742, axialTilt: 4, moonsCount: 0,
+      bondAlbedo: 0.090, perihelionAu: 2.55, aphelionAu: 2.99,
+      apparentMagnitude: { brightest: 6.64, faintest: 9.34 },
+      discoverer: 'Giuseppe Piazzi', discoveryYear: 1801, discoveryEra: 'historical',
+      orbital: { a: 2.77, aRate: 0, e: 0.0797, eRate: 0,
+                 i: 10.6, iRate: 0, L: 161.22300, LRate: 7814.5,
+                 peri: 153.5, periRate: 0, node: 80.2, nodeRate: 0,
+                 b: 0, c: 0, s: 0, f: 0 },
+      periodDays: 1682.24 },
+    { id: 'vesta', type: 'dwarf', texture: 'assets/textures/vesta.jpg', color: 0xb0a48c,
+      radiusKm: 261.385, massKg: 2.5903e20, gravity: 0.253, density: 3.460, escapeVel: 0.364,
+      tempC: -115, rotationH: 5.3421276322, solarDayH: 5.3421, axialTilt: 29, moonsCount: 0,
+      bondAlbedo: 0.4228, perihelionAu: 2.15, aphelionAu: 2.57,
+      apparentMagnitude: { brightest: 5.20, faintest: 8.48 },
+      discoverer: 'Heinrich Wilhelm Olbers', discoveryYear: 1807, discoveryEra: 'historical',
+      orbital: { a: 2.36, aRate: 0, e: 0.0902, eRate: 0,
+                 i: 7.14, iRate: 0, L: 229.90400, LRate: 9932.9,
+                 peri: 255.0, periRate: 0, node: 104, nodeRate: 0,
+                 b: 0, c: 0, s: 0, f: 0 },
+      periodDays: 1323.53 },
+    /* 阋神星 / 妊神星 / 鸟神星：暂无可用全球影像 → texture 为空，走程序化着色 */
+    { id: 'eris', type: 'dwarf', texture: null, color: 0xe0d8d0,
+      radiusKm: 1163, massKg: 1.6466e22, gravity: 0.813, density: 2.43, escapeVel: 1.375,
+      tempC: -231, rotationH: 25.9, solarDayH: 25.9, axialTilt: 0, moonsCount: 1,
+      bondAlbedo: 0.96, perihelionAu: 38.2, aphelionAu: 97.6,
+      apparentMagnitude: { brightest: 18.7, faintest: 18.7 },
+      discoverer: 'Brown, Trujillo, Rabinowitz et al.', discoveryYear: 2005, discoveryEra: 'modern',
+      orbital: { a: 67.9, aRate: 0, e: 0.438, eRate: 0,
+                 i: 43.9, iRate: 0, L: 22.00632, LRate: 64.28,
+                 peri: 187.0, periRate: 0, node: 36, nodeRate: 0,
+                 b: 0, c: 0, s: 0, f: 0 },
+      periodDays: 204545.45 },
+    { id: 'haumea', type: 'dwarf', texture: null, color: 0xe8e4de,
+      radiusKm: 780, massKg: 4.006e21, gravity: 0.439, density: 1.885, escapeVel: 0.828,
+      tempC: -223, rotationH: 3.9154, solarDayH: 3.9154, axialTilt: 0, moonsCount: 2,
+      bondAlbedo: 0.51, perihelionAu: 34.7, aphelionAu: 51.5,
+      apparentMagnitude: { brightest: 17.3, faintest: 17.3 },
+      discoverer: 'Brown et al. / Ortiz et al.', discoveryYear: 2004, discoveryEra: 'modern',
+      orbital: { a: 43.1, aRate: 0, e: 0.194, eRate: 0,
+                 i: 28.2, iRate: 0, L: 192.30230, LRate: 127.48,
+                 peri: 3.0, periRate: 0, node: 122, nodeRate: 0,
+                 b: 0, c: 0, s: 0, f: 0 },
+      periodDays: 103151.86 },
+    { id: 'makemake', type: 'dwarf', texture: null, color: 0xc98b6b,
+      radiusKm: 715, massKg: 3.1e21, gravity: 0.405, density: 1.7, escapeVel: 0.761,
+      tempC: -230, rotationH: 22.8266, solarDayH: 22.8266, axialTilt: 0, moonsCount: 1,
+      bondAlbedo: 0.81, perihelionAu: 38.3, aphelionAu: 52.9,
+      apparentMagnitude: { brightest: 16.7, faintest: 16.7 },
+      discoverer: 'Brown, Trujillo, Rabinowitz et al.', discoveryYear: 2005, discoveryEra: 'modern',
+      orbital: { a: 45.6, aRate: 0, e: 0.159, eRate: 0,
+                 i: 29, iRate: 0, L: 155.40240, LRate: 116.88,
+                 peri: 16.3, periRate: 0, node: 79.3, nodeRate: 0,
+                 b: 0, c: 0, s: 0, f: 0 },
+      periodDays: 112500.00 }
   ],
 
   /* ============================ 卫星 ============================ */
@@ -241,21 +301,40 @@ SOLAR.DATA = {
       orbitInclinationDeg: 0.192, inclinationReference: 'parentEquator',
       ascendingNodeDeg: 309.1, argPeriapsisDeg: 43.8, meanAnomalyDeg: 87.4, color: 0x6f6257,
       gravity: 1.235, texture: 'assets/textures/callisto.jpg', tempC: -139, summaryKey: 'moons.callisto.desc' },
+    /* Enceladus / Triton 的要素此前已录入；这里补上真实影像贴图
+       （Cassini / Voyager 2 全球镶嵌图，Public domain，见 NOTICE）。 */
     { id: 'enceladus', parent: 'saturn', radiusKm: 252.1, massKg: 1.08022e20, orbitKm: 238020,
       periodDays: 1.37022, rotationH: 32.8853, tidallyLocked: true, eccentricity: 0.0047,
       orbitInclinationDeg: 0.009, inclinationReference: 'parentEquator',
       ascendingNodeDeg: 0.0, argPeriapsisDeg: 119.5, meanAnomalyDeg: 57.0, color: 0xf0f0f0,
-      gravity: 0.113, tempC: -198, summaryKey: 'moons.enceladus.desc' },
+      gravity: 0.113, texture: 'assets/textures/enceladus.jpg', tempC: -198,
+      summaryKey: 'moons.enceladus.desc' },
+    /* 土卫五 Rhea：JPL 平均要素（SAT441，历元 2000-01-01.5 TDB），
+       半径/GM/密度取自 JPL 卫星物理参数表，GM=153.94175 → 质量 = GM/G。 */
+    { id: 'rhea', parent: 'saturn', radiusKm: 763.5, massKg: 2.3065e21, orbitKm: 527200,
+      periodDays: 4.517503, rotationH: 108.42, tidallyLocked: true, eccentricity: 0.001,
+      orbitInclinationDeg: 0.3, inclinationReference: 'parentEquator',
+      ascendingNodeDeg: 44.3, argPeriapsisDeg: 31.5, meanAnomalyDeg: 133.7, color: 0xd8d3cf,
+      gravity: 0.264, texture: 'assets/textures/rhea.jpg', tempC: -197,
+      summaryKey: 'moons.rhea.desc' },
     { id: 'titan', parent: 'saturn', radiusKm: 2574.73, massKg: 1.3452e23, orbitKm: 1221870,
       periodDays: 15.94542, rotationH: 382.6901, tidallyLocked: true, eccentricity: 0.0288,
       orbitInclinationDeg: 0.34854, inclinationReference: 'parentEquator',
       ascendingNodeDeg: 78.6, argPeriapsisDeg: 78.3, meanAnomalyDeg: 11.7, color: 0xd8a15c,
       gravity: 1.352, texture: 'assets/textures/titan.jpg', tempC: -179, summaryKey: 'moons.titan.desc' },
+    /* 天卫三 Titania：JPL 平均要素（URA182），半径 788.9 / GM=226.9 → 质量 3.400e21。
+       暂无可用的全球影像，走程序化冰体着色。 */
+    { id: 'titania', parent: 'uranus', radiusKm: 788.9, massKg: 3.400e21, orbitKm: 436298,
+      periodDays: 8.705869, rotationH: 208.94, tidallyLocked: true, eccentricity: 0.002,
+      orbitInclinationDeg: 0.1, inclinationReference: 'parentEquator',
+      ascendingNodeDeg: 184.0, argPeriapsisDeg: 68.1, meanAnomalyDeg: 29.5, color: 0x9aa7b5,
+      gravity: 0.365, tempC: -218, summaryKey: 'moons.titania.desc' },
     { id: 'triton', parent: 'neptune', radiusKm: 1353.4, massKg: 2.139e22, orbitKm: 354759,
       periodDays: -5.87685, rotationH: -141.0444, tidallyLocked: true, eccentricity: 0.000016,
       orbitInclinationDeg: 156.865, inclinationReference: 'parentEquator',
       ascendingNodeDeg: 178.1, argPeriapsisDeg: 0.0, meanAnomalyDeg: 63.0, color: 0xc9c1b8,
-      gravity: 0.779, tempC: -235, summaryKey: 'moons.triton.desc' },
+      gravity: 0.779, texture: 'assets/textures/triton.jpg', tempC: -235,
+      summaryKey: 'moons.triton.desc' },
     { id: 'charon', parent: 'pluto', radiusKm: 606.0, massKg: 1.586e21, orbitKm: 19596,
       periodDays: -6.38723, rotationH: -153.2935, tidallyLocked: true, eccentricity: 0.0002,
       orbitInclinationDeg: 0.001, inclinationReference: 'plutoEquator',
@@ -273,20 +352,43 @@ SOLAR.DATA = {
                  peri: 169.75257, periRate: 0, node: 58.42008, nodeRate: 0 },
       periodDays: 27509.13,
       perihelionJd: 2446470.9589
+    },
+    /* 恩克彗星 2P/Encke：JPL SBDB（历元 2460147.5 回推 J2000），近日点 2023-10-22。
+       核半径 2.4 km（Lamy et al., Comets II）、反照率 0.046、自转 11.083 h。 */
+    {
+      id: 'encke', texture: null, color: 0x9aa8b5, radiusKm: 2.4,
+      orbital: { a: 2.22, aRate: 0, e: 0.847, eRate: 0,
+                 i: 11.3, iRate: 0, L: 89.45500, LRate: 10885.6,
+                 peri: 161.0, periRate: 0, node: 334, nodeRate: 0 },
+      periodDays: 1208.05,
+      perihelionJd: 2460240.027
+    },
+    /* 67P/丘留莫夫–格拉西缅科：Rosetta 任务目标，JPL SBDB（历元 2457305.5 回推
+       J2000）。核半径 1.7 km、密度 0.533、自转 12.76129 h（Sierks/Pätzold 等）。 */
+    {
+      id: 'churyumov', texture: null, color: 0x8f8f8f, radiusKm: 1.7,
+      orbital: { a: 3.46, aRate: 0, e: 0.641, eRate: 0,
+                 i: 7.04, iRate: 0, L: 270.40350, LRate: 5589.6,
+                 peri: 62.9, periRate: 0, node: 50.1, nodeRate: 0 },
+      periodDays: 2352.94,
+      perihelionJd: 2457247.589
     }
   ],
 
   /* ============================ 小行星带 / 柯伊伯带 ============================ */
+  /* bandOpacity：辉带峰值不透明度。正俯视与远观时点云亮度不足，靠辉带补；侧视由
+     粒子沿视线重叠提供亮度，辉带按摄像机仰角淡出。数值待目视校准，叠加团块后
+     实际峰值约 1.8 倍。 */
   belts: {
-    asteroid: { innerAu: 2.06, outerAu: 3.28, thicknessAu: 0.18, inclinationDeg: 10, color: 0x9a9a9a },
-    kuiper:   { innerAu: 30.0, outerAu: 50.0, thicknessAu: 0.9, inclinationDeg: 8, color: 0x7f7f7f }
+    asteroid: { innerAu: 2.06, outerAu: 3.28, thicknessAu: 0.18, inclinationDeg: 10, color: 0x9a9a9a, bandOpacity: 0.28 },
+    kuiper:   { innerAu: 30.0, outerAu: 50.0, thicknessAu: 0.9, inclinationDeg: 8, color: 0x7f7f7f, bandOpacity: 0.16 }
   },
 
   /* 数据版本说明：卫星总数按需求采用 95 / 146 / 28 / 16 的确认口径。 */
   scienceMeta: {
     orbitalModel: 'JPL approximate Keplerian elements',
     shortTermRange: '1800-2050',
-    longTermRange: '3000 BC-3000 AD',
+    longTermRange: 'JPL fallback: 3000 BC-3000 AD; VSOP87 planets: J2000 +/-2000 years (1 arcsec)',
     moonCountSnapshot: 'Jupiter 95; Saturn 146; Uranus 28; Neptune 16'
   }
 };

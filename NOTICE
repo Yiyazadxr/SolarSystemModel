@@ -80,6 +80,25 @@ Sky background:
   assets/js/scene.js; the procedural star points are kept and overlaid on top,
   so the near-field star field is unchanged.
 
+Bodies added 2026-10-09 (all Public domain; NASA / JPL / USGS imagery mirrored on
+Wikimedia Commons, downscaled and re-encoded as WebP by
+scripts/generate-textures.js):
+
+- ceres.webp — Ceres global map, Dawn (PIA19606, unannotated) — NASA/JPL, PD.
+- vesta.webp — Vesta global map (GeoHack source mosaic) — NASA, PD.
+- enceladus.webp — Map of Enceladus, Cassini (PIA11145) — NASA/JPL, PD.
+- rhea.webp — Rhea map, Cassini (PIA12561) — NASA/JPL, PD.
+- triton.webp — Triton global map, Voyager 2 — NASA/USGS, PD.
+- io.webp (replaced) — Global image of Io (GPN-2000-000419) — NASA/USGS, PD. It
+  supersedes the previous map, which was judged too stylised.
+- ganymede.webp (replaced) — Ganymede USGS global mosaic — NASA/USGS, PD.
+- titan.webp (cropped) — the outer black margin was cropped away, leaving the
+  valid spherical area (1229x615).
+
+No usable global imagery was found for Titania, Eris, Haumea and Makemake; those
+bodies are rendered procedurally from their characteristic colour and albedo
+(no texture entry), which is stated in README.md / MODIFICATION-REPORT.md.
+
 All maps above are stored as WebP (lossy, quality ~90) to shrink the embedded
 payload; the original JPEG/PNG sources in assets/textures/ were replaced.
 
@@ -94,6 +113,11 @@ no runtime error is produced.
 4. Astronomical data sources
 --------------------------------------------------------------------------------
 
+- Bretagnon P. & Francou G. (1988), Astron. Astrophys. 202, 309;
+  IMCCE VSOP87 main-version elliptic-element series (J2000 ecliptic),
+  https://ftp.imcce.fr/pub/ephem/planets/vsop87/ . Eight planetary orbits
+  use these series; the Earth orbit uses the Earth-Moon barycenter (EMB).
+  assets/js/vsop87.js is generated from the original files in assets/vsop87/.
 - JPL / NASA "Keplerian Elements for Approximate Positions of the Major Planets"
   (https://ssd.jpl.nasa.gov/planets/approx_pos.html) — J2000 elements, centennial
   rates and the outer-planet additional terms (b, c, s, f) used in
@@ -109,6 +133,15 @@ no runtime error is produced.
   flat rotation curve v ≈ 220 km/s) used in assets/js/galaxy.js follow published
   review values; the galaxy model is a stylized statistical model, not a
   catalog-based reconstruction.
+
+- JPL Small-Body Database (ssd-api.jpl.nasa.gov/sbdb.api) — orbital elements
+  (epoch 2461200.5 / 2460147.5 / 2457305.5, reduced to J2000) and physical
+  parameters for Ceres, Vesta, Eris, Haumea, Makemake and comets 2P/Encke and
+  67P/Churyumov–Gerasimenko; each value carries an sbdb literature reference
+  (e.g. Nature 537, 515-517 for Ceres; Sicardy et al. for Eris' size).
+- JPL Planetary Satellite Mean Elements and Physical Parameters tables
+  (ssd.jpl.nasa.gov/sats/) — mean elements (epoch 2000-01-01.5 TDB), GM, radius
+  and density for Rhea and Titania.
 
 Values are cross-checked but not guaranteed to survey precision. See
 "Known limitations" in README.md.
