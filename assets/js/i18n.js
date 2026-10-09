@@ -9,7 +9,7 @@ SOLAR.I18N = {
   en: {
     ui: {
       title: 'SOLAR SYSTEM',
-      subtitle: 'REAL-TIME 3D ORRERY · J2000 EPHEMERIS',
+      subtitle: 'REAL-TIME 3D ORRERY · VSOP87 / J2000',
       navTitle: 'BODIES',
       navToggle: 'Collapse / Expand',
       viewTitle: 'Preset views',
@@ -103,6 +103,8 @@ SOLAR.I18N = {
       dateInvalidErr: 'INVALID DATE',
       dateJumped: 'JUMPED',
       ephemerisShort: 'EPHEMERIS · 1800–2050',
+      ephemerisVsop: 'VSOP87 (TRUNCATED) · EARTH: EMB',
+      ephemerisVsopOutside: 'VSOP87 (TRUNCATED) · BEYOND FULL-SERIES ±2000Y',
       ephemerisLong: 'APPROXIMATE · LONG-TERM',
       ephemerisExtrapolated: 'EXTRAPOLATED · OUT OF RANGE',
       reverseOn: 'REVERSED',
@@ -151,6 +153,10 @@ SOLAR.I18N = {
       moons: 'Moons',
       atmosphere: 'Atmosphere',
       semiMajor: 'Semi-major axis',
+      orbitSource: 'Orbit source',
+      source_vsop: 'VSOP87 · truncated J2000 elements',
+      source_vsopEmb: 'VSOP87 · truncated Earth-Moon barycenter (EMB)',
+      source_jpl: 'JPL / SBDB · approximate elements',
       eccentricity: 'Eccentricity',
       inclination: 'Orbital inclination',
       axialTilt: 'Axial tilt',
@@ -254,7 +260,12 @@ SOLAR.I18N = {
         name: 'Pluto',
         desc: 'A dwarf planet in the Kuiper Belt with a heart-shaped nitrogen-ice plain, Sputnik Planitia. Its moon Charon is so large that the pair orbit a common point in empty space.',
         fact: 'Pluto\'s orbit is so tilted and stretched that it spends 20 of its 248-year orbit closer to the Sun than Neptune.'
-      }
+      },
+      ceres: { name: 'Ceres', desc: 'The largest object in the asteroid belt and the first dwarf planet found; Dawn revealed bright salt deposits left by briny water.', fact: 'Ceres holds about a quarter of the entire asteroid belt\'s mass.' },
+      vesta: { name: 'Vesta', desc: 'A dry, differentiated protoplanet with a giant impact basin at its south pole; fragments of it fall to Earth as HED meteorites.', fact: 'Vesta is the only asteroid ever visible to the unaided eye.' },
+      eris: { name: 'Eris', desc: 'The most massive known dwarf planet — slightly smaller than Pluto but about 27% heavier — orbiting far beyond Neptune on a steeply tilted path.', fact: 'Eris reflects ~96% of the light it receives, which is why it was briefly thought to be larger than Pluto.' },
+      haumea: { name: 'Haumea', desc: 'An elongated, fast-spinning dwarf planet shaped like a rugby ball, with a ring and two moons; its surface is nearly pure water ice.', fact: 'Haumea spins once every 3.9 hours — so fast that it is stretched into a triaxial ellipsoid.' },
+      makemake: { name: 'Makemake', desc: 'A large Kuiper Belt body covered in methane and nitrogen ices that give it a reddish tint; it has one known moon.', fact: 'Makemake\'s orbit is inclined 29° — very steep for a body of its size.' }
     },
 
     moons: {
@@ -268,11 +279,15 @@ SOLAR.I18N = {
       enceladus: { name: 'Enceladus', desc: 'A tiny moon firing plumes of water vapour from a subsurface ocean.' },
       titan: { name: 'Titan', desc: 'The only moon with a thick atmosphere and rivers, lakes and rain of liquid methane.' },
       triton: { name: 'Triton', desc: 'A captured Kuiper Belt object orbiting Neptune backwards, with nitrogen geysers.' },
-      charon: { name: 'Charon', desc: 'Pluto\'s mutually tidally locked companion; their barycenter lies outside Pluto, so the pair behaves as a binary system.' }
+      charon: { name: 'Charon', desc: 'Pluto\'s mutually tidally locked companion; their barycenter lies outside Pluto, so the pair behaves as a binary system.' },
+      rhea: { name: 'Rhea', desc: 'Saturn\'s second-largest moon — a heavily cratered ice world with a thin oxygen-bearing exosphere.' },
+      titania: { name: 'Titania', desc: 'Uranus\'s largest moon, cut by enormous canyons that suggest its crust once stretched and split.' }
     },
 
     comet: {
-      halley: { name: 'Halley\'s Comet', desc: 'A 75-year comet on a highly eccentric retrograde orbit, visible from Earth since 240 BC.' }
+      halley: { name: 'Halley\'s Comet', desc: 'A 75-year comet on a highly eccentric retrograde orbit, visible from Earth since 240 BC.' },
+      encke: { name: 'Comet Encke (2P)', desc: 'The shortest-period bright comet known, returning every 3.3 years; it is the likely parent of the Taurid meteor stream.' },
+      churyumov: { name: 'Comet 67P/Churyumov–Gerasimenko', desc: 'A Jupiter-family comet visited by ESA\'s Rosetta, which mapped its rubber-duck-shaped nucleus and landed the Philae probe on it.' }
     }
   },
 
@@ -280,7 +295,7 @@ SOLAR.I18N = {
   zh: {
     ui: {
       title: '太阳系',
-      subtitle: '实时三维星象仪 · J2000 星历',
+      subtitle: '实时三维星象仪 · VSOP87 / J2000',
       navTitle: '天体',
       navToggle: '收起 / 展开',
       viewTitle: '预设视角',
@@ -374,6 +389,8 @@ SOLAR.I18N = {
       dateInvalidErr: '日期无效',
       dateJumped: '已跳转',
       ephemerisShort: '星历 · 1800–2050',
+      ephemerisVsop: 'VSOP87 截断版 · 地球轨道为地月质心',
+      ephemerisVsopOutside: 'VSOP87 截断版 · 超出原始级数共同 ±2000 年参考跨度',
       ephemerisLong: '长期近似 · 星历范围内',
       ephemerisExtrapolated: '外推 · 超出星历范围',
       reverseOn: '倒流中',
@@ -422,6 +439,10 @@ SOLAR.I18N = {
       moons: '卫星数量',
       atmosphere: '大气成分',
       semiMajor: '轨道半长轴',
+      orbitSource: '轨道来源',
+      source_vsop: 'VSOP87 · 截断 J2000 要素',
+      source_vsopEmb: 'VSOP87 · 截断地月质心（EMB）近似',
+      source_jpl: 'JPL / SBDB · 近似根数',
       eccentricity: '轨道偏心率',
       inclination: '轨道倾角',
       axialTilt: '自转轴倾角',
@@ -525,7 +546,12 @@ SOLAR.I18N = {
         name: '冥王星',
         desc: '柯伊伯带中的矮行星，拥有心形氮冰平原斯普特尼克平原。卫星卡戎体积巨大，二者绕着空间中共同的质心旋转。',
         fact: '冥王星轨道又斜又扁，在 248 年的公转周期中有 20 年比海王星离太阳更近。'
-      }
+      },
+      ceres: { name: '谷神星', desc: '小行星带中最大的天体，也是第一颗被发现的矮行星；“黎明号”在其表面发现了由含盐水体留下的明亮盐类沉积。', fact: '谷神星的质量约占整个小行星带的四分之一。' },
+      vesta: { name: '灶神星', desc: '一颗已经分异的干燥原行星，南极留有巨型撞击盆地；它破碎的碎块落到地球成为 HED 族陨石。', fact: '灶神星是唯一能用肉眼直接看到的小行星。' },
+      eris: { name: '阋神星', desc: '已知质量最大的矮行星，体积略小于冥王星但质量约大 27%，在陡峭倾斜的轨道上远行于海王星之外。', fact: '阋神星反照率高达约 0.96，一度被误认为比冥王星更大。' },
+      haumea: { name: '妊神星', desc: '一颗被拉长成橄榄球形的快速自转矮行星，拥有环与两颗小卫星，表面近乎纯水冰。', fact: '妊神星每 3.9 小时自转一周，自转之快使它成为三轴椭球体。' },
+      makemake: { name: '鸟神星', desc: '柯伊伯带中较大的天体，表面覆盖甲烷与氮冰而呈红褐色，已知有一颗卫星。', fact: '鸟神星轨道倾角 29°，对如此大的天体而言相当陡峭。' }
     },
 
     moons: {
@@ -539,11 +565,15 @@ SOLAR.I18N = {
       enceladus: { name: '土卫二', desc: '从地下海洋喷出水汽羽流的小小卫星。' },
       titan: { name: '土卫六', desc: '唯一拥有浓厚大气的卫星，有液态甲烷的河流、湖泊与降雨。' },
       triton: { name: '海卫一', desc: '被捕获的柯伊伯带天体，逆向绕海王星运行，有氮气喷泉。' },
-      charon: { name: '卡戎', desc: '与冥王星相互潮汐锁定；二者共同质心位于冥王星之外，因此常被视作双星系统。' }
+      charon: { name: '卡戎', desc: '与冥王星相互潮汐锁定；二者共同质心位于冥王星之外，因此常被视作双星系统。' },
+      rhea: { name: '土卫五', desc: '土星第二大卫星，冰壳上遍布撞击坑，并拥有一层含氧的极稀薄外逸层。' },
+      titania: { name: '天卫三', desc: '天王星最大的卫星，表面被巨大峡谷切割，说明其冰壳曾经被拉伸并裂开。' }
     },
 
     comet: {
-      halley: { name: '哈雷彗星', desc: '周期约 75 年的彗星，轨道极度偏心且逆行，自公元前 240 年起就有观测记录。' }
+      halley: { name: '哈雷彗星', desc: '周期约 75 年的彗星，轨道极度偏心且逆行，自公元前 240 年起就有观测记录。' },
+      encke: { name: '恩克彗星 (2P)', desc: '已知周期最短的亮彗星，每 3.3 年回归一次；很可能是金牛座流星雨的母体。' },
+      churyumov: { name: '丘留莫夫–格拉西缅科彗星 (67P)', desc: '木星族彗星，欧空局“罗塞塔”号曾环绕探测并绘制其“橡皮鸭”状彗核，还释放了“菲莱”着陆器。' }
     }
   }
 };

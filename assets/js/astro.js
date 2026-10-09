@@ -1,5 +1,5 @@
 /**
- * 天文计算：由 J2000 轨道根数求解天体在指定时刻的真实位置
+ * 天文计算：行星优先使用 VSOP87 要素，其他天体使用 JPL 近似根数
  * 输出：日心黄道直角坐标（AU），再映射为 Three.js 场景坐标（Y 轴向上）
  */
 window.SOLAR = window.SOLAR || {};
@@ -7,6 +7,47 @@ window.SOLAR = window.SOLAR || {};
 SOLAR.Astro = (function () {
   var DEG = Math.PI / 180;
   var TWO_PI = Math.PI * 2;
+  var planetOrbits = null;
+
+  function vsopId(orb) {
+    if (!orb || !SOLAR.DATA || !SOLAR.DATA.bodies) return null;
+    if (!planetOrbits) {
+      planetOrbits = [];
+      for (var n = 0; n < SOLAR.DATA.bodies.length; n++) {
+        var body = SOLAR.DATA.bodies[n];
+        if (body.type === 'planet') planetOrbits.push(body);
+      }
+    }
+    for (var i = 0; i < planetOrbits.length; i++) {
+      if (planetOrbits[i].orbital === orb) return planetOrbits[i].id;
+    }
+    return null;
+  }
+
+  function vsopElements(orb, jd) {
+    var id = vsopId(orb);
+    if (!id || !SOLAR.VSOP87 || typeof SOLAR.VSOP87.elements !== 'function') return null;
+    /* 界面日期来自 UTC；这里近似 TT，跨历史日期不引入未校准的 ΔT。 */
+    var values = SOLAR.VSOP87.elements(id, (jd - SOLAR.CONFIG.time.j2000) / 365250);
+    if (!values || !(values[0] > 0) || !isFinite(values[0] + values[1] + values[2] + values[3] + values[4] + values[5])) return null;
+    var peri = Math.atan2(values[3], values[2]);
+    var node = Math.atan2(values[5], values[4]);
+    return {
+      a: values[0], L: values[1] / DEG, e: Math.sqrt(values[2] * values[2] + values[3] * values[3]),
+      i: 2 * Math.asin(Math.min(1, Math.sqrt(values[4] * values[4] + values[5] * values[5]))) / DEG,
+      peri: peri / DEG, node: node / DEG, useAdditionalTerms: false
+    };
+  }
+
+  function planetElements(orb, jd) {
+    return vsopElements(orb, jd) || elementsAt(orb, (jd - SOLAR.CONFIG.time.j2000) / 36525);
+  }
+
+  function orbitSource(orb) {
+    var id = vsopId(orb);
+    return id && SOLAR.VSOP87 && typeof SOLAR.VSOP87.elements === 'function' ?
+      (id === 'earth' ? 'vsopEmb' : 'vsop') : 'jpl';
+  }
 
   /* 日期 -> 儒略日 */
   function toJulian(date) {
@@ -162,7 +203,7 @@ SOLAR.Astro = (function () {
   function heliocentric(orb, jd) {
     jd = isFinite(jd) ? jd : SOLAR.CONFIG.time.j2000;
     var T = (jd - SOLAR.CONFIG.time.j2000) / 36525;
-    var el = elementsAt(orb, T);
+    var el = planetElements(orb, jd);
     var M = meanAnomaly(el, T);
     return positionFromE(el, solveKepler(M, el.e));
   }
@@ -176,7 +217,7 @@ SOLAR.Astro = (function () {
     return heliocentric(orb, jd);
   }
 
-  /* 当前 JD 所处的根数模型可信度：短期表、长期近似或超范围线性外推。 */
+  /* 官方 ±2000 年 1″ 口径属于原始级数，截断版仅用该跨度作超范围提示。 */
   function ephemerisStatus(jd) {
     jd = isFinite(jd) ? jd : SOLAR.CONFIG.time.j2000;
     var cfg = SOLAR.CONFIG && SOLAR.CONFIG.astro ? SOLAR.CONFIG.astro : {};
@@ -185,6 +226,9 @@ SOLAR.Astro = (function () {
     var shortMax = numberOr(cfg.EPHEMERIS_SHORT_MAX_T, 0.5);
     var longMin = numberOr(cfg.EPHEMERIS_LONG_MIN_T, -50.0);
     var longMax = numberOr(cfg.EPHEMERIS_LONG_MAX_T, 10.0);
+    if (SOLAR.VSOP87 && typeof SOLAR.VSOP87.elements === 'function') {
+      return { level: Math.abs(T) <= 20 ? 'vsop' : 'vsopOutside', centuries: T };
+    }
     var level = (T >= shortMin && T <= shortMax) ? 'short' :
       ((T >= longMin && T <= longMax) ? 'long' : 'extrapolated');
     return { level: level, centuries: T, shortMin: shortMin, shortMax: shortMax, longMin: longMin, longMax: longMax };
@@ -206,8 +250,7 @@ SOLAR.Astro = (function () {
    */
   function orbitPath(orb, jd, segments) {
     jd = isFinite(jd) ? jd : SOLAR.CONFIG.time.j2000;
-    var T = (jd - SOLAR.CONFIG.time.j2000) / 36525;
-    var el = elementsAt(orb, T);
+    var el = planetElements(orb, jd);
     var pts = [];
     var base = Math.max(32, Math.floor(numberOr(segments, SOLAR.CONFIG.scale.orbitSegments)));
     var factor = 1 + Math.min(6, 6 * el.e * el.e);
@@ -226,7 +269,7 @@ SOLAR.Astro = (function () {
   function trueAnomaly(orb, jd) {
     jd = isFinite(jd) ? jd : SOLAR.CONFIG.time.j2000;
     var T = (jd - SOLAR.CONFIG.time.j2000) / 36525;
-    var el = elementsAt(orb, T);
+    var el = planetElements(orb, jd);
     var E = solveKepler(meanAnomaly(el, T), el.e);
     return Math.atan2(Math.sqrt(Math.max(0, 1 - el.e * el.e)) * Math.sin(E), Math.cos(E) - el.e);
   }
@@ -238,6 +281,8 @@ SOLAR.Astro = (function () {
     heliocentric: heliocentric,
     heliocentricAt: heliocentricAt,
     ephemerisStatus: ephemerisStatus,
+    orbitSource: orbitSource,
+    planetElements: planetElements,
     orbitPath: orbitPath,
     toScene: toScene,
     trueAnomaly: trueAnomaly,
