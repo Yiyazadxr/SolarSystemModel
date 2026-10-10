@@ -499,7 +499,9 @@ SOLAR.Effects = (function () {
     if (!fxaaPass || !fxaaPass.uniforms || !fxaaPass.uniforms.resolution) return;
     var pw = 1, ph = 1;
     if (renderer && renderer.getDrawingBufferSize) {
-      var dsz = renderer.getDrawingBufferSize(new T.Vector2());
+      /* 本函数在模块作用域，而 T 只在 init 的 try 块内声明，这里取不到，
+         所以直接引用全局 THREE（同一个 r128 UMD 实例）。 */
+      var dsz = renderer.getDrawingBufferSize(new window.THREE.Vector2());
       pw = dsz.x; ph = dsz.y;
     }
     if (!(pw > 0)) pw = 1;

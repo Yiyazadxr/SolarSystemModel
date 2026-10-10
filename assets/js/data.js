@@ -198,7 +198,9 @@ SOLAR.DATA = {
        轨道要素取自 JPL SBDB（当前历元回推至 J2000；LRate = 360/周期 × 36525，
        单位度/世纪）；半径 / GM / 密度 / 自转取自 SBDB phys-par（文献已在报告标注）
        与 JPL 卫星参数换算，质量 = GM/G（G = 6.67430e-20 km³·kg⁻¹·s⁻²）。 */
-    { id: 'ceres', type: 'dwarf', texture: 'assets/textures/ceres.jpg', color: 0x9c8f7f,
+    /* 谷神星无可用的自然色全球镶嵌（候选均为地形假彩色或 Mercator 投影），
+       走程序化着色：暗灰褐基底 + 撞击坑凹凸（见 scene.js surfaceParams）。 */
+    { id: 'ceres', type: 'dwarf', texture: null, color: 0x9c8f7f,
       radiusKm: 469.7, massKg: 9.3835e20, gravity: 0.28, density: 2.162, escapeVel: 0.51,
       tempC: -105, rotationH: 9.074170, solarDayH: 9.0742, axialTilt: 4, moonsCount: 0,
       bondAlbedo: 0.090, perihelionAu: 2.55, aphelionAu: 2.99,
@@ -296,11 +298,13 @@ SOLAR.DATA = {
       orbitInclinationDeg: 0.177, inclinationReference: 'parentEquator',
       ascendingNodeDeg: 58.5, argPeriapsisDeg: 198.3, meanAnomalyDeg: 324.8, color: 0x9c8b7a,
       gravity: 1.428, texture: 'assets/textures/ganymede.jpg', tempC: -163, summaryKey: 'moons.ganymede.desc' },
+    /* 卡利斯托暂无干净的自然色全球镶嵌（Commons 候选均为带制图网格的
+       半球图 / 赤道带 / 图册页），走程序化：暗灰褐 + 密集撞击坑凹凸。 */
     { id: 'callisto', parent: 'jupiter', radiusKm: 2410.3, massKg: 1.07594e23, orbitKm: 1882700,
       periodDays: 16.68902, rotationH: 400.5365, tidallyLocked: true, eccentricity: 0.0074,
       orbitInclinationDeg: 0.192, inclinationReference: 'parentEquator',
       ascendingNodeDeg: 309.1, argPeriapsisDeg: 43.8, meanAnomalyDeg: 87.4, color: 0x6f6257,
-      gravity: 1.235, texture: 'assets/textures/callisto.jpg', tempC: -139, summaryKey: 'moons.callisto.desc' },
+      gravity: 1.235, texture: null, tempC: -139, summaryKey: 'moons.callisto.desc' },
     /* Enceladus / Triton 的要素此前已录入；这里补上真实影像贴图
        （Cassini / Voyager 2 全球镶嵌图，Public domain，见 NOTICE）。 */
     { id: 'enceladus', parent: 'saturn', radiusKm: 252.1, massKg: 1.08022e20, orbitKm: 238020,
