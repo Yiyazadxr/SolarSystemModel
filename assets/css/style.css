@@ -921,3 +921,9 @@ body.align-mode .align-arrow { display: flex; }
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
 }
+/* 全部比值被过滤时的占位文本 */
+.compare-empty {
+  padding: 6px 0 2px;
+  font-size: 11px;
+  color: var(--text-dim, rgba(255,255,255,.45));
+}

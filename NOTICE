@@ -76,28 +76,42 @@ Sky background:
 
 - milkyway.webp — "The Milky Way panorama", ESO / S. Brunier, CC BY 4.0
   (https://www.eso.org/public/images/eso0932a/). Downscaled to 4096x2048
-  equirectangular and re-encoded as WebP (quality 90). Used as the sky dome in
-  assets/js/scene.js; the procedural star points are kept and overlaid on top,
-  so the near-field star field is unchanged.
+   equirectangular and re-encoded as WebP (quality 90). Used as the sky dome in
+   assets/js/scene-backdrop.js; the procedural star points are kept and overlaid
+   on top, so the near-field star field is unchanged.
 
 Bodies added 2026-10-09 (all Public domain; NASA / JPL / USGS imagery mirrored on
 Wikimedia Commons, downscaled and re-encoded as WebP by
 scripts/generate-textures.js):
 
-- ceres.webp — Ceres global map, Dawn (PIA19606, unannotated) — NASA/JPL, PD.
 - vesta.webp — Vesta global map (GeoHack source mosaic) — NASA, PD.
 - enceladus.webp — Map of Enceladus, Cassini (PIA11145) — NASA/JPL, PD.
 - rhea.webp — Rhea map, Cassini (PIA12561) — NASA/JPL, PD.
 - triton.webp — Triton global map, Voyager 2 — NASA/USGS, PD.
 - io.webp (replaced) — Global image of Io (GPN-2000-000419) — NASA/USGS, PD. It
   supersedes the previous map, which was judged too stylised.
-- ganymede.webp (replaced) — Ganymede USGS global mosaic — NASA/USGS, PD.
+- ganymede.webp (replaced 2026-10-10) — Simple cylindrical map of Ganymede, USGS,
+  Voyager imaging (1440x720, mirrored at solarviews.com) — NASA Copyright Free
+  Policy (public domain). Source is greyscale; it is tinted to Ganymede's
+  brownish grey and cropped to the 2:1 equirectangular frame.
 - titan.webp (cropped) — the outer black margin was cropped away, leaving the
   valid spherical area (1229x615).
+- uranus_ring.webp — drawn procedurally in the same format as saturn_ring.webp
+  (2048x125, U along the radius, alpha = ring opacity), because no photographic
+  source provides a radial ring profile. Ring positions follow the real Uranian
+  system (6, 5, 4, alpha, beta, eta, gamma, delta, lambda, epsilon) between the
+  41837–51149 km bounds used in data.js; epsilon is the widest and brightest,
+  the others narrow and very dark (ring particle albedo ~0.03). Original work,
+  public domain.
 
-No usable global imagery was found for Titania, Eris, Haumea and Makemake; those
-bodies are rendered procedurally from their characteristic colour and albedo
-(no texture entry), which is stated in README.md / MODIFICATION-REPORT.md.
+No usable natural-colour global imagery was found for Ceres (the available
+candidates are colour-coded topography maps or Mercator projections) or for
+Callisto (PIA03876 hemisphere discs carry graticule lines and feature
+annotations that survive reprojection; the equatorial mosaic is a partial-latitude
+band, the remaining candidates are polar projections or atlas sheets), nor for
+Titania, Eris, Haumea and Makemake; those bodies are rendered procedurally from
+their characteristic colour, albedo and surface relief (no texture entry),
+which is stated in README.md / MODIFICATION-REPORT.md.
 
 All maps above are stored as WebP (lossy, quality ~90) to shrink the embedded
 payload; the original JPEG/PNG sources in assets/textures/ were replaced.
@@ -125,7 +139,7 @@ no runtime error is produced.
 - JPL "Planetary Satellite Mean Elements" (https://ssd.jpl.nasa.gov/sats/elem/)
   — satellite mean elements (ascending node, argument of periapsis, mean
   anomaly) at epoch 2000-01-01.5 TDB, used for satellite orbit orientation
-  in assets/js/data.js and assets/js/scene.js.
+  in assets/js/data.js and assets/js/scene-bodies.js.
 - IAU / IAU Minor Planet Center — dwarf-planet and comet elements (1P/Halley).
 - NASA Planetary Fact Sheets (https://nssdc.gsfc.nasa.gov/planetary/factsheet/)
   — radii, masses, gravity, density, escape velocity, temperatures.

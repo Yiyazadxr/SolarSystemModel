@@ -31,6 +31,3 @@ desktop.ini
 *.bak
 _legacy/
 tmp/
-
-# 注：assets/textures/（原始贴图）与 assets/js/textures.js（生成物）
-#     均纳入版本管理，用于离线运行与离线重建，请勿忽略。

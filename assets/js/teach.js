@@ -421,6 +421,17 @@ SOLAR.Teach = (function () {
     if (step.state && step.state.params && step.state.params.shapeScene === 'eclipse' && SOLAR.TeachGlobe) {
       var eclipseFocus = SOLAR.TeachGlobe.getWorldPosition('moon');
       if (eclipseFocus) focus.copy(eclipseFocus);
+      /* 相机放到月面朝地一侧的正对方向：视线沿「月球→地心」，地影
+         （锚定在朝地点）就落在月盘正中扫过。此前机位固定为 polar/azim
+         常量，视线与朝地方向不共线，阴影被投到月盘下缘。
+         用世界位置实时计算，不受装置层级与倾斜影响。 */
+      var earthP = SOLAR.TeachGlobe.getWorldPosition('earth');
+      if (earthP) {
+        var nE = earthP.sub(focus).normalize();
+        var toE = focus.clone().addScaledVector(nE, dist);
+        SOLAR.Controls.goToView(toE, focus);
+        return;
+      }
     }
 
     /* 地月系：站在地球背阳侧看向地月系，太阳在画面远处、月面明暗朝向太阳——
@@ -453,8 +464,9 @@ SOLAR.Teach = (function () {
     var a = st.anim || {};
     var hasMotion = !!(a.spin || a.revolve || (st.params && (st.params.voyage || st.params.shapeScene === 'horizon')));
     return {
-      /* 无预设运动的地球仪可手动播放自转；有预设运动的场景只播放其指定运动。 */
-      spin: playing && (!!a.spin || (!hasMotion && st.rig === 'globe')),
+      /* 显式 spin:false = 该步骤要求静止（如经纬网演示，自转会让经线
+         与度数标注错位）；未写 spin 字段的无预设运动地球仪仍可手动播放自转。 */
+      spin: playing && (a.spin === true || (a.spin !== false && !hasMotion && st.rig === 'globe')),
       revolve: playing && !!a.revolve,
       playing: playing,
       speed: speed * (typeof a.speed === 'number' ? a.speed : 1)

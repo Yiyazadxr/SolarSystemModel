@@ -55,6 +55,7 @@ SOLAR.I18N = {
       descTitle: 'OVERVIEW',
       factTitle: 'DID YOU KNOW',
       compareTitle: 'RELATIVE TO EARTH',
+      compareEmpty: 'No comparable data',
 
       selectHint: 'Click a body to lock camera',
       emptyHint: 'Click empty space to deselect',
@@ -85,6 +86,7 @@ SOLAR.I18N = {
       bloom: 'BLOOM',
       scanline: 'SCANLINES',
       vignette: 'VIGNETTE',
+      gasFx: 'GAS EFFECTS',
       unitTitle: 'DISTANCE UNIT',
       unitAu: 'AU',
       unitKm: 'KM',
@@ -341,6 +343,7 @@ SOLAR.I18N = {
       descTitle: '简介',
       factTitle: '冷知识',
       compareTitle: '与地球对比',
+      compareEmpty: '暂无对比数据',
 
       selectHint: '点击天体以锁定相机',
       emptyHint: '点击空白处取消选择',
@@ -371,6 +374,7 @@ SOLAR.I18N = {
       bloom: '泛光',
       scanline: '扫描线',
       vignette: '暗角',
+      gasFx: '气态动效',
       unitTitle: '距离单位',
       unitAu: '天文单位',
       unitKm: '千米',

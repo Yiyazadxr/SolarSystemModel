@@ -69,7 +69,9 @@ THREE.FXAAShader = {
     '  /* 亮度梯度（含对角加权），边缘方向 = 垂直于梯度 */',
     '  float gx = ( lNE + lSE ) - ( lNW + lSW ) + 2.0 * ( lE - lW );',
     '  float gy = ( lNW + lNE ) - ( lSW + lSE ) + 2.0 * ( lN - lS );',
-    '  vec2 dir = abs( gx ) > abs( gy ) ? vec2( texel.x, 0.0 ) : vec2( 0.0, texel.y );',
+    /* 梯度是边缘法线，采样方向应取其切线方向；否则会沿法线跨过边缘，
+       把高对比度轮廓直接平均掉，太阳盘面和 HUD 细线会出现发糊。 */
+    '  vec2 dir = abs( gx ) > abs( gy ) ? vec2( 0.0, texel.y ) : vec2( texel.x, 0.0 );',
     '',
     '  /* 沿边缘方向两端各取 1、2 像素，做 4 抽样平均 */',
     '  vec3 rgbA = texture2D( tDiffuse, vUv - dir * 1.0 ).rgb;',

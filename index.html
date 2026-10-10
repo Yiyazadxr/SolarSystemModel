@@ -13,11 +13,9 @@
 <!-- ============ 3D 画布 ============ -->
 <canvas id="scene-canvas"></canvas>
 
-<!-- ============ 科幻质感覆盖层 ============ -->
 <div class="fx-layer" id="fx-scanline" aria-hidden="true"></div>
 <div class="fx-layer" id="fx-vignette" aria-hidden="true"></div>
 
-<!-- ============ HUD ============ -->
 <div id="hud">
 
   <!-- 顶部 -->
@@ -27,8 +25,7 @@
        <p data-i18n="ui.subtitle">REAL-TIME 3D ORRERY · VSOP87 / J2000</p>
     </div>
 
-    <!-- 银河系运动数据：放进顶部 flex 流，由浏览器分配剩余空间（不再绝对居中，
-         英文文案变长时不会和右侧按钮互相遮挡） -->
+    <!-- 银河系运动数据：放进顶部 flex 流，由浏览器分配剩余空间 -->
     <div id="galaxy-hud" class="galaxy-hud">
       <span class="mini-label" data-i18n="ui.galaxy">GALAXY</span>
       <span><b data-i18n="galaxy.speed">220 km/s</b> <i id="gx-speed">220 km/s</i></span>
@@ -57,7 +54,7 @@
     </nav>
   </header>
 
-  <!-- 左侧天体导航（可收起 + 搜索） -->
+  <!-- 左侧天体导航 -->
   <aside class="hud-left" id="body-nav">
     <div class="panel-title-row">
       <h2 class="panel-head" data-i18n="ui.navTitle">BODIES</h2>
@@ -73,7 +70,7 @@
     <ul id="body-list"></ul>
   </aside>
 
-  <!-- 右侧信息面板（分组 + 可折叠） -->
+  <!-- 右侧信息面板 -->
   <aside class="hud-right" id="info-panel">
     <div class="panel-empty" id="panel-empty">
       <p data-i18n="ui.selectHint">Click a body to lock camera</p>
@@ -187,7 +184,7 @@
     </div>
   </aside>
 
-  <!-- 设置面板（齿轮按钮弹出） -->
+  <!-- 设置面板 -->
   <section class="settings-panel" id="settings-panel" hidden>
     <header class="settings-head">
       <h3 id="settings-title" data-i18n="ui.settings">SETTINGS</h3>
@@ -233,6 +230,10 @@
       <div class="set-row" id="row-vignette">
         <span class="set-label" id="lbl-vignette" data-i18n="ui.vignette">VIGNETTE</span>
         <button class="switch" id="sw-vignette" type="button" role="switch" aria-checked="true" data-i18n-title="ui.vignette"><i id="sw-knob-vignette"></i></button>
+      </div>
+      <div class="set-row" id="row-gasfx">
+        <span class="set-label" id="lbl-gasfx" data-i18n="ui.gasFx">GAS EFFECTS</span>
+        <button class="switch" id="sw-gasfx" type="button" role="switch" aria-checked="true" data-i18n-title="ui.gasFx"><i id="sw-knob-gasfx"></i></button>
       </div>
     </div>
 
@@ -305,7 +306,7 @@
 
 
 
-  <!-- 行星连珠模式：左右切换天体 -->
+  <!-- 行星连珠模式 -->
   <button class="align-arrow left" id="align-prev" data-i18n-title="ui.alignPrev">&#8249;</button>
   <button class="align-arrow right" id="align-next" data-i18n-title="ui.alignNext">&#8250;</button>
 
@@ -360,7 +361,7 @@
   </div>
 </div>
 
-<!-- ============ 模式选择（加载完成后出现：演示 / 教学 二选一） ============ -->
+<!-- ============ 模式选择 ============ -->
 <div id="mode-layer" hidden>
   <div class="mode-card">
     <p class="mode-title" data-i18n="ui.modeTitle">选择模式</p>
@@ -397,14 +398,35 @@
 <script src="assets/js/astro.js"></script>
 <script src="assets/js/textures.js"></script>
 <script src="assets/js/effects.js"></script>
+<!-- 场景层：着色器源码 -> 共享状态 -> 图形工具 -> 太阳 -> 行星/彗星/轨道 -> 天穹与环带 -> 门面 -->
+<script src="assets/js/scene-shaders.js"></script>
+<script src="assets/js/scene-shared.js"></script>
+<script src="assets/js/scene-gfx.js"></script>
+<script src="assets/js/scene-sun.js"></script>
+<script src="assets/js/scene-bodies.js"></script>
+<script src="assets/js/scene-backdrop.js"></script>
 <script src="assets/js/scene.js"></script>
 <script src="assets/js/galaxy.js"></script>
 <script src="assets/js/controls.js"></script>
+<!-- 界面层：共享宿主 -> 工具 -> DOM 缓存 -> 导航 -> 信息卡 -> 设置 -> 时间 -> 外壳 -> 门面 -->
+<script src="assets/js/ui-shared.js"></script>
+<script src="assets/js/ui-util.js"></script>
+<script src="assets/js/ui-dom.js"></script>
+<script src="assets/js/ui-nav.js"></script>
+<script src="assets/js/ui-info.js"></script>
+<script src="assets/js/ui-settings.js"></script>
+<script src="assets/js/ui-time.js"></script>
+<script src="assets/js/ui-shell.js"></script>
 <script src="assets/js/ui.js"></script>
 <script src="assets/js/main.js"></script>
 
-<!-- 教学模式：内容数据 -> 两套教学装置 -> 调度层 -> 主控（依赖主场景就绪，故在 load 后初始化） -->
+<!-- 教学模式：内容数据 -> 地球仪装置（共享/着色器/本体/场景/参数/门面）-> 旧三球仪 -> 调度层 -> 主控（依赖主场景就绪，故在 load 后初始化） -->
 <script src="assets/js/teach-data.js"></script>
+<script src="assets/js/teach-globe-shared.js"></script>
+<script src="assets/js/teach-globe-shaders.js"></script>
+<script src="assets/js/teach-globe-body.js"></script>
+<script src="assets/js/teach-globe-scenes.js"></script>
+<script src="assets/js/teach-globe-apply.js"></script>
 <script src="assets/js/teach-globe.js"></script>
 <script src="assets/js/teach-orrery.js"></script>
 <script src="assets/js/teach-scenes.js"></script>

@@ -69,23 +69,38 @@
 - **材质**：全部 `ShaderMaterial` 手写 GLSL（行星表面、大气、日冕、星点、拖尾、彗尾、环）
 - **后期**：`EffectComposer` + 分层 `UnrealBloomPass`（自发光物体渲到半分辨率 RT）+ 自定义收尾 `ShaderPass`（暗角 / 扫描线 / 色散 / 颗粒）
 - **天文算法**：VSOP87 八行星要素级数、开普勒方程（牛顿迭代 + 二分回退）、其他天体 JPL / SBDB 近似根数、儒略日换算
-- **工程**：零构建、ES5、IIFE、`window.SOLAR` 命名空间、base64 内嵌资源
+- **工程**：零构建、ES5、IIFE、`window.SOLAR` 命名空间、base64 内嵌资源；`scene` / `ui` / `teach-globe` 按层拆分为多文件，门面与对外 API（`SOLAR.Scene` / `SOLAR.UI` / `SOLAR.TeachGlobe`）不变
 
 ## 目录结构
 
 ```
 .
-├── index.html               单页入口（HUD 结构 + 加载动画 + 脚本装配）
+├── index.html                 单页入口（HUD 结构 + 加载动画 + 脚本装配）
 ├── assets/
-│   ├── css/ js/             HUD 与教学样式；配置 / 数据 / VSOP87 / 天文 / i18n / 贴图 / 后期 / 场景 / 银河 / 控制 / UI / 主循环 / teach-*
-│   ├── vsop87/              IMCCE 官方原始要素文件及校验文件（仅供离线生成）
-│   └── textures/ vendor/    原始贴图 19 张（textures.js 的来源）；Three.js r128 + OrbitControls + 后期
-├── scripts/                 贴图生成 + 7 个零依赖自检门禁（语法 / ES5 / 离线 / 顺序 / i18n / 数据 / 资产）
-├── docs/screenshots/        README 截图
+│   ├── css/                   HUD 与教学样式
+│   ├── js/                    36 个模块，加载顺序即依赖顺序
+│   │   ├── 基础                config / data / i18n / vsop87 / astro / textures / effects
+│   │   ├── 场景                scene-shaders / scene-shared / scene-gfx / scene-sun / scene-bodies / scene-backdrop / scene（门面）
+│   │   ├── 系统                galaxy / controls
+│   │   ├── 界面                ui-shared / ui-util / ui-dom / ui-nav / ui-info / ui-settings / ui-time / ui-shell / ui（门面）
+│   │   ├── 主循环              main
+│   │   └── 教学                teach-data / teach-globe-shared / teach-globe-shaders / teach-globe-body / teach-globe-scenes / teach-globe-apply / teach-globe（门面）/ teach-orrery / teach-scenes / teach
+│   ├── vsop87/                IMCCE 官方原始要素文件及校验文件（仅供离线生成）
+│   └── textures/ vendor/      原始贴图 24 张（textures.js 的来源）；Three.js r128 + OrbitControls + 后期
+├── scripts/                   贴图生成 + 7 个零依赖自检门禁（语法 / ES5 / 离线 / 顺序 / i18n / 数据 / 资产）
+├── docs/screenshots/          README 截图
 └── AGENTS.md · CLAUDE.md · LICENSE · NOTICE · README.md
 ```
 
-各模块职责见 [AGENTS.md](./AGENTS.md) 的架构地图。
+各模块职责见 [AGENTS.md](./AGENTS.md) 的架构地图：
+
+| 组 | 文件（按加载顺序） | 门面 / 对外契约 |
+| --- | --- | --- |
+| 场景 | `scene-shaders.js` → `scene-shared.js` → `scene-gfx.js` → `scene-sun.js` → `scene-bodies.js` → `scene-backdrop.js` → `scene.js` | `SOLAR.Scene` |
+| 界面 | `ui-shared.js` → `ui-util.js` → `ui-dom.js` → `ui-nav.js` → `ui-info.js` → `ui-settings.js` → `ui-time.js` → `ui-shell.js` → `ui.js` | `SOLAR.UI` |
+| 教学地球仪 | `teach-globe-shared.js` → `teach-globe-shaders.js` → `teach-globe-body.js` → `teach-globe-scenes.js` → `teach-globe-apply.js` → `teach-globe.js` | `SOLAR.TeachGlobe` |
+
+拆分只改内部结构：跨模块调用一律运行时限定名，共享状态集中在各自的 `*Shared` 文件，逐帧 `update` 等横切逻辑留在门面。新增文件须同时更新 `index.html` 的脚本顺序与 `scripts/check-script-order.js` 的 `EXPECTED_ORDER`，否则顺序门禁直接失败。
 
 ## 数据来源
 
@@ -135,7 +150,7 @@ VSOP87 原始级数对 IMCCE 官方主版本 80 组历元 × 6 要素对拍最�
 
 ## 规模
 
-62 个文件，约 **16.7 MB**：`assets/js/` 9.0 MB（含 `textures.js` 约 8.5 MB base64）、`assets/textures/` 6.3 MB（原始贴图 19 张）、`assets/vendor/` 0.6 MB，其余 < 1 MB。
+拆分前 81 个文件，拆分后约 100 个文件、约 30 MB：`assets/js/` 约 12.4 MB（含 `textures.js` 约 10.9 MB base64）、`assets/textures/` 约 8.2 MB（原始贴图 24 张）、`assets/vendor/` 0.6 MB，其余 < 1 MB。`assets/js/` 由 17 个模块增至 36 个——`scene` / `ui` / `teach-globe` 拆分多出的 19 个文件都是纯源码，总体积增长可忽略。
 
 ## 许可
 

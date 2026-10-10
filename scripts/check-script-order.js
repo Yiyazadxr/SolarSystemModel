@@ -3,8 +3,10 @@
  * 规则：
  *  1. vendor 脚本必须在前（three.min.js 是根依赖）
  *  2. 自定义脚本顺序需与 EXPECTED_ORDER 一致
- *  3. 依赖方向：config → data → i18n → vsop87 → astro → textures → effects → scene → galaxy → controls → ui → main
- *     teach-data → teach-globe → teach-orrery → teach-scenes → teach
+ *  3. 依赖方向：config → data → i18n → vsop87 → astro → textures → effects
+ *     → scene-* → galaxy → controls → ui-* → main
+ *     → teach-data → teach-globe-* → teach-orrery → teach-scenes → teach
+ *     同一层内（scene / ui / teach-globe）先共享与叶子模块，门面（无前缀的那个）最后。
  */
 'use strict';
 
@@ -23,12 +25,31 @@ const EXPECTED_ORDER = [
   'astro.js',
   'textures.js',
   'effects.js',
+  'scene-shaders.js',
+  'scene-shared.js',
+  'scene-gfx.js',
+  'scene-sun.js',
+  'scene-bodies.js',
+  'scene-backdrop.js',
   'scene.js',
   'galaxy.js',
   'controls.js',
+  'ui-shared.js',
+  'ui-util.js',
+  'ui-dom.js',
+  'ui-nav.js',
+  'ui-info.js',
+  'ui-settings.js',
+  'ui-time.js',
+  'ui-shell.js',
   'ui.js',
   'main.js',
   'teach-data.js',
+  'teach-globe-shared.js',
+  'teach-globe-shaders.js',
+  'teach-globe-body.js',
+  'teach-globe-scenes.js',
+  'teach-globe-apply.js',
   'teach-globe.js',
   'teach-orrery.js',
   'teach-scenes.js',
