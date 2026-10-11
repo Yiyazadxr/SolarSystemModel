@@ -159,6 +159,11 @@ SOLAR.UITime = (function () {
     SOLAR.UIUtil.setClass(els.hud, 'immersive', on);
     SOLAR.UIUtil.setClass(els.btnImmersive, 'active', on);
     if (els.immersiveHint) els.immersiveHint.hidden = !on;
+    /* 沉浸模式只留画面：右下角「教学模式」入口一并收起。
+       #teach-root 挂在 #hud 外面，不继承 #hud.immersive 的 opacity，必须显式切。 */
+    if (SOLAR.Teach && typeof SOLAR.Teach.setEntryVisible === 'function') {
+      SOLAR.Teach.setEntryVisible(!on);
+    }
   }
 
   function setNow() {

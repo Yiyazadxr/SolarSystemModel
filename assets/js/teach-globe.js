@@ -33,6 +33,7 @@ SOLAR.TeachGlobe = (function () {
     SOLAR.GlobeScenes.buildVoyage();
     SOLAR.GlobeScenes.buildHorizon();
     SOLAR.GlobeScenes.buildEclipse();
+    SOLAR.GlobeScenes.buildSolarEclipse();
     SOLAR.GlobeScenes.buildSatellites();
     SOLAR.GlobeScenes.buildSizeRings();
     SOLAR.GlobeScenes.buildDegreeLabels();
@@ -73,6 +74,7 @@ SOLAR.TeachGlobe = (function () {
     SOLAR.GlobeBody.buildGrid(15);
     SOLAR.GlobeBody.buildHighlights();
     SOLAR.GlobeBody.buildAxis();
+    SOLAR.GlobeBody.buildSpinMark();
     SOLAR.GlobeBody.buildSunPoint();
     SOLAR.GlobeBody.buildPolarCaps();
     SOLAR.GlobeBody.buildCities();
@@ -236,6 +238,46 @@ SOLAR.TeachGlobe = (function () {
         if (G.tmp.eclipseTmpT.lengthSq() < 1e-6) G.tmp.eclipseTmpT.set(1, 0, 0); else G.tmp.eclipseTmpT.normalize();
         G.nodes.eclipseShadowMaterial.uniforms.uTangent.value.copy(G.tmp.eclipseTmpT);
       }
+
+      /* 日食：遮挡月盘沿切向掠过日盘。扫动方向 = 世界 UP × 轴（地心→月盘），
+         与月食的地影扫动同一套世界锚定——相机拖拽时遮挡关系保持正确。 */
+      if (G.nodes.solarEclipseGroup && G.nodes.solarEclipseGroup.visible && G.nodes.solarEclipseGroup.userData.shadowMaterial) {
+        if (G.anim.playing && G.anim.revolve) G.eclipseTime += dtSec * G.anim.speed;
+        var phaseS = (G.eclipseTime % 14) / 14;
+        var sweepS = Math.max(0, Math.min(1, (phaseS - 0.08) / 0.84));
+        if (!G.tmp.solarTmpA) { G.tmp.solarTmpA = new THREE.Vector3(); G.tmp.solarTmpE = new THREE.Vector3(); G.tmp.solarTmpT = new THREE.Vector3(); }
+        var udS = G.nodes.solarEclipseGroup.userData;
+        /* 与月食完全同款的世界锚定：轴 = 地心→日心，切向 = 世界 UP × 轴。
+           阴影只着色在朝地半球上（shader 的半球因子），半球边界的柔和渐隐
+           也与月食观感一致；uCenter 沿切向扫动 = 月影掠过日面。 */
+        udS.sunDisc.getWorldPosition(G.tmp.solarTmpA);
+        G.nodes.root.getWorldPosition(G.tmp.solarTmpE);
+        var axisS = G.tmp.solarTmpA.sub(G.tmp.solarTmpE).normalize();
+        udS.shadowMaterial.uniforms.uAxis.value.copy(axisS);
+        var tanS = G.tmp.solarTmpT.crossVectors(G.tmp.UP_Y, axisS);
+        if (tanS.lengthSq() < 1e-6) tanS.set(1, 0, 0); else tanS.normalize();
+        udS.shadowMaterial.uniforms.uTangent.value.copy(tanS);
+        udS.shadowMaterial.uniforms.uCenter.value = (1.5 - sweepS * 3.0) * G.EARTH_R;
+
+        /* 日冕只在「全食」阶段展开：月影半径 0.55 个日面半径，只有偏移
+           ≤ 1 − 0.55 = 0.45 时月影才完全落进日面（真正的全食）。此前
+           阈值取 0.98，月影刚压上日面边缘日冕就变亮泛白，与真实日冕
+           只在全食瞬间出现的观感不符——把起点收到全食门槛处。 */
+        var offR = Math.abs(1.5 - sweepS * 3.0);            /* 月影中心偏移（日面半径单位） */
+        var totalR = 0.45;                                   /* 全食门槛：月影完全入日面 */
+        var corona = 1 - Math.min(1, Math.max(0, offR) / totalR);
+        corona = corona * corona * (3 - 2 * corona);         /* smoothstep */
+        if (udS.haloMat) {
+          udS.haloMat.uniforms.uStrength.value = 0.3 + 1.5 * corona;
+          /* 泛白比光晕再靠后一档：只在月影逼近日面中心（偏移 ≤ 0.25）时
+             才明显发白，避免刚进全食就一片惨白（真实日全食日冕为珍珠白） */
+          var whiteR = 0.25;
+          var white = 1 - Math.min(1, Math.max(0, offR) / whiteR);
+          white = white * white * (3 - 2 * white);
+          if (udS.haloMat.uniforms.uWhite) udS.haloMat.uniforms.uWhite.value = white;
+        }
+        /* 日冕只改亮度与颜色，壳体尺寸保持 1.2×日面不变 */
+      }
       if (G.anim.spin) {
         var deg = (G.cur.spinDeg || 0) + dtSec * 5 * (G.anim.speed || 1);
         G.cur.spinDeg = deg % 360;
@@ -262,6 +304,13 @@ SOLAR.TeachGlobe = (function () {
       if (!G.built) return null;
       if (bodyId === 'moon' && G.nodes.eclipseGroup) {
         return G.nodes.eclipseGroup.userData.moon.getWorldPosition(new THREE.Vector3());
+      }
+      /* 仅显式请求 'sun' 才返回日盘。此前该分支对任意 bodyId 生效，
+         日食步骤取景时 getWorldPosition('earth') 被劫持成日盘坐标，
+         相机沿「月盘→日盘」方向被推到太阳外侧背面——太阳糊满全屏、
+         月影（只着色朝地半球）整体背对镜头。 */
+      if (bodyId === 'sun' && G.nodes.solarEclipseGroup && G.nodes.solarEclipseGroup.visible && G.nodes.solarEclipseGroup.userData.sunDisc) {
+        return G.nodes.solarEclipseGroup.userData.sunDisc.getWorldPosition(new THREE.Vector3());
       }
       if (bodyId !== 'earth') return null;
       var v = new THREE.Vector3();

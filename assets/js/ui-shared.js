@@ -24,13 +24,15 @@ SOLAR.UIShared = {
     /* 设置项：各开关的当前值与"场景是否提供对应接口"的探测结果 */
     settings: {
       orbits: true, labels: true, trails: true, stars: true, belts: true,
-      bloom: true, scanline: true, vignette: true, gasFx: true
+      bloom: true, scanline: true, vignette: true, gasFx: true,
+      sound: true                        /* 音效默认开启，可随时在设置面板关掉 */
     },
     api: {},
     unitSystem: 'au',
     switchIds: {
       orbits: 'sw-orbits', labels: 'sw-labels', trails: 'sw-trails', stars: 'sw-stars', belts: 'sw-belts',
-      bloom: 'sw-bloom', scanline: 'sw-scanline', vignette: 'sw-vignette', gasFx: 'sw-gasfx'
+      bloom: 'sw-bloom', scanline: 'sw-scanline', vignette: 'sw-vignette', gasFx: 'sw-gasfx',
+      sound: 'sw-sound'
     },
     infoCollapsedBySettings: false,
     lastFollowId: null,

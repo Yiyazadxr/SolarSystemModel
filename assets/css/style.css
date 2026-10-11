@@ -263,6 +263,11 @@ html, body {
 .fact { margin: 0; font-size: 12px; line-height: 1.7; color: var(--accent); opacity: .85; }
 .desc, .fact, .data-table, .moon-item { user-select: text; -webkit-user-select: text; }
 
+.orbit-chart {
+  display: block; width: 100%; height: 180px; margin: 0 0 10px;
+  border: 1px solid var(--line); background: rgba(0, 0, 0, .28);
+}
+
 /* 与地球对比条 */
 .compare { display: flex; flex-direction: column; gap: 8px; }
 .compare-row { font-family: var(--mono); font-size: 10px; letter-spacing: .06em; }
@@ -351,6 +356,12 @@ html, body {
   margin: 4px 0 0; padding-top: 8px; border-top: 1px solid var(--line);
   font-family: var(--mono); font-size: 9px; letter-spacing: .06em;
   line-height: 1.7; color: var(--text-dim);
+}
+
+/* 设置面板内的说明小字（比例档换算数字等）：比 settings-note 更弱的一级 */
+.set-note {
+  margin: 6px 0 0; font-family: var(--mono); font-size: 9px;
+  letter-spacing: .04em; line-height: 1.6; color: var(--text-dim);
 }
 
 /* ---------- 底部时间条 ---------- */

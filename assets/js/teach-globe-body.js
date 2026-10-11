@@ -3,7 +3,7 @@
  * 用途：teach-globe 拆分后的"构建 + 埃拉托色尼"层。负责地球球体与地表/云层着色、
  *       经纬网、地轴、重要经纬线高亮、直射点、极昼极夜球冠、城市标记，以及
  *       埃拉托色尼 7.2° 示意叠加层（平行太阳光 + 地心延长线 + 夹角圆环）。
- *       scene-shaders.js 提供 GLSL 源码；所有 THREE 资源过 SOLAR.TeachGlobeShared.track；
+ *       teach-globe-shaders.js（SOLAR.GlobeShaders）提供 GLSL 源码；所有 THREE 资源过 SOLAR.TeachGlobeShared.track；
  *       场景图节点 / 临时对象写进 SOLAR.TeachGlobeShared.S（别名 G）。
  *
  * 坐标约定（务必看懂再改）：
@@ -30,9 +30,10 @@ SOLAR.GlobeBody = (function () {
   var EARTH_R = G.EARTH_R;
   var NIGHT_FACTOR = G.NIGHT_FACTOR;
 
-  /* 仅本模块读写的量：earthMat（其实只喂给 earthMesh 构造）、axis 三兄弟（变量只写不读）、
-     eratoRays/eratoRadials/eratoArc/eratoLabel/eratoRayLabel（原 module 级"写没人读"的遗留表），
-     照搬保留，删除属行为变更，不发生在纯搬运中。 */
+  /* 仅本模块读写的量：earthMat（喂给 earthMesh 构造）、axis 三兄弟（axisNode 读取用于
+     摆标签，axisTop/axisBottom 只写不读）、埃拉托色尼的 eratoArc/eratoLabel/eratoRayLabel
+     （更新时读取）与 eratoRays/eratoRadials（只写不读的遗留表）。
+     删除属行为变更，不发生在纯搬运中。 */
   var earthMat = null;
   var axisNode = null, axisTop = null, axisBottom = null;
   var eratoRays = [], eratoRadials = [];
@@ -277,8 +278,14 @@ SOLAR.GlobeBody = (function () {
     addHlCircle('equator', 0, 0xffe3b0);
     addHlCircle('tropic_n', 23.5, 0xf0b95c);
     addHlCircle('tropic_s', -23.5, 0xf0b95c);
-    addHlCircle('polar_n', 66.5, 0x9fd0ff);
-    addHlCircle('polar_s', -66.5, 0x9fd0ff);
+    /* 南北极圈：与北京纬线同一套昼夜分色——极昼时整圈昼色（暖黄），
+       极夜时整圈夜色（蓝），比半透明帽更直观对应「极昼/极夜」的定义 */
+    addDayNightCircle('polar_n', 66.5, 0xffd166, 0x5f83b8);
+    addDayNightCircle('polar_s', -66.5, 0xffd166, 0x5f83b8);
+    /* 北京所在纬线（40°N）：昼夜长短课的讲解锚点。纬线按昼夜半球分两段着色
+       （昼弧暖黄、夜弧灰蓝），随直射点移动两段长度实时变化——
+       直观对应「昼弧长于夜弧则昼长夜短」的教材判读法。 */
+    addDayNightCircle('beijing_lat', 40, 0xffd166, 0x5f83b8);
     /* 30°、60°：与 0°/23.5°/66.5° 一起构成教材图 3.1-9 的「主要纬线」 */
     addHlCircle('lat30_n', 30, 0x9fd0ff);
     addHlCircle('lat30_s', -30, 0x9fd0ff);
@@ -313,6 +320,49 @@ SOLAR.GlobeBody = (function () {
     G.nodes.hlNodes[key] = grp;
   }
 
+  /* 昼夜分色纬线：同一根纬线圈，昼弧与夜弧两种颜色，分界即晨昏线。
+     判色在片元里做：必须用「球心→该点」的径向（与地表光照同一条法线），
+     用环心→点会把分界平移 sinφ·sunY，夏至/冬至时与地表昼夜对不上。
+     教学装置的球心即世界原点，直接 normalize(vWorld)。 */
+  var DN_VERT = [
+    'varying vec3 vWorld;',
+    'void main(){',
+    '  vWorld = (modelMatrix * vec4(position, 1.0)).xyz;',
+    '  gl_Position = projectionMatrix * viewMatrix * vec4(vWorld, 1.0);',
+    '}'
+  ].join('\n');
+  var DN_FRAG = [
+    'uniform vec3 uSunDir; uniform vec3 uDayColor; uniform vec3 uNightColor;',
+    'varying vec3 vWorld;',
+    'void main(){',
+    '  vec3 radial = normalize(vWorld);',
+    '  float lit = step(0.0, dot(radial, normalize(uSunDir)));',
+    '  gl_FragColor = vec4(mix(uNightColor, uDayColor, lit), 1.0);',
+    '}'
+  ].join('\n');
+
+  function addDayNightCircle(key, latDeg, dayColor, nightColor) {
+    var rl = EARTH_R * Math.cos(latDeg * DEG) * 1.006;
+    var geo = SOLAR.TeachGlobeShared.track(new THREE.TorusGeometry(rl, EARTH_R * 0.007, 8, 128));
+    var mat = SOLAR.TeachGlobeShared.track(new THREE.ShaderMaterial({
+      uniforms: {
+        uSunDir: G.nodes.earthUniforms.uSunDir,      /* 共享引用：直射点移动自动跟随 */
+        uDayColor: { value: new THREE.Color(dayColor) },
+        uNightColor: { value: new THREE.Color(nightColor) }
+      },
+      vertexShader: DN_VERT, fragmentShader: DN_FRAG, fog: false
+    }));
+    var mesh = new THREE.Mesh(geo, mat);
+    mesh.renderOrder = 2;
+    var grp = new THREE.Group();
+    grp.add(mesh);
+    grp.rotation.x = -Math.PI / 2;
+    grp.position.y = EARTH_R * Math.sin(latDeg * DEG) * 1.006;
+    grp.visible = false;
+    G.nodes.hlGroup.add(grp);
+    G.nodes.hlNodes[key] = grp;
+  }
+
   function addHlMeridian(key, lonDeg, color, thick) {
     var t = thick || 0.0055;
     var grp = new THREE.Group();
@@ -325,7 +375,9 @@ SOLAR.GlobeBody = (function () {
     /* Torus 默认在 XY 平面；绕 Y 轴转到该经度所在平面 */
     grp.rotation.y = lonDeg * DEG;
     grp.visible = false;
-    G.nodes.hlGroup.add(grp);
+    /* 经线必须随地球自转：挂 spinGroup（与经纬网、城市同一局部系），
+       不能挂 tiltGroup 下的 hlGroup——那里只适合自转不变量的纬线圈。 */
+    G.nodes.spinGroup.add(grp);
     G.nodes.hlNodes[key] = grp;
   }
 
@@ -337,18 +389,72 @@ SOLAR.GlobeBody = (function () {
     axisNode = new THREE.Mesh(geo, mat);
     G.nodes.axisGroup.add(axisNode);
 
-    var top = makeLabel('N', 40); SOLAR.TeachGlobeShared.track(top.texture);
+    var top = makeLabel('N', 40, 0.15); SOLAR.TeachGlobeShared.track(top.texture);
     top.sprite.position.set(0, len * 0.5 + EARTH_R * 0.12, 0);
     G.nodes.axisGroup.add(top.sprite);
     axisTop = top.sprite;
 
-    var bot = makeLabel('S', 40); SOLAR.TeachGlobeShared.track(bot.texture);
+    var bot = makeLabel('S', 40, 0.15); SOLAR.TeachGlobeShared.track(bot.texture);
     bot.sprite.position.set(0, -len * 0.5 - EARTH_R * 0.12, 0);
     G.nodes.axisGroup.add(bot.sprite);
     axisBottom = bot.sprite;
   }
 
-  /* 直射点标记：整组绕 OKgroup 旋转，使 +Y 对准太阳方向。
+  /* 自转方向与周期标注（教材图4.2-1）：北极上空的环形箭头 + 周期文字标签。
+     从北极俯视地球逆时针 = 自西向东；箭头挂在 axisGroup 内随地轴倾斜，
+     但不随 spinGroup 自转——固定不转，方向指示才稳定可读。 */
+  function buildSpinMark() {
+    var grp = new THREE.Group();
+    var y0 = EARTH_R * 1.22;              /* 环的高度：北极上空 */
+    var r = EARTH_R * 0.42;
+    var sweep = Math.PI * 1.66;           /* 约 300°，末端留缺口放箭头 */
+    var start = 300 * DEG;                /* 起始角：缺口中心落在 270° 方向（+Z，朝镜头） */
+    var pts = [];
+    for (var i = 0; i <= 48; i++) {
+      var t = start + i / 48 * sweep;
+      /* z 取负号：θ 增大时从北极俯视呈逆时针，即自西向东 */
+      pts.push(new THREE.Vector3(r * Math.cos(t), y0, -r * Math.sin(t)));
+    }
+    var curve = new THREE.CatmullRomCurve3(pts);
+    var tubeGeo = new THREE.TubeGeometry(curve, 48, EARTH_R * 0.014, 8, false);
+    SOLAR.TeachGlobeShared.track(tubeGeo);
+    var mat = SOLAR.TeachGlobeShared.track(new THREE.MeshBasicMaterial({
+      color: 0xffa94d, transparent: true, opacity: 0.95, depthWrite: false, fog: false
+    }));
+    grp.add(new THREE.Mesh(tubeGeo, mat));
+
+    /* 箭头锥：立在弧末端，+Y 对准切线方向（逆时针前进方向） */
+    var end = pts[pts.length - 1];
+    var prev = pts[pts.length - 2];
+    var coneGeo = new THREE.ConeGeometry(EARTH_R * 0.05, EARTH_R * 0.12, 12);
+    SOLAR.TeachGlobeShared.track(coneGeo);
+    var cone = new THREE.Mesh(coneGeo, mat);
+    cone.position.copy(end);
+    cone.quaternion.setFromUnitVectors(
+      new THREE.Vector3(0, 1, 0), end.clone().sub(prev).normalize()
+    );
+    grp.add(cone);
+
+    /* 两个标签都放近侧（z 正 = 朝镜头一侧），分居左右：
+       「自西向东」在箭头末端一侧，「自转一周…」在另一侧，均不挡极点。 */
+    var dirLabel = makeLabel('自西向东', 34, 0.13);
+    SOLAR.TeachGlobeShared.track(dirLabel.texture);
+    dirLabel.sprite.position.set(EARTH_R * 0.55, y0 + EARTH_R * 0.06, EARTH_R * 0.60);
+    grp.add(dirLabel.sprite);
+
+    var timeLabel = makeLabel('自转一周约23小时56分4秒', 34, 0.13);
+    SOLAR.TeachGlobeShared.track(timeLabel.texture);
+    timeLabel.sprite.position.set(-EARTH_R * 0.85, y0 + EARTH_R * 0.06, EARTH_R * 0.50);
+    grp.add(timeLabel.sprite);
+
+    grp.visible = false;
+    /* 挂 tiltGroup 而非 axisGroup：显隐只由 spinMark 参数控制，
+       不跟随地轴开关（昼夜交替等步骤开地轴也不应出现本标注）。 */
+    G.nodes.tiltGroup.add(grp);
+    G.nodes.spinMarkGroup = grp;
+  }
+
+  /* 直射点标记：整组建在 pointGroup 下，apply 时把整组 +Y 转到太阳方向。
      构造约定：小球在 y=R，连杆中心在 y=R/2，标签在 y=1.15R，组原点在球心。 */
   function buildSunPoint() {
     G.nodes.pointGroup = new THREE.Group();
@@ -660,6 +766,7 @@ SOLAR.GlobeBody = (function () {
     addHlCircle: addHlCircle,
     addHlMeridian: addHlMeridian,
     buildAxis: buildAxis,
+    buildSpinMark: buildSpinMark,
     buildSunPoint: buildSunPoint,
     buildPolarCaps: buildPolarCaps,
     makeCap: makeCap,

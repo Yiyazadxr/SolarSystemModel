@@ -53,15 +53,17 @@ SOLAR.GlobeApply = (function () {
     p.cities = params.cities || [];
     /* 场景镜头同样是一次性状态，避免第一步的地面视角把后续地球模型永久隐藏。 */
     p.shapeScene = params.shapeScene || null;
-    if (p.shapeScene === 'eclipse' && G.cur.shapeScene !== 'eclipse') {
+    if ((p.shapeScene === 'eclipse' || p.shapeScene === 'solareclipse') && G.cur.shapeScene !== p.shapeScene) {
       G.eclipseTime = 0;
       G.nodes.eclipseShadowMaterial.uniforms.uCenter.value = 1.5;
     }
     p.satelliteMode = params.satelliteMode || null;
-    /* voyage / satellites / sizeRings / degreeLabels 同理：按步骤显式开关 */
+    /* voyage / satellites / sizeRings / degreeLabels / spinMark 同理：按步骤显式开关。
+       spinMark 不显式清掉的话，「自转的方向与周期」开启后会在后续步骤残留。 */
     p.voyage = !!params.voyage;
     p.satellites = !!params.satellites;
     p.sizeRings = !!params.sizeRings;
+    p.spinMark = !!params.spinMark;
     /* degreeLabels: true 两组都显示；'lat' / 'lon' 只显示对应的一组
        （教材图 3.1-9 讲纬线、3.1-10 讲经线，分开看更清楚） */
     p.degreeLabels = params.degreeLabels || false;
@@ -81,7 +83,7 @@ SOLAR.GlobeApply = (function () {
     G.curScale = scale || 'real';
     G.nodes.root.scale.setScalar(G.curScale === 'iconic' ? 1.6 : 1.0);
     /* 第一场景切到地面观察镜头时，隐藏地球仪本体，只保留地平线装置。 */
-    if (G.nodes.tiltGroup) G.nodes.tiltGroup.visible = p.shapeScene !== 'horizon' && p.shapeScene !== 'eclipse';
+    if (G.nodes.tiltGroup) G.nodes.tiltGroup.visible = p.shapeScene !== 'horizon' && p.shapeScene !== 'eclipse' && p.shapeScene !== 'solareclipse';
 
     /* 地轴倾角：tiltGroup 绕 X 轴旋转 ε = 90 − tiltDeg */
     var tilt = (p.tiltDeg === undefined ? 66.5 : p.tiltDeg);
@@ -100,8 +102,10 @@ SOLAR.GlobeApply = (function () {
 
     /* 直射点：把世界方向的太阳搬到 tiltGroup 局部坐标，再让整组的 +Y 对准它。
        这样"直射点落在哪条纬线上"完全由 δ = asin(sunDir · 地轴) 决定，物理正确。 */
+    /* 直射点标记已退役：任何步骤都不再显示（直射纬度改由 orrery 的
+       直射纬线圈 + 度数标签表达）。仍保留定位代码，仅强制隐藏。 */
     if (G.nodes.sunPointNode) {
-      G.nodes.sunPointNode.visible = !!p.sunPoint;
+      G.nodes.sunPointNode.visible = false;
       var localDir = st.dir.clone().applyQuaternion(G.tmp.tiltInverse.clone());
       var q = new THREE.Quaternion().setFromUnitVectors(G.tmp.UP_Y, localDir);
       G.nodes.sunPointNode.position.set(0, 0, 0);
@@ -137,6 +141,9 @@ SOLAR.GlobeApply = (function () {
     /* 地轴 */
     G.nodes.axisGroup.visible = !!p.axis;
 
+    /* 自转方向与周期标注（3.5.1 教材图4.2-1） */
+    if (G.nodes.spinMarkGroup) G.nodes.spinMarkGroup.visible = !!p.spinMark;
+
     /* 城市 */
     var want = p.cities || [];
     for (var id in G.nodes.cityNodes) {
@@ -155,6 +162,7 @@ SOLAR.GlobeApply = (function () {
     if (G.nodes.voyageGroup) G.nodes.voyageGroup.visible = !!p.voyage;
     if (G.nodes.horizonGroup) G.nodes.horizonGroup.visible = p.shapeScene === 'horizon';
     if (G.nodes.eclipseGroup) G.nodes.eclipseGroup.visible = p.shapeScene === 'eclipse';
+    if (G.nodes.solarEclipseGroup) G.nodes.solarEclipseGroup.visible = p.shapeScene === 'solareclipse';
     if (G.nodes.satGroup) G.nodes.satGroup.visible = !!p.satellites;
     if (G.nodes.satGroup && G.nodes.satGroup.visible) {
       for (var si = 0; si < G.nodes.satNodes.length; si++) {

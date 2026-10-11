@@ -116,7 +116,7 @@ SOLAR.UI = (function () {
     showTooltip: function (id, x, y) { return SOLAR.UIShell.showTooltip(id, x, y); },
     hideTooltip: function () { return SOLAR.UIShell.hideTooltip(); },
     setProgress: function (value) { return SOLAR.UIShell.setProgress(value); },
-    hideLoading: function () { return SOLAR.UIShell.hideLoading(); },
+    hideLoading: function (done) { return SOLAR.UIShell.hideLoading(done); },
     setQuality: setQuality,
     setScale: function (name) { return SOLAR.UISettings.setScale(name); },
     showModeChoice: function () { return SOLAR.UISettings.showModeChoice(); },

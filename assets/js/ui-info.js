@@ -13,6 +13,7 @@ SOLAR.UIInfo = (function () {
   var C = SOLAR.CONFIG, D = SOLAR.DATA, A = SOLAR.Astro;
   var U = SOLAR.UIShared;
   var els = U.dom;
+  var orbitInset = { id: null, pathJd: NaN, path: null, paintJd: NaN, paintAt: 0, lang: null };
 
   /* ============ 信息卡：表格与分区渲染 ============ */
 
@@ -145,12 +146,107 @@ SOLAR.UIInfo = (function () {
     return 1 / diff;
   }
 
+  function orbitMarker(ctx, x, y, radius, color) {
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = '#06080b';
+    ctx.stroke();
+  }
+
+  function orbitLegend(ctx, x, label, color) {
+    ctx.fillStyle = color;
+    ctx.fillRect(x, 11, 5, 5);
+    ctx.fillStyle = '#e9ecef';
+    ctx.fillText(label, x + 9, 13.5);
+  }
+
+  function updateOrbitInset(force) {
+    var canvas = els.infoOrbitChart;
+    var record = U.state.selectedRecord;
+    if (!canvas || !record || !record.data.orbital || canvas.hidden ||
+        !els.secOrbit || !els.secOrbit.classList.contains('open')) return;
+
+    var width = canvas.clientWidth, height = canvas.clientHeight;
+    if (width < 80 || height < 80 || !SOLAR.time) return;
+    var jd = SOLAR.time.jd;
+    if (!isFinite(jd)) return;
+    var dpr = Math.min(2, window.devicePixelRatio || 1);
+    var pixelWidth = Math.round(width * dpr), pixelHeight = Math.round(height * dpr);
+    var resized = canvas.width !== pixelWidth || canvas.height !== pixelHeight;
+    var changed = orbitInset.id !== record.id || orbitInset.lang !== SOLAR.lang;
+    if (!force && !resized && !changed && jd === orbitInset.paintJd) return;
+    if (!force && !resized && !changed && Date.now() - orbitInset.paintAt < 100) return;
+
+    var ctx = null;
+    try { if (canvas.getContext) ctx = canvas.getContext('2d'); } catch (e) { /* 画布不可用时只隐藏小图 */ }
+    if (!ctx) { canvas.hidden = true; return; }
+    if (resized) { canvas.width = pixelWidth; canvas.height = pixelHeight; }
+    ctx.setTransform(pixelWidth / width, 0, 0, pixelHeight / height, 0, 0);
+    ctx.clearRect(0, 0, width, height);
+
+    if (changed || !orbitInset.path || Math.abs(jd - orbitInset.pathJd) >= 1) {
+      orbitInset.path = A.orbitPathAu(record.data.orbital, jd, 128);
+      orbitInset.pathJd = jd;
+      orbitInset.id = record.id;
+    }
+    var path = orbitInset.path;
+    var now = A.heliocentric(record.data.orbital, jd);
+    var minX = 0, maxX = 0, minY = 0, maxY = 0;
+    for (var i = 0; i < path.length; i++) {
+      minX = Math.min(minX, path[i].x);
+      maxX = Math.max(maxX, path[i].x);
+      minY = Math.min(minY, path[i].y);
+      maxY = Math.max(maxY, path[i].y);
+    }
+    var plotTop = 28, plotBottom = height - 10;
+    var scale = Math.min((width - 20) / Math.max(1e-9, maxX - minX),
+      (plotBottom - plotTop) / Math.max(1e-9, maxY - minY));
+    var midX = (minX + maxX) * 0.5, midY = (minY + maxY) * 0.5;
+    var centerX = width * 0.5, centerY = (plotTop + plotBottom) * 0.5;
+
+    ctx.strokeStyle = 'rgba(231,238,244,0.55)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    for (i = 0; i < path.length; i++) {
+      var px = centerX + (path[i].x - midX) * scale;
+      var py = centerY - (path[i].y - midY) * scale;
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+
+    orbitMarker(ctx, centerX - midX * scale, centerY + midY * scale, 2.8, '#f7cf83');
+    orbitMarker(ctx, centerX + (path[0].x - midX) * scale,
+      centerY - (path[0].y - midY) * scale, 3.4, '#f08f78');
+    var apo = path[(path.length - 1) / 2];
+    orbitMarker(ctx, centerX + (apo.x - midX) * scale,
+      centerY - (apo.y - midY) * scale, 3.4, '#9ac5eb');
+    if (isFinite(now.x) && isFinite(now.y)) {
+      orbitMarker(ctx, centerX + (now.x - midX) * scale,
+        centerY - (now.y - midY) * scale, 4.3, '#7ffcd8');
+    }
+
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    orbitLegend(ctx, width / 6 - 22, SOLAR.t('ui.orbitPeri'), '#f08f78');
+    orbitLegend(ctx, width / 2 - 22, SOLAR.t('ui.orbitNow'), '#7ffcd8');
+    orbitLegend(ctx, width * 5 / 6 - 22, SOLAR.t('ui.orbitApo'), '#9ac5eb');
+    canvas.setAttribute('aria-label', SOLAR.t('ui.orbitChart'));
+    orbitInset.paintJd = jd;
+    orbitInset.paintAt = Date.now();
+    orbitInset.lang = SOLAR.lang;
+  }
+
   /* 轨道分区 */
   function renderOrbitSection(record) {
     var table = els.infoOrbit;
     var data = record.data;
     var rows = 0;
     if (table) table.textContent = '';
+    if (els.infoOrbitChart) els.infoOrbitChart.hidden = !data.orbital;
 
     if (data.orbital) {
       addRow(table, 'distance', SOLAR.UIUtil.formatDistance(currentDistance(record)), 'distance');
@@ -554,11 +650,13 @@ SOLAR.UIInfo = (function () {
     renderDataSection(record);
 
     SOLAR.UINav.applySectionStates();
+    updateOrbitInset(true);
     SOLAR.UITime.refreshFollowState(true);
   }
 
   function showEmptyPanel() {
     U.state.selectedRecord = null;
+    orbitInset.id = null;
     U.state.liveCells.distance.length = 0;
     U.state.liveCells.phase.length = 0;
     if (els.panelEmpty) els.panelEmpty.hidden = false;
@@ -602,6 +700,9 @@ SOLAR.UIInfo = (function () {
       applySelection(null);
       return;
     }
+    /* 选中音效走这里：列表 / 搜索 / 巡航 / 键盘选中最终都汇到 select，
+        在唯一收口处触发一次即可，默认关闭时不发声。 */
+    if (SOLAR.Audio && typeof SOLAR.Audio.play === 'function') SOLAR.Audio.play('select');
     /* 交互选中的语义是“点击即飞”：飞行完成前先更新面板 */
     if (SOLAR.Controls && SOLAR.Controls.flyTo) {
       var demoMode = !SOLAR.Teach || !SOLAR.Teach.isActive || !SOLAR.Teach.isActive();
@@ -631,6 +732,7 @@ SOLAR.UIInfo = (function () {
     for (i = 0; i < U.state.liveCells.phase.length; i++) {
       U.state.liveCells.phase[i].textContent = SOLAR.UIUtil.formatAngle(currentPhase(U.state.selectedRecord), 2);
     }
+    updateOrbitInset(false);
   }
 
   return {

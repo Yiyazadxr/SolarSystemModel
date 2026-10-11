@@ -28,6 +28,14 @@ SOLAR.UISettings = (function () {
     U.state.api.scanline = (typeof E.setOverlay === 'function') || !!SOLAR.UIUtil.byId('fx-scanline');
     U.state.api.vignette = (typeof E.setOverlay === 'function') || !!SOLAR.UIUtil.byId('fx-vignette');
     U.state.api.gasFx = (typeof S.setGasFx === 'function');
+    /* 音效：环境没有 Web Audio 时开关置灰（audio.js 自己也有静默兜底） */
+    U.state.api.sound = !!(SOLAR.Audio && typeof SOLAR.Audio.play === 'function' && SOLAR.Audio.isSupported());
+    /* 开关初值以 audio.js 的实际状态为准：它自己读 localStorage，可能和上面的静态
+       默认值不同。若不同步，启动时 applyAllSettings 会把用户上次关掉的音效又打开。
+       注意这里只对齐设置面板的显示状态，不调用 setEnabled（不碰播放状态）。 */
+    if (SOLAR.Audio && typeof SOLAR.Audio.isEnabled === 'function') {
+      U.state.settings.sound = !!SOLAR.Audio.isEnabled();
+    }
   }
 
   function hasUnavailable() {
@@ -137,6 +145,16 @@ SOLAR.UISettings = (function () {
       /* 气态动效：作用待定，状态先存于 settings；场景侧接口就绪后在此接线 */
       if (SOLAR.Scene && typeof SOLAR.Scene.setGasFx === 'function') SOLAR.Scene.setGasFx(value);
     }
+    else if (name === 'sound') {
+      if (SOLAR.Audio && typeof SOLAR.Audio.setEnabled === 'function') {
+        var already = (typeof SOLAR.Audio.isEnabled === 'function') ? SOLAR.Audio.isEnabled() : null;
+        if (already === value) return;    /* 启动同步时不动 audio.js，避免无手势创建 AudioContext */
+        SOLAR.Audio.setEnabled(value);
+        /* 打开瞬间给一枚反馈音：用户立刻知道有没有声音、音量多大；
+           关闭时不发声（audio.js 内部也会因 enabled=false 而静默）。 */
+        if (value && typeof SOLAR.Audio.play === 'function') SOLAR.Audio.play('toggle');
+      }
+    }
   }
 
   function applyAllSettings() {
@@ -144,6 +162,7 @@ SOLAR.UISettings = (function () {
       if (SOLAR.UIUtil.hasOwn(U.state.switchIds, key)) applySetting(key);
     }
     setUnitSystem(U.state.unitSystem);
+    refreshScaleNote();
   }
 
   function refreshSwitches() {
@@ -244,12 +263,34 @@ SOLAR.UISettings = (function () {
           els.viewSelect && els.viewSelect.value ? els.viewSelect.value : 'home', true);
       }
     } catch (e) { }
+    /* 换档后 cfg 系数与 scaleMode 都已变，比例说明里的数字必须重算 */
+    refreshScaleNote();
   }
 
   /* 教学模式内部切换比例时回调（教学装置用自己的真实/示意两档，与演示模式解耦） */
   function setScale(name) {
     if (name !== 'real' && name !== 'iconic') return;
     setSegActive(els.segScale, name === 'real' ? 'faithful' : 'compact');
+  }
+
+  /* 比例档下方的换算数字：幂律映射没有单一"1 单位 = 多少 km"，只报锚点局部值，
+      数据由 SOLAR.Scene.getScaleFacts() 算出（改 profiles 系数即自动跟随）。
+      这里只做拼接与格式化，不持有任何映射常数。 */
+  function refreshScaleNote() {
+    if (!els.scaleFacts) return;
+    var facts = null;
+    try {
+      if (SOLAR.Scene && typeof SOLAR.Scene.getScaleFacts === 'function') {
+        facts = SOLAR.Scene.getScaleFacts();
+      }
+    } catch (e) { facts = null; }
+    if (!facts) { els.scaleFacts.textContent = ''; return; }
+    var fmt = SOLAR.UIUtil.formatDecimal;
+    els.scaleFacts.textContent =
+      SOLAR.t('ui.factAu') + ' ≈ ' + fmt(facts.orbitUnits, 1) + ' ' + SOLAR.t('ui.sceneUnit') +
+      ' · ' + SOLAR.t('ui.factBody') + ' ≈ ' + fmt(facts.bodyUnits, 2) + ' ' + SOLAR.t('ui.sceneUnit') +
+      ' · ' + SOLAR.t('ui.factExagg') + ' ×' + fmt(facts.exaggeration, 1) +
+      ' · ' + SOLAR.t('ui.factLocal') + ' ' + fmt(facts.orbitKmPerUnit, 0) + ' ' + SOLAR.t('units.km');
   }
 
   /* 加载完成后弹出「演示 / 教学」二选一；只弹一次（context restore 等路径不重复弹） */
@@ -265,11 +306,17 @@ SOLAR.UISettings = (function () {
   function chooseMode(kind) {
     U.state.modeChosen = true;
     if (els.modeLayer) els.modeLayer.hidden = true;
+    if (SOLAR.Audio && typeof SOLAR.Audio.play === 'function') SOLAR.Audio.play('mode');
     if (kind === 'teach' && SOLAR.Teach && typeof SOLAR.Teach.enter === 'function') {
       try { SOLAR.Teach.enter(); } catch (e) { }
     } else if (kind === 'demo' && SOLAR.Teach && typeof SOLAR.Teach.showEntry === 'function') {
       /* 演示模式常驻右下角"教学模式"入口 */
       try { SOLAR.Teach.showEntry(); } catch (e) { }
+      /* 沉浸模式（H 淡出 HUD）下不该出现入口：用户先按 H 再回来做模式选择时会走到这里 */
+      if (els.hud && els.hud.classList.contains('immersive') &&
+          SOLAR.Teach && typeof SOLAR.Teach.setEntryVisible === 'function') {
+        try { SOLAR.Teach.setEntryVisible(false); } catch (e2) { }
+      }
     }
   }
 
@@ -311,6 +358,7 @@ SOLAR.UISettings = (function () {
     setLangFromSeg: setLangFromSeg,
     applyScaleMode: applyScaleMode,
     setScale: setScale,
+    refreshScaleNote: refreshScaleNote,
     showModeChoice: showModeChoice,
     chooseMode: chooseMode,
     applyQuality: applyQuality

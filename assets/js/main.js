@@ -87,6 +87,8 @@ window.SOLAR = window.SOLAR || {};
   var uiReady = false;
   var loadingPending = false;
   var loadingComplete = false;
+  var loadingHidden = false;
+  var firstFrameRendered = false;
   var loadingFallback = null;
   var loadingStart = 0;
   var progressValue = 0;
@@ -167,6 +169,10 @@ window.SOLAR = window.SOLAR || {};
 
   /* 在加载层显示不可恢复的启动错误（双语） */
   function showStartupError(message) {
+    if (window.SOLAR_BOOT) {
+      window.SOLAR_BOOT.fail(message);
+      return;
+    }
     var screen = document.getElementById('loading-screen');
     var tip = screen ? screen.querySelector('.loader-tip') : null;
     var pct = document.getElementById('loader-pct');
@@ -202,6 +208,7 @@ window.SOLAR = window.SOLAR || {};
 
   function tickProgress() {
     progressRaf = 0;
+    if (window.SOLAR_BOOT && window.SOLAR_BOOT.isFailed()) return;
     var step = 16 / MIN_LOADING_MS;         // 约 16ms 一帧时的最小步长 → 0→100% 至少 MIN_LOADING_MS
     if (progressValue < progressTarget) {
       progressValue = Math.min(progressTarget, progressValue + step);
@@ -215,13 +222,14 @@ window.SOLAR = window.SOLAR || {};
   }
 
   function onLoadProgress(progress) {
+    if (window.SOLAR_BOOT && window.SOLAR_BOOT.isFailed()) return;
     progressTarget = Math.max(progressTarget, clamp01(progress));
     if (!loadingComplete) scheduleProgressFrame();
   }
 
   /* 进度到 100%（或兜底计时）：满足最短动画时长且 UI 就绪后进入场景 */
   function requestComplete() {
-    if (loadingComplete) return;
+    if (loadingComplete || (window.SOLAR_BOOT && window.SOLAR_BOOT.isFailed())) return;
     if (!uiReady) {
       loadingPending = true;                // UI 尚未初始化，bootstrap 末尾会补一次
       return;
@@ -237,7 +245,7 @@ window.SOLAR = window.SOLAR || {};
 
   /* 纹理加载结束，或兜底计时到达后进入场景 */
   function completeLoading() {
-    if (loadingComplete) return;
+    if (loadingComplete || (window.SOLAR_BOOT && window.SOLAR_BOOT.isFailed())) return;
     if (!uiReady) {
       loadingPending = true;
       return;
@@ -254,9 +262,17 @@ window.SOLAR = window.SOLAR || {};
     progressValue = 1;
     progressTarget = 1;
     SOLAR.UI.setProgress(1);
-    SOLAR.UI.hideLoading();
+    SOLAR.UI.hideLoading(function () {
+      loadingHidden = true;
+      confirmReady();
+    });
     /* 模式选择层由 hideLoading 在进度条走满 100% 后自行触发（ui.js），
        这里不再直接调用，避免进度未走完就弹窗。 */
+  }
+
+  /* 首帧和加载层都完成才解除启动看门狗；单有进度满格不代表场景可渲染。 */
+  function confirmReady() {
+    if (loadingHidden && firstFrameRendered && window.SOLAR_BOOT) window.SOLAR_BOOT.ready();
   }
 
   /* ================= FPS 统计 ================= */
@@ -546,6 +562,8 @@ window.SOLAR = window.SOLAR || {};
       reportStats(dt);
 
       frameErrors = 0;                     // 任一帧成功即重置连续失败计数
+      firstFrameRendered = true;
+      confirmReady();
     } catch (error) {
       onFrameError(error);
     }
@@ -555,6 +573,10 @@ window.SOLAR = window.SOLAR || {};
 
   /* 受 FPS_CAP 上限约束的动画主循环 */
   function loop(timestamp) {
+    if (window.SOLAR_BOOT && window.SOLAR_BOOT.isFailed()) {
+      stopLoop();
+      return;
+    }
     if (!running || paused) {
       rafId = 0;
       return;
@@ -639,6 +661,7 @@ window.SOLAR = window.SOLAR || {};
      Three.js 会重新建立 GPU 内部资源，应用只需重建 composer / bloom RenderTarget。 */
   function onContextLost(event) {
     if (event && event.preventDefault) event.preventDefault();
+    if (window.SOLAR_BOOT && window.SOLAR_BOOT.isFailed()) return;
     if (contextLost) return;
     contextLost = true;
     resumeAfterContextRestore = running && !paused;
@@ -655,6 +678,7 @@ window.SOLAR = window.SOLAR || {};
 
   function finishContextRestore() {
     contextRestoreTimer = null;
+    if (window.SOLAR_BOOT && window.SOLAR_BOOT.isFailed()) return;
     if (!contextLost || !context) return;
 
     try {
@@ -742,6 +766,7 @@ window.SOLAR = window.SOLAR || {};
   /* ================= 启动 ================= */
 
   function bootstrap() {
+    if (window.SOLAR_BOOT && window.SOLAR_BOOT.isFailed()) return;
     if (!window.THREE) {
       showStartupError('无法加载 Three.js / Failed to load Three.js');
       return;

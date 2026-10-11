@@ -13,7 +13,7 @@ SOLAR.DATA = {
   sun: {
     id: 'sun',
     type: 'star',
-    texture: 'assets/textures/sun.jpg',
+    texture: 'assets/textures/sun.webp',
     color: 0xffd27f,
     radiusKm: 695700,
     massKg: 1.98847e30,
@@ -31,7 +31,7 @@ SOLAR.DATA = {
   /* ============================ 行星 / 矮行星 ============================ */
   bodies: [
     {
-      id: 'mercury', type: 'planet', texture: 'assets/textures/mercury.jpg', color: 0x9c8f84,
+      id: 'mercury', type: 'planet', texture: 'assets/textures/mercury.webp', color: 0x9c8f84,
       radiusKm: 2439.7, massKg: 3.30103e23, gravity: 3.70, density: 5.429, escapeVel: 4.25,
       tempC: 167, rotationH: 1407.6, solarDayH: 4222.6, axialTilt: 0.034, moonsCount: 0,
       atmosphereKey: 'atm_mercury', surfacePressureBar: 5e-15, bondAlbedo: 0.088,
@@ -45,7 +45,7 @@ SOLAR.DATA = {
       periodDays: 87.969
     },
     {
-      id: 'venus', type: 'planet', texture: 'assets/textures/venus.jpg', color: 0xd9b98a,
+      id: 'venus', type: 'planet', texture: 'assets/textures/venus.webp', color: 0xd9b98a,
       radiusKm: 6051.8, massKg: 4.86731e24, gravity: 8.87, density: 5.243, escapeVel: 10.36,
       tempC: 464, rotationH: -5832.5, solarDayH: 2802.0, axialTilt: 177.36, moonsCount: 0,
       atmosphereKey: 'atm_venus', surfacePressureBar: 92, bondAlbedo: 0.770,
@@ -59,10 +59,10 @@ SOLAR.DATA = {
       periodDays: 224.701
     },
     {
-      id: 'earth', type: 'planet', texture: 'assets/textures/earth.jpg', color: 0x3a6ea5,
-      textureNight: 'assets/textures/earth_night.png',
-      textureClouds: 'assets/textures/earth_clouds.png',
-      textureSpecular: 'assets/textures/earth_specular.jpg',
+      id: 'earth', type: 'planet', texture: 'assets/textures/earth.webp', color: 0x3a6ea5,
+      textureNight: 'assets/textures/earth_night.webp',
+      textureClouds: 'assets/textures/earth_clouds.webp',
+      textureSpecular: 'assets/textures/earth_specular.webp',
       radiusKm: 6371.0084, massKg: 5.97217e24, gravity: 9.80665, density: 5.5134, escapeVel: 11.186,
       tempC: 15, rotationH: 23.93447, solarDayH: 24.0, axialTilt: 23.4393, moonsCount: 1,
       atmosphereKey: 'atm_earth', hasCityLights: true, hasClouds: true,
@@ -77,7 +77,7 @@ SOLAR.DATA = {
       periodDays: 365.256
     },
     {
-      id: 'mars', type: 'planet', texture: 'assets/textures/mars.jpg', color: 0xc1440e,
+      id: 'mars', type: 'planet', texture: 'assets/textures/mars.webp', color: 0xc1440e,
       radiusKm: 3389.5, massKg: 6.4171e23, gravity: 3.721, density: 3.934, escapeVel: 5.03,
       tempC: -65, rotationH: 24.62296, solarDayH: 24.6597, axialTilt: 25.19, moonsCount: 2,
       atmosphereKey: 'atm_mars', surfacePressureBar: 0.00636, bondAlbedo: 0.250,
@@ -91,7 +91,7 @@ SOLAR.DATA = {
       periodDays: 686.980
     },
     {
-      id: 'jupiter', type: 'planet', texture: 'assets/textures/jupiter.jpg', color: 0xd8b48c,
+      id: 'jupiter', type: 'planet', texture: 'assets/textures/jupiter.webp', color: 0xd8b48c,
       radiusKm: 69911, massKg: 1.898125e27, gravity: 24.79, density: 1.3262, escapeVel: 59.5,
       tempC: -110, rotationH: 9.925, solarDayH: 9.9259, axialTilt: 3.13, moonsCount: 95,
       atmosphereKey: 'atm_jupiter', surfacePressureBar: null, pressureReferenceBar: 1, bondAlbedo: 0.343,
@@ -111,7 +111,7 @@ SOLAR.DATA = {
       periodDays: 4332.589
     },
     {
-      id: 'saturn', type: 'planet', texture: 'assets/textures/saturn.jpg', color: 0xe3d9a6,
+      id: 'saturn', type: 'planet', texture: 'assets/textures/saturn.webp', color: 0xe3d9a6,
       radiusKm: 58232, massKg: 5.68317e26, gravity: 10.44, density: 0.687, escapeVel: 35.5,
       tempC: -140, rotationH: 10.656, solarDayH: 10.6562, axialTilt: 26.73, moonsCount: 146,
       atmosphereKey: 'atm_saturn', surfacePressureBar: null, pressureReferenceBar: 1, bondAlbedo: 0.342,
@@ -119,7 +119,7 @@ SOLAR.DATA = {
       perihelionAu: 9.02301350, aphelionAu: 10.05033838,
       apparentMagnitude: { brightest: -0.55, faintest: 1.17 },
       discoverer: null, discoveryYear: null, discoveryEra: 'prehistoric',
-      ring: { innerKm: 74500, outerKm: 140220, texture: 'assets/textures/saturn_ring.png' },
+      ring: { innerKm: 74500, outerKm: 140220, texture: 'assets/textures/saturn_ring.webp' },
       orbital: { a: 9.53667594, aRate: -0.00125060, e: 0.05386179, eRate: -0.00050991,
                  i: 2.48599187, iRate: 0.00193609, L: 49.95424423, LRate: 1222.49362201,
                  peri: 92.59887831, periRate: -0.41897216, node: 113.66242448, nodeRate: -0.28867794,
@@ -132,7 +132,7 @@ SOLAR.DATA = {
       periodDays: 10759.22
     },
     {
-      id: 'uranus', type: 'planet', texture: 'assets/textures/uranus.jpg', color: 0x9fd8e0,
+      id: 'uranus', type: 'planet', texture: 'assets/textures/uranus.webp', color: 0x9fd8e0,
       radiusKm: 25362, massKg: 8.68099e25, gravity: 8.69, density: 1.270, escapeVel: 21.3,
       tempC: -195, rotationH: -17.24, solarDayH: 17.2399, axialTilt: 97.77, moonsCount: 28,
       atmosphereKey: 'atm_uranus', surfacePressureBar: null, pressureReferenceBar: 1, bondAlbedo: 0.300,
@@ -140,7 +140,7 @@ SOLAR.DATA = {
       perihelionAu: 18.28233384, aphelionAu: 20.09599544,
       apparentMagnitude: { brightest: 5.38, faintest: 6.03 },
       discoverer: 'William Herschel', discoveryYear: 1781, discoveryEra: 'historical',
-      ring: { innerKm: 41837, outerKm: 51149, texture: 'assets/textures/uranus_ring.png' },
+      ring: { innerKm: 41837, outerKm: 51149, texture: 'assets/textures/uranus_ring.webp' },
       orbital: { a: 19.18916464, aRate: -0.00196176, e: 0.04725744, eRate: -0.00004397,
                  i: 0.77263783, iRate: -0.00242939, L: 313.23810451, LRate: 428.48202785,
                  peri: 170.95427630, periRate: 0.40805281, node: 74.01692503, nodeRate: 0.04240589,
@@ -153,7 +153,7 @@ SOLAR.DATA = {
       periodDays: 30685.4
     },
     {
-      id: 'neptune', type: 'planet', texture: 'assets/textures/neptune.jpg', color: 0x3f66d8,
+      id: 'neptune', type: 'planet', texture: 'assets/textures/neptune.webp', color: 0x3f66d8,
       radiusKm: 24622, massKg: 1.024092e26, gravity: 11.15, density: 1.638, escapeVel: 23.5,
       tempC: -200, rotationH: 16.11, solarDayH: 16.1102, axialTilt: 28.32, moonsCount: 16,
       atmosphereKey: 'atm_neptune', surfacePressureBar: null, pressureReferenceBar: 1, bondAlbedo: 0.290,
@@ -173,7 +173,7 @@ SOLAR.DATA = {
       periodDays: 60189
     },
     {
-      id: 'pluto', type: 'dwarf', texture: 'assets/textures/pluto.jpg', color: 0xbfa78a,
+      id: 'pluto', type: 'dwarf', texture: 'assets/textures/pluto.webp', color: 0xbfa78a,
       radiusKm: 1188.3, massKg: 1.303e22, gravity: 0.62, density: 1.854, escapeVel: 1.21,
       tempC: -225, rotationH: -153.2928, solarDayH: 153.2820, axialTilt: 119.59, moonsCount: 5,
       atmosphereKey: 'atm_pluto', surfacePressureBar: 1e-5, bondAlbedo: 0.720,
@@ -211,7 +211,7 @@ SOLAR.DATA = {
                  peri: 153.5, periRate: 0, node: 80.2, nodeRate: 0,
                  b: 0, c: 0, s: 0, f: 0 },
       periodDays: 1682.24 },
-    { id: 'vesta', type: 'dwarf', texture: 'assets/textures/vesta.jpg', color: 0xb0a48c,
+    { id: 'vesta', type: 'dwarf', texture: 'assets/textures/vesta.webp', color: 0xb0a48c,
       radiusKm: 261.385, massKg: 2.5903e20, gravity: 0.253, density: 3.460, escapeVel: 0.364,
       tempC: -115, rotationH: 5.3421276322, solarDayH: 5.3421, axialTilt: 29, moonsCount: 0,
       bondAlbedo: 0.4228, perihelionAu: 2.15, aphelionAu: 2.57,
@@ -282,22 +282,22 @@ SOLAR.DATA = {
       periodDays: 27.32166, rotationH: 655.7198, tidallyLocked: true, eccentricity: 0.0549,
       orbitInclinationDeg: 5.145, inclinationReference: 'ecliptic',
       ascendingNodeDeg: 125.08, argPeriapsisDeg: 318.15, meanAnomalyDeg: 135.27, color: 0xbfbfbf,
-      gravity: 1.62, texture: 'assets/textures/moon.jpg', tempC: -20, summaryKey: 'moons.luna.desc' },
+      gravity: 1.62, texture: 'assets/textures/moon.webp', tempC: -20, summaryKey: 'moons.luna.desc' },
     { id: 'io', parent: 'jupiter', radiusKm: 1821.6, massKg: 8.93194e22, orbitKm: 421800,
       periodDays: 1.76914, rotationH: 42.4594, tidallyLocked: true, eccentricity: 0.0041,
       orbitInclinationDeg: 0.036, inclinationReference: 'parentEquator',
       ascendingNodeDeg: 0.0, argPeriapsisDeg: 49.1, meanAnomalyDeg: 330.9, color: 0xd8c56a,
-      gravity: 1.796, texture: 'assets/textures/io.jpg', tempC: -143, summaryKey: 'moons.io.desc' },
+      gravity: 1.796, texture: 'assets/textures/io.webp', tempC: -143, summaryKey: 'moons.io.desc' },
     { id: 'europa', parent: 'jupiter', radiusKm: 1560.8, massKg: 4.79984e22, orbitKm: 671100,
       periodDays: 3.55118, rotationH: 85.2283, tidallyLocked: true, eccentricity: 0.0094,
       orbitInclinationDeg: 0.466, inclinationReference: 'parentEquator',
       ascendingNodeDeg: 184.0, argPeriapsisDeg: 45.0, meanAnomalyDeg: 345.4, color: 0xd9cfae,
-      gravity: 1.314, texture: 'assets/textures/europa.jpg', tempC: -171, summaryKey: 'moons.europa.desc' },
+      gravity: 1.314, texture: 'assets/textures/europa.webp', tempC: -171, summaryKey: 'moons.europa.desc' },
     { id: 'ganymede', parent: 'jupiter', radiusKm: 2634.1, massKg: 1.4819e23, orbitKm: 1070400,
       periodDays: 7.15455, rotationH: 171.7092, tidallyLocked: true, eccentricity: 0.0013,
       orbitInclinationDeg: 0.177, inclinationReference: 'parentEquator',
       ascendingNodeDeg: 58.5, argPeriapsisDeg: 198.3, meanAnomalyDeg: 324.8, color: 0x9c8b7a,
-      gravity: 1.428, texture: 'assets/textures/ganymede.jpg', tempC: -163, summaryKey: 'moons.ganymede.desc' },
+      gravity: 1.428, texture: 'assets/textures/ganymede.webp', tempC: -163, summaryKey: 'moons.ganymede.desc' },
     /* 卡利斯托暂无干净的自然色全球镶嵌（Commons 候选均为带制图网格的
        半球图 / 赤道带 / 图册页），走程序化：暗灰褐 + 密集撞击坑凹凸。 */
     { id: 'callisto', parent: 'jupiter', radiusKm: 2410.3, massKg: 1.07594e23, orbitKm: 1882700,
@@ -311,7 +311,7 @@ SOLAR.DATA = {
       periodDays: 1.37022, rotationH: 32.8853, tidallyLocked: true, eccentricity: 0.0047,
       orbitInclinationDeg: 0.009, inclinationReference: 'parentEquator',
       ascendingNodeDeg: 0.0, argPeriapsisDeg: 119.5, meanAnomalyDeg: 57.0, color: 0xf0f0f0,
-      gravity: 0.113, texture: 'assets/textures/enceladus.jpg', tempC: -198,
+      gravity: 0.113, texture: 'assets/textures/enceladus.webp', tempC: -198,
       summaryKey: 'moons.enceladus.desc' },
     /* 土卫五 Rhea：JPL 平均要素（SAT441，历元 2000-01-01.5 TDB），
        半径/GM/密度取自 JPL 卫星物理参数表，GM=153.94175 → 质量 = GM/G。 */
@@ -319,13 +319,13 @@ SOLAR.DATA = {
       periodDays: 4.517503, rotationH: 108.42, tidallyLocked: true, eccentricity: 0.001,
       orbitInclinationDeg: 0.3, inclinationReference: 'parentEquator',
       ascendingNodeDeg: 44.3, argPeriapsisDeg: 31.5, meanAnomalyDeg: 133.7, color: 0xd8d3cf,
-      gravity: 0.264, texture: 'assets/textures/rhea.jpg', tempC: -197,
+      gravity: 0.264, texture: 'assets/textures/rhea.webp', tempC: -197,
       summaryKey: 'moons.rhea.desc' },
     { id: 'titan', parent: 'saturn', radiusKm: 2574.73, massKg: 1.3452e23, orbitKm: 1221870,
       periodDays: 15.94542, rotationH: 382.6901, tidallyLocked: true, eccentricity: 0.0288,
       orbitInclinationDeg: 0.34854, inclinationReference: 'parentEquator',
       ascendingNodeDeg: 78.6, argPeriapsisDeg: 78.3, meanAnomalyDeg: 11.7, color: 0xd8a15c,
-      gravity: 1.352, texture: 'assets/textures/titan.jpg', tempC: -179, summaryKey: 'moons.titan.desc' },
+      gravity: 1.352, texture: 'assets/textures/titan.webp', tempC: -179, summaryKey: 'moons.titan.desc' },
     /* 天卫三 Titania：JPL 平均要素（URA182），半径 788.9 / GM=226.9 → 质量 3.400e21。
        暂无可用的全球影像，走程序化冰体着色。 */
     { id: 'titania', parent: 'uranus', radiusKm: 788.9, massKg: 3.400e21, orbitKm: 436298,
@@ -337,7 +337,7 @@ SOLAR.DATA = {
       periodDays: -5.87685, rotationH: -141.0444, tidallyLocked: true, eccentricity: 0.000016,
       orbitInclinationDeg: 156.865, inclinationReference: 'parentEquator',
       ascendingNodeDeg: 178.1, argPeriapsisDeg: 0.0, meanAnomalyDeg: 63.0, color: 0xc9c1b8,
-      gravity: 0.779, texture: 'assets/textures/triton.jpg', tempC: -235,
+      gravity: 0.779, texture: 'assets/textures/triton.webp', tempC: -235,
       summaryKey: 'moons.triton.desc' },
     { id: 'charon', parent: 'pluto', radiusKm: 606.0, massKg: 1.586e21, orbitKm: 19596,
       periodDays: -6.38723, rotationH: -153.2935, tidallyLocked: true, eccentricity: 0.0002,

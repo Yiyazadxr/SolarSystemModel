@@ -31,6 +31,9 @@ node scripts/check-script-order.js   # index.html 加载顺序与依赖表一致
 node scripts/check-i18n.js           # en/zh 键对称 + SOLAR.t / data-i18n 消费键存在
 node scripts/check-data.js           # data.js 字段消费率（默认只报告，--strict 才失败）
 node scripts/check-assets.js         # 脚本 / 样式 / 贴图等资产存在性
+node scripts/check-startup.js        # 启动兜底与主应用握手
+node scripts/check-orbit-inset.js    # 演示模式轨道小图 AU 几何
+node scripts/check-teach-data.js     # 教学目录、来源与场景参数契约
 ```
 
 - 若是手动逐文件语法检查（**必须跳过 `textures.js`**——8.5 MB base64，检查无意义且极慢）：
@@ -48,6 +51,8 @@ node scripts/check-assets.js         # 脚本 / 样式 / 贴图等资产存在�
 
 - 手动运行：直接开 `index.html`，或 `python -m http.server 8080`。
 
+- **可复现性（截图 / 像素统计前必读）**：程序化星场、小行星带与柯伊伯带由固定种子驱动（`config.procedural.seed`，`scene-gfx.js` 的 LCG，与浏览器 `Math.random` 无关）。URL 带 `#seed=1234` 可确定性地换一批粒子，也可 `SOLAR.Scene.setProceduralSeed(n)` 热切换。**任何视觉结论都要写明所用种子**，否则同一截图无法复现。
+
 ## 架构地图
 
 `index.html` 的加载顺序即依赖顺序。`scene` / `ui` / `teach-globe` 三大件已按层拆分，**门面仍是 `scene.js` / `ui.js` / `teach-globe.js`，对外 API 不变**：
@@ -57,6 +62,7 @@ node scripts/check-assets.js         # 脚本 / 样式 / 贴图等资产存在�
 | `config.js` | 全局可调参数：缩放 / 时间 / 画质四档 / 相机 / 银河 / 配色 |
 | `data.js` | 天体数据：J2000 根数 + 物理参数 + 卫星（含 JPL 朝向三根数 Ω/ω/M₀）+ 彗星 + 环带 |
 | `i18n.js` | 中英双语词包（`SOLAR.I18N`），缺键回落英文 |
+| `audio.js` | 程序化音效：Web Audio 实时合成（选中 / 模式切换 / 开关），零音频文件；默认开启，开关写 localStorage |
 | `vsop87.js` | IMCCE VSOP87 主版本八行星要素级数（生成物；地球项为 EMB） |
 | `astro.js` | 开普勒方程求解、行星位置、轨道采样、儒略日换算 |
 | `textures.js` | 内嵌 base64 贴图（生成物） |
@@ -80,14 +86,16 @@ node scripts/check-assets.js         # 脚本 / 样式 / 贴图等资产存在�
 | `ui-shell.js` | HUD 外壳：面板开关、快捷键弹层、沉浸模式与提示条（`SOLAR.UIShell`） |
 | `ui.js` | `SOLAR.UI` 门面：装配上述子模块并转发；横切的 `applyLanguage` 留在此 |
 | `main.js` | 启动引导、加载进度、主循环、自适应画质 |
-| `teach-data.js` | 教学内容数据（第3章第1节《认识地球》，4 个场景 + 来源索引） |
+| `teach-data.js` | 教学内容数据（第3章 认识地球 / 太阳系 / 自转 / 公转 / 二十四节气 / 日地月，含来源索引；层级为章 → 节 → 小节 → 步骤） |
 | `teach-globe-shared.js` | 教学地球仪共享宿主：场景图节点表 + disposal 注册表 + 临时对象池（`SOLAR.TeachGlobeShared`） |
 | `teach-globe-shaders.js` | 教学装置 GLSL 源码：地球表面 / 云层 / 地影 等 shader 字符串（原内联字符串集中于此，只放源码、不含逻辑） |
 | `teach-globe-body.js` | 地球仪本体：球体、材质、自转与昼夜、朝向附件 |
-| `teach-globe-scenes.js` | 四个观察场景装置：远去的船只 / 月食 / 麦哲伦环球航线 / 从太空看见地球 |
-| `teach-globe-apply.js` | 场景套用：真实 / 示意双档参数与取景的应用 |
+| `teach-globe-scenes.js` | 观察场景装置：远去的船只 / 月食 / 日食影锥 / 麦哲伦环球航线 / 从太空看见地球 |
+| `teach-globe-apply.js` | 教学地球仪的场景参数与示意尺度取景 |
 | `teach-globe.js` | `SOLAR.TeachGlobe` 门面：装配上述子模块并转发；横切的逐帧 `update` 留在此 |
-| `teach-orrery.js` | 教学装置兼容层（旧三球仪代码，当前不启用） |
+| `teach-orrery.js` | 三球仪（日—地—月）装置：四季成因 / 二十四节气（`rig: 'orrery'`，`SOLAR.TeachOrrery`） |
+| `teach-ground.js` | 平地观日装置：地面 + 三条太阳周日视运动弧 + 立杆杆影（教材图 4.2-14 风格，`rig: 'ground'`） |
+| `teach-moonsync.js` | 简易地月模型：地球固定原地自转（不公转）+ 月球公转且自转同周期，月面 A 点始终朝地（教材图 4.3-8 风格，`rig: 'moonsync'`，`SOLAR.TeachMoonSync`） |
 | `teach-scenes.js` | 教学装置调度层 |
 | `teach.js` | 教学模式主控与自建 UI（右下角入口，与演示模式隔离） |
 
@@ -107,14 +115,28 @@ node scripts/check-assets.js         # 脚本 / 样式 / 贴图等资产存在�
 ## 关键 API（脚本化 / 自动化验证用）
 
 - `SOLAR.setManualQuality(name)` — 手动选档。**只阻止自动"回升"，不阻止自动"降级"**。
-- `SOLAR.CONFIG.autoDegrade.enabled = false` — 彻底关掉自适应画质。
+- `SOLAR.CONFIG.autoDegrade.enabled = false` — 关闭自适应画质。
 - `SOLAR.Scene.worldPositionOf(id)` — 天体世界坐标（**重要，见"已知坑"第 1 条**）。
 - `SOLAR.Scene.getTriangleCount()` / `getSunScreenFraction()` / `radiusOf(id)`
 - `SOLAR.Controls.getControls()` — 返回 OrbitControls（`.object` 是相机，`.target` 是注视点）
 - `SOLAR.Controls.goToPreset(name)` / `isFlying()` / `pick` / `hover`
 - `SOLAR.UI.select(id)` / `applyLanguage(lang)`
+- `SOLAR.Audio.setEnabled(on)` / `play(name)` — 音效开关与触发（`select` / `mode` / `toggle`）；**默认开启**，可在设置面板「音效」关掉，或显式调用 `setEnabled(false)` 静默
 - `SOLAR.time` — 时间状态（`jd` / `simDays` / `speed` / `playing` / `reverse`）。**拆分后定义在 `ui-time.js`，契约不变**，直接 `SOLAR.time.xxx` 读写即可
 - 预设视角名：`home` / `ecliptic` / `inner` / `outer` / `top` / `align`
+
+## 比例换算的显式声明
+
+幂律映射（`SOLAR.auToScene` / `SOLAR.kmToScene`，系数见 `config.profiles`）意味着**不存在单一"1 单位 = 多少 km"常数**，只能给锚点处的局部值。设置面板"显示比例"下方那行数字由 `SOLAR.Scene.getScaleFacts()` 实时算出：
+
+| 量 | 含义 |
+| --- | --- |
+| `orbitUnits` | 锚点 1 AU 映射到的场景单位 |
+| `orbitKmPerUnit` | 该锚点处 1 场景单位代表的 km 数（局部，随距离漂移） |
+| `bodyUnits` | 地球半径映射到的场景单位 |
+| `exaggeration` | 天体尺寸 ÷ 同套距离映射下的应有大小，即"天体被放大了多少倍" |
+
+逐天体的压缩倍数另见信息卡（`SOLAR.Scene.getScaleCompress(id)`，以地球为基准，1 = 未压缩）。改 `config.profiles` 的系数后，这行数字与信息卡倍数会自动跟随，**不需要手改任何文案**。
 
 ## 已知坑（实测，勿重踩）
 

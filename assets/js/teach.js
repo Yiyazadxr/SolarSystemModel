@@ -13,7 +13,7 @@
  *     若将来要取景真实太阳系，必须先减掉 SOLAR.Scene.getSolarBasis().position。
  *   - 键盘：→ / 空格 下一步，← 上一步，Esc 退出教学。
  *
- * 依赖：THREE、SOLAR.CONFIG、SOLAR.TEACH_DATA、SOLAR.TeachScenes、SOLAR.Scene、SOLAR.Controls。
+ * 依赖：THREE、SOLAR.TEACH_DATA、SOLAR.TeachScenes、SOLAR.Scene、SOLAR.Controls、SOLAR.Galaxy、SOLAR.Audio、SOLAR.time。
  * 语法：ES5 + IIFE
  */
 window.SOLAR = window.SOLAR || {};
@@ -29,8 +29,10 @@ SOLAR.Teach = (function () {
   var data = null;
 
   /* 当前位置 */
-  var chapterIdx = 0, lessonIdx = 0, stepIdx = 0;
+  var stepIdx = 0;
   var curLesson = null, curStep = null;
+  /* 节气条对地球仪直射点经度的临时覆盖：只在本步内生效，不写回课程数据本体 */
+  var globeTermLon = null;
 
   var lastFrame = 0;
   var rafId = 0;
@@ -38,16 +40,20 @@ SOLAR.Teach = (function () {
   /* 退出时要还原的状态 */
   var saved = { autoDegrade: true, quality: 'high', solarVisible: true, hudDisplay: '', playing: true, galaxyVisible: true, camPos: null, camTarget: null };
 
+  /* 二分二至速查：节气名 → 阳历日期与太阳直射纬线（教材口径），供定点小浮窗使用 */
+  var TERM_INFO = {
+    '春分': { date: '3月21日前后', sub: '太阳直射赤道（0°）' },
+    '夏至': { date: '6月22日前后', sub: '太阳直射北回归线（23.5°N）' },
+    '秋分': { date: '9月23日前后', sub: '太阳直射赤道（0°）' },
+    '冬至': { date: '12月22日前后', sub: '太阳直射南回归线（23.5°S）' }
+  };
+
   /* DOM 引用 */
   var el = {};
 
   /* ============ 数据导航 ============ */
 
   function chapters() { return (data && data.chapters) || []; }
-  function lesson() {
-    var ch = chapters()[chapterIdx];
-    return (ch && ch.lessons) ? ch.lessons[lessonIdx] : null;
-  }
   function steps() { return (curLesson && curLesson.steps) || []; }
 
   function findLesson(id) {
@@ -58,7 +64,7 @@ SOLAR.Teach = (function () {
       for (var j = 0; j < secs.length; j++) {
         var ls = secs[j].lessons || [];
         for (var k = 0; k < ls.length; k++) {
-          if (ls[k].id === id) { chapterIdx = i; lessonIdx = k; return ls[k]; }
+          if (ls[k].id === id) return ls[k];
         }
       }
     }
@@ -140,6 +146,36 @@ SOLAR.Teach = (function () {
     ask.id = 'teach-ask';
     var src = h('div', 'teach-src');
     src.id = 'teach-src';
+    /* 二分二至定位条（教材图4.2-6 的交互版）：挂在信息窗底部，
+       仅 step.termBar 的步骤显示；点击把地球移到对应轨道位置并暂停公转。 */
+    var termBar = h('div', 'teach-term-bar is-hidden');
+    termBar.id = 'teach-term-bar';
+    var TERMS4 = [['春分', '3月21日前后'], ['夏至', '6月22日前后'], ['秋分', '9月23日前后'], ['冬至', '12月22日前后']];
+    for (var ti = 0; ti < TERMS4.length; ti++) {
+      (function (nm, dateTip) {
+        var b = h('button', 'teach-term-btn', nm);
+        b.type = 'button';
+        b.title = nm + '（' + dateTip + '）';
+        b.setAttribute('data-term', nm);
+        b.addEventListener('click', function () { gotoTerm(nm); });
+        termBar.appendChild(b);
+      })(TERMS4[ti][0], TERMS4[ti][1]);
+    }
+    /* 平地装置的轨迹选择钮：春秋分共用一条轨迹，合并为一个按钮（排在夏至与冬至之间） */
+    var eqBtn = h('button', 'teach-term-btn', '春分 / 秋分');
+    eqBtn.type = 'button';
+    eqBtn.title = '春分 / 秋分（3月21日 / 9月23日前后）';
+    eqBtn.setAttribute('data-term', '春秋分');
+    eqBtn.addEventListener('click', function () { gotoTerm('春秋分'); });
+    termBar.appendChild(eqBtn);
+    /* 节气信息小浮窗：点定位按钮后浮在定位条上方，切步/复位/退出时收起。
+       纯展示——不进 pointer-events 白名单，不挡相机拖拽。 */
+    var termTip = h('div', 'teach-term-tip is-hidden');
+    termTip.id = 'teach-term-tip';
+    var termTipTitle = h('div', 'teach-term-tip-title');
+    var termTipSub = h('div', 'teach-term-tip-sub');
+    termTip.appendChild(termTipTitle);
+    termTip.appendChild(termTipSub);
     /* 「去演示模式」提示面板：太阳系章节用它把学生引去完整的演示模式
        （教学装置只有地球仪/日地月，完整太阳系在演示模式里） */
     var demoTip = h('div', 'teach-tip is-hidden');
@@ -156,6 +192,9 @@ SOLAR.Teach = (function () {
     info.appendChild(src);
     root.appendChild(demoTip);   // 独立于 info：solo 步骤时 info 隐藏、tip 单独居中显示
     root.appendChild(info);
+    /* 定位条独立于信息窗：正文长短不影响它，且信息窗收起后仍可用 */
+    root.appendChild(termBar);
+    root.appendChild(termTip);
     var infoOpen = h('button', 'teach-btn teach-icon teach-info-open is-hidden', '+');
     infoOpen.id = 'teach-info-open';
     infoOpen.type = 'button';
@@ -169,6 +208,10 @@ SOLAR.Teach = (function () {
     el.text = text;
     el.ask = ask;
     el.src = src;
+    el.termBar = termBar;
+    el.termTip = termTip;
+    el.termTipTitle = termTipTitle;
+    el.termTipSub = termTipSub;
     el.demoTip = demoTip;
     el.demoTipText = demoTipText;
 
@@ -247,7 +290,7 @@ SOLAR.Teach = (function () {
         chNode.appendChild(h('div', 'teach-chapter-title', secs[j].title));
         var ls = secs[j].lessons || [];
         for (var m = 0; m < ls.length; m++) {
-          (function (ci, li, lsn) {
+          (function (lsn) {
             var lNode = h('div', 'teach-lesson');
             var lt = h('div', 'teach-lesson-title', lsn.title);
             lt.setAttribute('data-lesson-id', lsn.id);
@@ -268,7 +311,7 @@ SOLAR.Teach = (function () {
             }
             lNode.appendChild(stNode);
             chNode.appendChild(lNode);
-          })(i, m, ls[m]);
+          })(ls[m]);
         }
       }
       el.toc.appendChild(chNode);
@@ -299,6 +342,8 @@ SOLAR.Teach = (function () {
   function applyStep(step, keepCamera) {
     if (!step) return;
     curStep = step;
+    /* 切步 / 复位 / 进入课程都清掉节气条覆盖，恢复步骤作者的 sunLonDeg */
+    globeTermLon = null;
 
     if (SOLAR.TeachScenes) SOLAR.TeachScenes.applyState(stepState());
 
@@ -337,6 +382,22 @@ SOLAR.Teach = (function () {
     el.progress.textContent = (stepIdx + 1) + ' / ' + steps().length;
     el.prev.disabled = stepIdx === 0;
     el.next.disabled = stepIdx === steps().length - 1;
+    /* 二分二至定位条：仅 step.termBar 的步骤显示；切步/复位时清掉残留高亮与浮窗。
+       termBar === 'tracks' 时只留三个「选轨迹」钮（夏至 / 春秋分 / 冬至），
+       用于平地装置选太阳周日视运动轨迹。 */
+    if (el.termBar) {
+      markTermActive(null);
+      el.termBar.classList.toggle('is-hidden', !step.termBar);
+      var tracksMode = step.termBar === 'tracks';
+      var btns = el.termBar.children;
+      for (var bi = 0; bi < btns.length; bi++) {
+        var nm = btns[bi].getAttribute('data-term');
+        var show = tracksMode ? (nm === '夏至' || nm === '春秋分' || nm === '冬至')
+                              : (nm !== '春秋分');
+        btns[bi].classList.toggle('is-hidden', !show);
+      }
+    }
+    if (el.termTip) el.termTip.classList.add('is-hidden');
     refreshTocActive();
     if (!keepCamera && !(step.keepCamera || (step.state && step.state.keepCamera))) moveCamera(step);
   }
@@ -372,11 +433,14 @@ SOLAR.Teach = (function () {
        moon   看地月系全貌：真实档需拉到 150 地球半径才看得清月相轮廓
               （6 地球半径处月亮的视直径只有 0.5°，真实但讲不清"月相成因"）
        orrery 看太阳—地球—地球卫星的相对关系
-     教学数据里的 step.camera 只作参考，不再采用：那批数值是在旧错误比例下生成的。 */
+     step.camera 仅覆盖明确指定的参数，其余取此表的默认值。 */
   var CAM_PRESET = {
     globe: { real: 3.6, iconic: 3.6, polar: 16, azim: 0 },
     moon: { real: 150, iconic: 7.0, polar: 12, azim: 0 },
-    orrery: { real: 320, iconic: 15, polar: 16, azim: 28 }
+    orrery: { real: 320, iconic: 15, polar: 16, azim: 28 },
+    /* 平地装置：太阳轨迹在南半天（z>0），相机站在北侧偏上向南看，
+       三条轨迹弧、立杆与杆影同框 */
+    ground: { real: 19, iconic: 19, polar: 18, azim: 270 }
   };
 
   /* 地球仪装置在示意档会把整个 root 放大 1.6 倍，距离需同步换算 */
@@ -393,6 +457,7 @@ SOLAR.Teach = (function () {
       var p2 = SOLAR.TeachOrrery.getWorldPosition('earth');
       if (p2) v.copy(p2);
     }
+    /* ground：观察点即装置原点，默认 (0,0,0) */
     return v;
   }
 
@@ -409,21 +474,29 @@ SOLAR.Teach = (function () {
     var polar = preset.polar * DEG;
     var azim = preset.azim * DEG;
 
-    /* 个别步骤需要特定机位（如埃拉托色尼示意要正对埃及），可显式覆盖极角/方位角/距离倍数。
-       支持写在 step.cameraOverride，也兼容 step.state.cameraOverride。 */
-    var co = step.cameraOverride || (step.state && step.state.cameraOverride) || step.camera || (step.state && step.state.camera) || null;
+    /* 个别步骤需要特定机位时，只覆盖明确给出的极角、方位角或距离。 */
+    var co = step.camera || null;
     if (co) {
       if (typeof co.polar === 'number') polar = co.polar * DEG;
       if (typeof co.azim === 'number') azim = co.azim * DEG;
       if (typeof co.dist === 'number') dist = co.dist * (rig === 'globe' ? globeScale() : 1);
     }
     var focus = rigFocus(rig);
-    if (step.state && step.state.params && step.state.params.shapeScene === 'eclipse' && SOLAR.TeachGlobe) {
+    /* 全景机位（教材图4.2-6 式）：focus:'sun' 时注视太阳（装置原点），
+       默认注视地球——orbit 全貌需要以太阳为中心取景 */
+    if (co && co.focus === 'sun' && SOLAR.TeachOrrery && typeof SOLAR.TeachOrrery.getWorldPosition === 'function') {
+      var sunF = SOLAR.TeachOrrery.getWorldPosition('sun');
+      if (sunF) focus.copy(sunF);
+    }
+    var shapeSc = (step.state && step.state.params) ? step.state.params.shapeScene : null;
+    if ((shapeSc === 'eclipse' || shapeSc === 'solareclipse') && SOLAR.TeachGlobe) {
       var eclipseFocus = SOLAR.TeachGlobe.getWorldPosition('moon');
       if (eclipseFocus) focus.copy(eclipseFocus);
       /* 相机放到月面朝地一侧的正对方向：视线沿「月球→地心」，地影
          （锚定在朝地点）就落在月盘正中扫过。此前机位固定为 polar/azim
          常量，视线与朝地方向不共线，阴影被投到月盘下缘。
+         日食（solareclipse）取同一公式：相机在遮挡月盘的地心侧，
+         视线依次穿过月盘、日盘——遮挡关系与真实日食一致。
          用世界位置实时计算，不受装置层级与倾斜影响。 */
       var earthP = SOLAR.TeachGlobe.getWorldPosition('earth');
       if (earthP) {
@@ -454,6 +527,20 @@ SOLAR.Teach = (function () {
     SOLAR.Controls.goToView(to2, focus);
   }
 
+  /* 节气定点后的近景：站到地球向阳侧（地球→太阳方向正对镜头，直射点居中），
+     抬离黄道面约 19°，晨昏线与地轴倾斜同框可见。距离单位仍是地球半径。 */
+  function flyToTermEarth() {
+    if (!(SOLAR.TeachOrrery && SOLAR.Controls && typeof SOLAR.Controls.goToView === 'function')) return;
+    var e = SOLAR.TeachOrrery.getWorldPosition('earth');
+    var s = SOLAR.TeachOrrery.getWorldPosition('sun');
+    if (!e || !s) return;
+    var dir = s.clone().sub(e).normalize();
+    var d = 10;
+    var to = e.clone().addScaledVector(dir, d);
+    to.y += d * 0.35;
+    SOLAR.Controls.goToView(to, e);
+  }
+
   /* ============ 播放 / 速度 / 比例 ============ */
 
   var playing = false;
@@ -475,11 +562,22 @@ SOLAR.Teach = (function () {
 
   function stepState() {
     var st = curStep.state || {};
+    var params = st.params || {};
+    /* 节气条只在 globe 上覆盖直射点经度：用副本叠加，不污染课程数据本体，
+       切步 / 复位后覆盖失效，自动回到步骤作者写的值 */
+    if (globeTermLon !== null && st.rig === 'globe') {
+      var merged = {}, k;
+      for (k in params) {
+        if (Object.prototype.hasOwnProperty.call(params, k)) merged[k] = params[k];
+      }
+      merged.sunLonDeg = globeTermLon;
+      params = merged;
+    }
     return {
       rig: st.rig || null,
       scale: st.scale || 'iconic',
       anim: currentAnim(),
-      params: st.params || {}
+      params: params
     };
   }
 
@@ -512,11 +610,69 @@ SOLAR.Teach = (function () {
     applyStep(curStep);
   }
 
+  /* ============ 二分二至定点 ============ */
+
+  function markTermActive(name) {
+    if (!el.termBar) return;
+    var btns = el.termBar.children;
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].classList.toggle('is-active', btns[i].getAttribute('data-term') === name);
+    }
+  }
+
+  /* 把地球移到指定二分二至位置并暂停：定点后地球不再漂移，教师可从容指认
+     直射点与晨昏线；底部播放键可从该位置继续公转。
+     同时把视角移近地球向阳侧（直射点正对镜头），并弹出节气小浮窗。
+     ground 装置：按钮只是「选轨迹」——切换太阳周日视运动弧后继续播放，
+     不暂停、不弹节气浮窗、不移相机。'春秋分' 合并为赤纬 0（取春分）。 */
+  function gotoTerm(name) {
+    if (!active) return;
+    var rig = curStep && curStep.state && curStep.state.rig;
+    if (rig === 'ground') {
+      if (!(SOLAR.TeachGround && typeof SOLAR.TeachGround.goToTerm === 'function')) return;
+      if (!SOLAR.TeachGround.goToTerm(name === '春秋分' ? '春分' : name)) return;
+      markTermActive(name);
+      if (SOLAR.Audio && typeof SOLAR.Audio.play === 'function') SOLAR.Audio.play('toggle');
+      return;
+    }
+    /* 地球仪装置：节气 = 直射点黄经（春分0/夏至90/秋分180/冬至270）。
+       只切换直射位置并弹浮窗，保持自转播放——正好观察「北极圈始终
+       在昼半球（极昼）/始终在夜半球（极夜）」。不移相机。 */
+    if (rig === 'globe') {
+      var TERM_LON = { '春分': 0, '夏至': 90, '秋分': 180, '冬至': 270 };
+      if (TERM_LON[name] === undefined) return;
+      globeTermLon = TERM_LON[name];
+      pushAnim();
+      markTermActive(name);
+      showTermTip(name);
+      if (SOLAR.Audio && typeof SOLAR.Audio.play === 'function') SOLAR.Audio.play('toggle');
+      return;
+    }
+    if (!(SOLAR.TeachOrrery && typeof SOLAR.TeachOrrery.goToTerm === 'function')) return;
+    if (!SOLAR.TeachOrrery.goToTerm(name)) return;
+    setPlaying(false);
+    pushAnim();
+    markTermActive(name);
+    showTermTip(name);
+    flyToTermEarth();
+    if (SOLAR.Audio && typeof SOLAR.Audio.play === 'function') SOLAR.Audio.play('toggle');
+  }
+
+  function showTermTip(name) {
+    if (!el.termTip) return;
+    var info = TERM_INFO[name];
+    if (!info) { el.termTip.classList.add('is-hidden'); return; }
+    el.termTipTitle.textContent = name + ' · ' + info.date;
+    el.termTipSub.textContent = info.sub;
+    el.termTip.classList.remove('is-hidden');
+  }
+
   /* ============ 模式进出 ============ */
 
   function enterMode() {
     if (active) return;
     if (!data) return;
+    if (SOLAR.Audio && typeof SOLAR.Audio.play === 'function') SOLAR.Audio.play('mode');
     if (SOLAR.TeachScenes && !SOLAR.TeachScenes.isReady()) {
       var scn = (SOLAR.Scene && SOLAR.Scene.getSystemRoot) ? SOLAR.Scene.getSystemRoot().parent : null;
       if (scn && !SOLAR.TeachScenes.init(scn)) return;
@@ -582,6 +738,7 @@ SOLAR.Teach = (function () {
     if (!active) return;
     active = false;
     stopLoop();
+    if (SOLAR.Audio && typeof SOLAR.Audio.play === 'function') SOLAR.Audio.play('mode');
 
     if (SOLAR.TeachScenes) SOLAR.TeachScenes.hide();
     if (SOLAR.Scene && SOLAR.Scene.setSolarSystemVisible) SOLAR.Scene.setSolarSystemVisible(saved.solarVisible !== false);
@@ -601,7 +758,7 @@ SOLAR.Teach = (function () {
       }
     }
 
-    ['panel', 'topbar', 'info', 'infoOpen', 'bar', 'demoTip'].forEach(function (k) {
+    ['panel', 'topbar', 'info', 'infoOpen', 'bar', 'demoTip', 'termBar', 'termTip'].forEach(function (k) {
       if (el[k]) el[k].classList.add('is-hidden');
     });
     if (el.toDemo) el.toDemo.classList.add('is-hidden');
@@ -656,6 +813,16 @@ SOLAR.Teach = (function () {
     return true;
   }
 
+  /* 沉浸模式（演示模式隐藏 HUD）只留画面，右下角「教学模式」入口也要收起。
+     #teach-root 在 #hud 之外，不吃 #hud.immersive 的 opacity，只能显式切。
+     与 showEntry 的分工：showEntry 管"进演示模式时把入口放出来"，
+     这里只管 enter 按钮自身的显隐，教学进行中一律不干预（返回钮归 exitMode）。 */
+  function setEntryVisible(on) {
+    if (!built || active) return false;
+    el.enter.classList.toggle('is-hidden', !on);
+    return true;
+  }
+
   return {
     init: function () {
       if (built) return true;
@@ -675,6 +842,7 @@ SOLAR.Teach = (function () {
     enter: enterMode,
     exit: exitMode,
     showEntry: showEntry,
+    setEntryVisible: setEntryVisible,
     isActive: function () { return active; },
     gotoLesson: gotoLesson,
     gotoStep: function (id) {

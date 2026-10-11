@@ -320,6 +320,137 @@ SOLAR.GlobeScenes = (function () {
     G.nodes.eclipseGroup.userData.shadowMaterial = G.nodes.eclipseShadowMaterial;
     G.nodes.eclipseGroup.visible = false;
   }
+
+  /* ---- 地面观察日食：真实月面球体从日球前掠过（教材图 4.3-13 的过程） ----
+     与月食（buildEclipse）同一套世界锚定哲学：日球固定在「地心→月盘」延长线上，
+     遮挡月球摆在「观察月食」月盘的同一位置，沿切向扫动（扫动幅度按两天体
+     角半径之和取值，保证完全进入与完全退出）。相机在地球一侧沿轴线看出去，
+     视线依次穿过月球、太阳——遮挡关系与真实日食一致。
+     立体质感：月球用真实月面贴图的球体（日食时月球以暗面朝地球，天然黑剪影）；
+     太阳为发光球体 + 三球仪同款贴边日冕光晕（HALO shader）——全食阶段黑月
+     剪影周围露出一圈光，即真实日全食照片的样子。 */
+  function buildSolarEclipse() {
+    G.nodes.solarEclipseGroup = new THREE.Group();
+    G.nodes.extraGroup.add(G.nodes.solarEclipseGroup);
+
+    var sunR = EARTH_R;                     /* 日面半径（示意尺度） */
+    var axisN = new THREE.Vector3(0, EARTH_R * 0.55, -EARTH_R * 0.35).normalize();
+    var sunPos = axisN.clone().multiplyScalar(EARTH_R * 2.2);
+
+    /* 日球：与三球仪（TeachOrrery.buildSun）完全同款的材质——bodyMat
+       （uNight=0 全亮，太阳自发光不背光）+ 真实太阳贴图（anisotropy 4）。 */
+    var sunGeo = SOLAR.TeachGlobeShared.track(new THREE.SphereGeometry(sunR, 40, 28));
+    var sunMat = SOLAR.TeachGlobeShared.track(new THREE.ShaderMaterial({
+      uniforms: {
+        uMap: { value: null },
+        uHasMap: { value: 0 },
+        uColor: { value: new THREE.Color(0xffd27a) },
+        uSunDir: { value: new THREE.Vector3(0, 1, 0) },
+        uNight: { value: 0 }
+      },
+      vertexShader: [
+        'varying vec3 vN; varying vec2 vUv;',
+        'void main(){',
+        '  vUv = uv;',
+        '  vN = normalize(mat3(modelMatrix) * normal);',
+        '  gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);',
+        '}'
+      ].join('\n'),
+      fragmentShader: [
+        'uniform sampler2D uMap;',
+        'uniform float uHasMap;',
+        'uniform vec3 uColor;',
+        'uniform vec3 uSunDir;',
+        'uniform float uNight;',
+        'varying vec3 vN; varying vec2 vUv;',
+        'void main(){',
+        '  vec3 base = (uHasMap > 0.5) ? texture2D(uMap, vUv).rgb : uColor;',
+        '  float d = dot(normalize(vN), normalize(uSunDir));',
+        '  float lit = smoothstep(-0.05, 0.12, d);',
+        '  float shade = mix(1.0 - uNight, 1.0, lit);',
+        '  gl_FragColor = vec4(base * shade, 1.0);',
+        '}'
+      ].join('\n')
+    }));
+    var sunDisc = new THREE.Mesh(sunGeo, sunMat);
+    sunDisc.position.copy(sunPos);
+    G.nodes.solarEclipseGroup.add(sunDisc);
+    /* GlobeBody.loadRealTexture（回调签名）：anisotropy 4，贴图缺失回退纯色 */
+    SOLAR.GlobeBody.loadRealTexture('sun', 'sun.png', function (t) {
+      if (t && sunMat.uniforms) {
+        sunMat.uniforms.uMap.value = t;
+        sunMat.uniforms.uHasMap.value = 1;
+      }
+    });
+
+    /* 日冕光晕：三球仪同款贴边光晕（HALO），BackSide 壳体。
+       光晕中心用 uCenter（日球世界坐标，静态初始化一次）。 */
+    /* 光晕与三球仪同参数（uColor 0xffb347、uPower 3.4、半径 1.2×日面），
+       唯一差异是 HALO_FRAG 的中心改用 uCenter（日球不在场景原点）。 */
+    var haloGeo = SOLAR.TeachGlobeShared.track(new THREE.SphereGeometry(sunR * 1.2, 32, 24));
+    var haloMat = SOLAR.TeachGlobeShared.track(new THREE.ShaderMaterial({
+      uniforms: {
+        uColor: { value: new THREE.Color(0xffb347) },
+        uPower: { value: 3.4 },
+        uCenter: { value: sunPos.clone() },
+        uStrength: { value: 0.3 },
+        uWhite: { value: 0 }
+      },
+      vertexShader: [
+        'varying vec3 vN;',
+        'void main(){',
+        '  vN = normalize(mat3(modelMatrix) * normal);',
+        '  gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);',
+        '}'
+      ].join('\n'),
+      fragmentShader: [
+        'uniform vec3 uColor; uniform float uPower; uniform vec3 uCenter;',
+        'uniform float uStrength; uniform float uWhite;',
+        'varying vec3 vN;',
+        'void main(){',
+        '  vec3 v = normalize(cameraPosition - uCenter);',
+        '  float f = pow(1.0 - abs(dot(normalize(vN), v)), uPower);',
+        '  vec3 col = mix(uColor, vec3(1.0, 0.96, 0.90), uWhite);',
+        '  gl_FragColor = vec4(col * f, f * uStrength);',
+        '}'
+      ].join('\n'),
+      side: THREE.BackSide, transparent: true,
+      blending: THREE.AdditiveBlending, depthWrite: false, fog: false
+    }));
+    var halo = new THREE.Mesh(haloGeo, haloMat);
+    halo.position.copy(sunPos);
+    G.nodes.solarEclipseGroup.add(halo);
+
+    /* 月影着色壳：与月食的地影壳同一套 ECLIPSE shader，贴在日面上。
+       uMoonR 取日面半径的 0.55 倍——月影是一个明确的圆形暗斑（直径约为
+       日面的一半，与月食画面里地影相对月盘的比例一致），半影过渡带由
+       shader 内置的 smoothstep 给出；uAxis / uTangent 固定为世界轴
+       （地心→日心 / UP×轴），与月食完全同款——阴影只落在朝地半球上，
+       半球边界的柔和渐隐也与月食观感一致。扫动由 teach-globe.js 驱动。 */
+    var shadowGeo = SOLAR.TeachGlobeShared.track(new THREE.SphereGeometry(sunR * 1.005, 48, 32));
+    G.nodes.solarEclipseShadowMaterial = SOLAR.TeachGlobeShared.track(new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      uniforms: {
+        uCenter: { value: 1.5 * sunR },
+        uAxis: { value: axisN.clone() },
+        uTangent: { value: new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), axisN).normalize() },
+        uMoonR: { value: sunR * 0.55 }
+      },
+      vertexShader: SH.ECLIPSE_VERT,
+      fragmentShader: SH.ECLIPSE_FRAG,
+      side: THREE.FrontSide
+    }));
+    var shadowShell = new THREE.Mesh(shadowGeo, G.nodes.solarEclipseShadowMaterial);
+    shadowShell.renderOrder = 5;
+    sunDisc.add(shadowShell);                     /* 挂日球下：局部原点 = 日心 */
+
+    G.nodes.solarEclipseGroup.userData.sunDisc = sunDisc;
+    G.nodes.solarEclipseGroup.userData.shadowMaterial = G.nodes.solarEclipseShadowMaterial;
+    G.nodes.solarEclipseGroup.userData.halo = halo;
+    G.nodes.solarEclipseGroup.userData.haloMat = haloMat;
+    G.nodes.solarEclipseGroup.visible = false;
+  }
   /* ---- 人造地球卫星 ---- */
   function buildSatellites() {
     G.nodes.satGroup = new THREE.Group();
@@ -552,6 +683,7 @@ SOLAR.GlobeScenes = (function () {
     bentSailGeo: bentSailGeo,
     buildHorizon: buildHorizon,
     buildEclipse: buildEclipse,
+    buildSolarEclipse: buildSolarEclipse,
     buildSatellites: buildSatellites,
     updateSatellites: updateSatellites,
     buildSizeRings: buildSizeRings,

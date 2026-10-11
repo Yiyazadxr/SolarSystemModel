@@ -115,6 +115,7 @@
           <h3 id="sec-title-orbit" data-i18n="ui.orbitTitle">ORBIT</h3>
         </button>
         <div class="sec-body" id="sec-body-orbit">
+          <canvas id="info-orbit-chart" class="orbit-chart" height="180" role="img"></canvas>
           <table id="info-orbit" class="data-table"></table>
         </div>
       </section>
@@ -254,6 +255,10 @@
           <button class="seg-btn active" id="seg-lang-zh" type="button" data-value="zh">中文</button>
         </div>
       </div>
+      <div class="set-row" id="row-sound">
+        <span class="set-label" id="lbl-sound" data-i18n="ui.sound">SOUND</span>
+        <button class="switch" id="sw-sound" type="button" role="switch" aria-checked="true" data-i18n-title="ui.sound"><i id="sw-knob-sound"></i></button>
+      </div>
       <div class="set-row" id="row-quality">
         <span class="set-label" id="lbl-quality" data-i18n="ui.quality">QUALITY</span>
         <div class="seg" id="seg-quality">
@@ -271,6 +276,7 @@
         </div>
       </div>
       <p class="set-note dim" id="scale-note" data-i18n="ui.scaleNote">Schematic enlarges bodies for visibility; orbits and physics are unchanged.</p>
+      <p class="set-note dim num" id="scale-facts"></p>
     </div>
 
     <p class="settings-note" id="settings-note" hidden data-i18n="ui.needApi"></p>
@@ -379,6 +385,66 @@
 </div>
 
 <!-- ============ 依赖（全部本地化） ============ -->
+<script>
+  (function () {
+    'use strict';
+    var failed = false;
+    var ready = false;
+    var watchdog = null;
+
+    function armWatchdog() {
+      if (watchdog) window.clearTimeout(watchdog);
+      watchdog = null;
+      if (!failed && !ready && !document.hidden) watchdog = window.setTimeout(checkStartup, 15000);
+    }
+
+    function checkStartup() {
+      if (failed || ready) return;
+      if (document.hidden) { armWatchdog(); return; }
+      fail('启动超时，请刷新页面 / Startup timed out; please refresh the page');
+    }
+
+    function fail(message) {
+      if (failed) return;
+      failed = true;
+      window.clearTimeout(watchdog);
+      var screen = document.getElementById('loading-screen');
+      var tip = screen ? screen.querySelector('.loader-tip') : null;
+      var pct = document.getElementById('loader-pct');
+      var mode = document.getElementById('mode-layer');
+      if (mode) { mode.hidden = true; mode.style.display = 'none'; }
+      if (screen) {
+        screen.classList.remove('hidden');
+        screen.style.display = 'flex';
+      }
+      if (tip) tip.textContent = message || '启动失败，请刷新页面 / Startup failed; please refresh the page';
+      if (pct) pct.textContent = 'ERROR';
+      if (window.console && console.error) console.error('[SOLAR.boot] ' + message);
+    }
+
+    window.SOLAR_BOOT = {
+      fail: fail,
+      ready: function () {
+        if (failed) return;
+        ready = true;
+        window.clearTimeout(watchdog);
+      },
+      isFailed: function () { return failed; }
+    };
+
+    window.onerror = function (message) {
+      if (!ready) fail('脚本运行失败，请刷新页面 / Script failed; please refresh the page');
+      return false;
+    };
+    window.addEventListener('error', function (event) {
+      if (!ready && event.target && event.target.tagName === 'SCRIPT') {
+        fail('脚本加载失败，请刷新页面 / Script could not be loaded; please refresh the page');
+      }
+    }, true);
+    document.addEventListener('visibilitychange', armWatchdog);
+    armWatchdog();
+  })();
+</script>
 <script src="assets/vendor/three.min.js"></script>
 <script src="assets/vendor/OrbitControls.js"></script>
 <script src="assets/vendor/CopyShader.js"></script>
@@ -394,6 +460,7 @@
 <script src="assets/js/config.js"></script>
 <script src="assets/js/data.js"></script>
 <script src="assets/js/i18n.js"></script>
+<script src="assets/js/audio.js"></script>
 <script src="assets/js/vsop87.js"></script>
 <script src="assets/js/astro.js"></script>
 <script src="assets/js/textures.js"></script>
@@ -429,6 +496,8 @@
 <script src="assets/js/teach-globe-apply.js"></script>
 <script src="assets/js/teach-globe.js"></script>
 <script src="assets/js/teach-orrery.js"></script>
+<script src="assets/js/teach-ground.js"></script>
+<script src="assets/js/teach-moonsync.js"></script>
 <script src="assets/js/teach-scenes.js"></script>
 <script src="assets/js/teach.js"></script>
 <script>

@@ -1,10 +1,12 @@
 /**
  * 教学装置调度层：把 teach-data.js 的 step.state 分发给具体装置。
- * 装置：SOLAR.TeachGlobe（地球仪）、SOLAR.TeachOrrery（三球仪，'moon' 复用之）。
- * rig：'globe' | 'orrery' | 'moon' | null（全部隐藏）。
+ * 装置：SOLAR.TeachGlobe（地球仪）、SOLAR.TeachOrrery（三球仪，'moon' 复用之）、
+ * SOLAR.TeachGround（平地观日，太阳高度与杆影）、
+ * SOLAR.TeachMoonSync（简易地月模型，地球自转 + 月球同步自转公转）。
+ * rig：'globe' | 'orrery' | 'moon' | 'ground' | 'moonsync' | null（全部隐藏）。
  * scale：'real' | 'iconic'，只改显示尺寸与距离，不改变任何物理规律
- * （方向、周期、相位成因、直射点纬度算法均一致）。
- * 依赖：THREE、SOLAR.TeachGlobe、SOLAR.TeachOrrery。
+ * （方向、周期、相位成因、直射点纬度算法均一致）；ground 装置为固定示意尺度，忽略 scale。
+ * 依赖：THREE、SOLAR.TeachGlobe、SOLAR.TeachOrrery、SOLAR.TeachGround、SOLAR.TeachMoonSync。
  * 语法：ES5 + IIFE
  */
 window.SOLAR = window.SOLAR || {};
@@ -21,7 +23,9 @@ SOLAR.TeachScenes = (function () {
   function init(scn) {
     var a = (SOLAR.TeachGlobe && typeof SOLAR.TeachGlobe.init === 'function') ? SOLAR.TeachGlobe.init(scn) : false;
     var b = (SOLAR.TeachOrrery && typeof SOLAR.TeachOrrery.init === 'function') ? SOLAR.TeachOrrery.init(scn) : false;
-    ready = !!(a || b);     // 缺一个装置也要能用，避免整套教学模式打不开
+    var g = (SOLAR.TeachGround && typeof SOLAR.TeachGround.init === 'function') ? SOLAR.TeachGround.init(scn) : false;
+    var m = (SOLAR.TeachMoonSync && typeof SOLAR.TeachMoonSync.init === 'function') ? SOLAR.TeachMoonSync.init(scn) : false;
+    ready = !!(a || b || g || m);     // 缺一个装置也要能用，避免整套教学模式打不开
     if (ready) hide();
     return ready;
   }
@@ -50,6 +54,16 @@ SOLAR.TeachScenes = (function () {
       SOLAR.TeachOrrery.setAnim(anim);
       SOLAR.TeachOrrery.apply(params, scale);
     }
+    if (SOLAR.TeachGround) {
+      SOLAR.TeachGround.setVisible(rig === 'ground');
+      SOLAR.TeachGround.setAnim(anim);
+      SOLAR.TeachGround.apply(params);
+    }
+    if (SOLAR.TeachMoonSync) {
+      SOLAR.TeachMoonSync.setVisible(rig === 'moonsync');
+      SOLAR.TeachMoonSync.setAnim(anim);
+      SOLAR.TeachMoonSync.apply(params, scale);
+    }
     curRig = rig;
   }
 
@@ -57,17 +71,23 @@ SOLAR.TeachScenes = (function () {
     if (!ready) return;
     if (SOLAR.TeachGlobe) SOLAR.TeachGlobe.update(dtSec);
     if (SOLAR.TeachOrrery) SOLAR.TeachOrrery.update(dtSec);
+    if (SOLAR.TeachGround) SOLAR.TeachGround.update(dtSec);
+    if (SOLAR.TeachMoonSync) SOLAR.TeachMoonSync.update(dtSec);
   }
 
   function hide() {
     if (SOLAR.TeachGlobe) SOLAR.TeachGlobe.setVisible(false);
     if (SOLAR.TeachOrrery) SOLAR.TeachOrrery.setVisible(false);
+    if (SOLAR.TeachGround) SOLAR.TeachGround.setVisible(false);
+    if (SOLAR.TeachMoonSync) SOLAR.TeachMoonSync.setVisible(false);
     curRig = null;
   }
 
   function resetMotion() {
     if (curRig === 'globe' && SOLAR.TeachGlobe && SOLAR.TeachGlobe.resetMotion) SOLAR.TeachGlobe.resetMotion();
     if ((curRig === 'moon' || curRig === 'orrery') && SOLAR.TeachOrrery && SOLAR.TeachOrrery.resetMotion) SOLAR.TeachOrrery.resetMotion();
+    if (curRig === 'ground' && SOLAR.TeachGround && SOLAR.TeachGround.resetMotion) SOLAR.TeachGround.resetMotion();
+    if (curRig === 'moonsync' && SOLAR.TeachMoonSync && SOLAR.TeachMoonSync.resetMotion) SOLAR.TeachMoonSync.resetMotion();
   }
 
   /* 取景用：返回当前装置里某个天体的世界坐标 */
@@ -75,6 +95,8 @@ SOLAR.TeachScenes = (function () {
     if (!ready) return null;
     if (curRig === 'globe' && SOLAR.TeachGlobe) return SOLAR.TeachGlobe.getWorldPosition(bodyId);
     if ((curRig === 'orrery' || curRig === 'moon') && SOLAR.TeachOrrery) return SOLAR.TeachOrrery.getWorldPosition(bodyId);
+    if (curRig === 'moonsync' && SOLAR.TeachMoonSync) return SOLAR.TeachMoonSync.getWorldPosition(bodyId);
+    if (curRig === 'ground' && SOLAR.TeachGround) return SOLAR.TeachGround.getWorldPosition(bodyId);
     return null;
   }
 
@@ -100,6 +122,8 @@ SOLAR.TeachScenes = (function () {
     dispose: function () {
       if (SOLAR.TeachGlobe) SOLAR.TeachGlobe.dispose();
       if (SOLAR.TeachOrrery) SOLAR.TeachOrrery.dispose();
+      if (SOLAR.TeachGround) SOLAR.TeachGround.dispose();
+      if (SOLAR.TeachMoonSync) SOLAR.TeachMoonSync.dispose();
       ready = false;
       curRig = null;
     }

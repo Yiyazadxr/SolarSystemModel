@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* check-offline.js — 零依赖：禁止联网 API
+/* check-offline.js — 零依赖：禁止联网 API 与远端运行时资源
  * 禁用：fetch / XMLHttpRequest / WebSocket / EventSource / import() / document.write
  * 允许：localStorage / sessionStorage / history（离线可用）
  */
@@ -11,6 +11,7 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const JS_DIR = path.join(ROOT, 'assets', 'js');
 const HTML = path.join(ROOT, 'index.html');
+const CSS_DIR = path.join(ROOT, 'assets', 'css');
 const EXCLUDE = new Set(['textures.js']);
 
 function strip(src) {
@@ -108,9 +109,31 @@ function main() {
     }
   }
 
+  /* JS 资源 URL 可以由 Image.src 等 API 消费，单查联网 API 会漏掉它们。 */
+  for (const f of files) {
+    const lines = fs.readFileSync(f, 'utf8').split('\n');
+    for (let ln = 0; ln < lines.length; ln++) {
+      if (/['"]https?:\/\//i.test(lines[ln])) {
+        console.log('ERR ' + path.relative(ROOT, f).replace(/\\/g, '/') + ':' + (ln + 1) + ' [remoteURL]');
+        total++;
+      }
+    }
+  }
+
+  for (const name of fs.readdirSync(CSS_DIR).filter(f => f.endsWith('.css'))) {
+    const lines = fs.readFileSync(path.join(CSS_DIR, name), 'utf8').split('\n');
+    for (let ln = 0; ln < lines.length; ln++) {
+      if (/(?:url\(\s*['"]?|@import\s+['"]?)https?:\/\//i.test(lines[ln])) {
+        console.log('ERR assets/css/' + name + ':' + (ln + 1) + ' [remoteURL]');
+        total++;
+      }
+    }
+  }
+
   /* index.html 只含一段内联启动代码，但仍扫一遍，防止将来把联网调用写进内联脚本。 */
   if (fs.existsSync(HTML)) {
-    const lines = strip(fs.readFileSync(HTML, 'utf8')).split('\n');
+    const raw = fs.readFileSync(HTML, 'utf8');
+    const lines = strip(raw).split('\n');
     for (let ln = 0; ln < lines.length; ln++) {
       for (const r of RULES) {
         if (r.re.test(lines[ln])) {
@@ -118,6 +141,12 @@ function main() {
           total++;
         }
       }
+    }
+    const remoteResource = /<(?:script|link|img|source|video|audio)\b[^>]*\b(?:src|href)\s*=\s*['"]https?:\/\//gi;
+    let match;
+    while ((match = remoteResource.exec(raw)) !== null) {
+      console.log('ERR index.html:' + raw.slice(0, match.index).split('\n').length + ' [remoteURL]');
+      total++;
     }
     if (total === 0) console.log('OK  index.html');
   }

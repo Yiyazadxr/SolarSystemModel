@@ -676,7 +676,7 @@ SOLAR.Galaxy = (function () {
        视觉干扰远大于信息价值。银河系全景与该标注的取舍由这里控制，需要时改回 true。 */
     velocityVectors.visible = false;
     velocityVectors.frustumCulled = false;
-    /* 保留对象以兼容旧调试引用，但不挂入场景，彻底移除远景速度箭头和本动线。 */
+    /* 保留对象以兼容调试引用，挂在 group 下但不显示。 */
     updateSolarIndicator();
   }
 
@@ -786,8 +786,8 @@ SOLAR.Galaxy = (function () {
    * 太阳位置标记（薄荷绿加色 sprite，depthTest:false）与速度矢量都是
    * 「从远处看银河」的示意图：相机贴近太阳时标记正好落在视点位置，
    * 会以加色混合罩住整个视野，把太阳染成蓝绿色，故在此距离内淡出。
-   * 太阳公转拖尾则相反——任何机位始终显示（旧实现按相机径向位置淡出，
-   * 太阳系近景/俯视机位会整条消失），只随相机拉远做封顶的轻微提亮。
+   * 太阳公转拖尾则相反——任何机位始终显示：若按相机径向位置淡出，
+   * 太阳系近景与俯视机位会把整条拖尾淡没。这里只随相机拉远做封顶的轻微提亮。
    */
   function refreshAnnotationFade() {
     if (!frame) return;

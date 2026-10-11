@@ -52,8 +52,10 @@ SOLAR.TeachGlobeShared = (function () {
       ERATO_UP: null, eratoQuat: null, eratoMat: null,
       eratoMid: null, eratoDir: null,
       eratoX: null, eratoY: null, eratoZ: null,
-      voyFwd: null, voyUp: null, voyRight: null, voyZ: null, voyMat: null, voyPan: null,
-      eclipseTmpA: null, eclipseTmpT: null, eclipseTmpE: null
+      voyFwd: null, voyUp: null, voyRight: null, voyZ: null, voyMat: null,
+      voyPan: null,
+      eclipseTmpA: null, eclipseTmpT: null, eclipseTmpE: null,
+      solarTmpA: null, solarTmpT: null, solarTmpE: null
     },
     built: false,
     cur: {},                // 上一次生效的 params（缺省字段沿用）

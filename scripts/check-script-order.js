@@ -3,7 +3,8 @@
  * 规则：
  *  1. vendor 脚本必须在前（three.min.js 是根依赖）
  *  2. 自定义脚本顺序需与 EXPECTED_ORDER 一致
- *  3. 依赖方向：config → data → i18n → vsop87 → astro → textures → effects
+ *  3. 依赖方向：config → data → i18n → audio（叶子，无依赖）
+ *     → vsop87 → astro → textures → effects
  *     → scene-* → galaxy → controls → ui-* → main
  *     → teach-data → teach-globe-* → teach-orrery → teach-scenes → teach
  *     同一层内（scene / ui / teach-globe）先共享与叶子模块，门面（无前缀的那个）最后。
@@ -16,11 +17,17 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const HTML = path.join(ROOT, 'index.html');
 const JS_DIR = path.join(ROOT, 'assets', 'js');
+const EXPECTED_VENDOR = [
+  'three.min.js', 'OrbitControls.js', 'CopyShader.js', 'LuminosityHighPassShader.js',
+  'EffectComposer.js', 'RenderPass.js', 'ShaderPass.js', 'MaskPass.js',
+  'UnrealBloomPass.js', 'FXAAShader.js'
+];
 
 const EXPECTED_ORDER = [
   'config.js',
   'data.js',
   'i18n.js',
+  'audio.js',
   'vsop87.js',
   'astro.js',
   'textures.js',
@@ -52,6 +59,8 @@ const EXPECTED_ORDER = [
   'teach-globe-apply.js',
   'teach-globe.js',
   'teach-orrery.js',
+  'teach-ground.js',
+  'teach-moonsync.js',
   'teach-scenes.js',
   'teach.js',
 ];
@@ -82,13 +91,24 @@ function main() {
   }
 
   const issues = [];
-  const expected = EXPECTED_ORDER.slice(0, appSrcs.length);
-  if (expected.length !== appSrcs.length) {
-    console.log('\nWARN: 期望 ' + EXPECTED_ORDER.length + ' 个 app 脚本，实际 ' + appSrcs.length + ' 个。');
+  const expectedSrcs = EXPECTED_VENDOR.map(f => 'assets/vendor/' + f)
+    .concat(EXPECTED_ORDER.map(f => 'assets/js/' + f));
+  if (srcs.length !== expectedSrcs.length) issues.push('  count: 期望 ' + expectedSrcs.length + ' 个脚本，实际 ' + srcs.length + ' 个');
+  for (let i = 0; i < Math.max(srcs.length, expectedSrcs.length); i++) {
+    if (srcs[i] !== expectedSrcs[i]) {
+      issues.push('  full slot ' + (i + 1) + ': 期望 ' + (expectedSrcs[i] || '(无)') + '，实际 ' + (srcs[i] || '(无)'));
+    }
   }
-  for (let i = 0; i < expected.length; i++) {
-    if (expected[i] !== appSrcs[i]) {
-      issues.push('  slot ' + (i + 1) + ': 期望 ' + expected[i] + '，实际 ' + appSrcs[i]);
+  /* 数量必须一致：少一个槽位会让下面的逐项对比退化成"前缀匹配"，
+     多一个则多出的脚本完全不参与对比，两种情况都会静默放过错序
+     （html 少引一个脚本时连 WARN 都不打，直接 OK 通过）。 */
+  if (appSrcs.length !== EXPECTED_ORDER.length) {
+    issues.push('  count: 期望 ' + EXPECTED_ORDER.length + ' 个 app 脚本，实际 ' + appSrcs.length + ' 个');
+  }
+  const slots = Math.max(appSrcs.length, EXPECTED_ORDER.length);
+  for (let i = 0; i < slots; i++) {
+    if (EXPECTED_ORDER[i] !== appSrcs[i]) {
+      issues.push('  slot ' + (i + 1) + ': 期望 ' + (EXPECTED_ORDER[i] || '(无)') + '，实际 ' + (appSrcs[i] || '(无)'));
     }
   }
   if (issues.length) {

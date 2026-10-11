@@ -164,7 +164,7 @@ SOLAR.UIUtil = (function () {
       if (D.moons[i].id === id) return { id: id, data: D.moons[i], type: 'moon', section: 'moons' };
     }
     for (i = 0; i < D.comets.length; i++) {
-      if (D.comets[i].id === id) return { id: id, data: D.comets[i], type: 'comet', section: 'comet' };
+      if (D.comets[i].id === id) return { id: id, data: D.comets[i], type: 'comet', section: 'comets' };
     }
     return null;
   }

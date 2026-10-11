@@ -265,6 +265,16 @@ SOLAR.Astro = (function () {
     return pts;
   }
 
+  /* 信息卡俯视图用真实 AU 坐标；场景轨道的幂律距离映射会改变近远日点比例。 */
+  function orbitPathAu(orb, jd, segments) {
+    jd = isFinite(jd) ? jd : SOLAR.CONFIG.time.j2000;
+    var el = planetElements(orb, jd);
+    var n = Math.max(32, Math.floor(numberOr(segments, 128)));
+    var pts = [];
+    for (var k = 0; k <= n; k++) pts.push(positionFromE(el, k / n * TWO_PI));
+    return pts;
+  }
+
   /* 真近点角（用于自转/相位显示）。 */
   function trueAnomaly(orb, jd) {
     jd = isFinite(jd) ? jd : SOLAR.CONFIG.time.j2000;
@@ -284,6 +294,7 @@ SOLAR.Astro = (function () {
     orbitSource: orbitSource,
     planetElements: planetElements,
     orbitPath: orbitPath,
+    orbitPathAu: orbitPathAu,
     toScene: toScene,
     trueAnomaly: trueAnomaly,
     norm360: norm360

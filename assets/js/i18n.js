@@ -1,6 +1,6 @@
 /**
  * 中英双语词包（默认英文）
- * 结构：ui（界面文案）/ bodies（天体名称与简介）/ atm（大气成分）/ moons / comet / views / fields
+ * 结构：ui（界面文案）/ bodies（天体名称与简介）/ atm（大气成分）/ moons / comets / views / fields
  */
 window.SOLAR = window.SOLAR || {};
 
@@ -73,6 +73,8 @@ SOLAR.I18N = {
       scaleTitle: 'SCALE', scaleCompact: 'COMPACT', scaleFaithful: 'FAITHFUL',
       scaleReal: 'REAL', scaleIconic: 'SCHEMATIC',
       scaleNote: 'Distances and sizes are compressed for visibility (true scale would make planets invisible). The faithful tier brings outer-planet distances and relative body sizes closer to reality; per-body info cards list the actual factor.',
+      factAu: '1 AU', factBody: 'Earth radius', factExagg: 'planets', factLocal: '1 scene unit at 1 AU ≈',
+      sceneUnit: 'scene units',
       modeTitle: 'CHOOSE MODE', modeDemo: 'DEMO MODE', modeDemoHint: 'Explore the solar system freely',
       modeTeach: 'TEACHING MODE', modeTeachHint: 'Guided lessons, chapter by chapter',
       groupScene: 'SCENE',
@@ -92,6 +94,7 @@ SOLAR.I18N = {
       unitKm: 'KM',
       langTitle: 'LANGUAGE',
       needApi: 'Greyed switches still need a scene API',
+      sound: 'SOUND',
 
       /* ---------- 搜索 ---------- */
       searchPlaceholder: 'SEARCH BODY…',
@@ -113,6 +116,8 @@ SOLAR.I18N = {
 
       /* ---------- 信息卡分区 ---------- */
       orbitTitle: 'ORBIT',
+      orbitChart: 'Top-down heliocentric orbit with perihelion, current position and aphelion',
+      orbitPeri: 'PERI', orbitNow: 'NOW', orbitApo: 'APO',
       physicalTitle: 'PHYSICAL',
       atmosphereTitle: 'ATMOSPHERE',
       moonsTitle: 'MOONS',
@@ -286,7 +291,7 @@ SOLAR.I18N = {
       titania: { name: 'Titania', desc: 'Uranus\'s largest moon, cut by enormous canyons that suggest its crust once stretched and split.' }
     },
 
-    comet: {
+    comets: {
       halley: { name: 'Halley\'s Comet', desc: 'A 75-year comet on a highly eccentric retrograde orbit, visible from Earth since 240 BC.' },
       encke: { name: 'Comet Encke (2P)', desc: 'The shortest-period bright comet known, returning every 3.3 years; it is the likely parent of the Taurid meteor stream.' },
       churyumov: { name: 'Comet 67P/Churyumov–Gerasimenko', desc: 'A Jupiter-family comet visited by ESA\'s Rosetta, which mapped its rubber-duck-shaped nucleus and landed the Philae probe on it.' }
@@ -361,6 +366,8 @@ SOLAR.I18N = {
       scaleTitle: '显示比例', scaleCompact: '压缩示意', scaleFaithful: '弱压缩示意',
       scaleReal: '真实比例', scaleIconic: '示意比例',
       scaleNote: '距离与天体尺寸均为示意压缩——真实比例下行星会小到不可见（需对数深度缓冲才能实现）。弱压缩档让外行星距离与天体之间的相对大小更接近真实，同时放大天体便于观察；每个天体被压缩的倍数见其信息卡。',
+      factAu: '1 AU', factBody: '地球半径', factExagg: '行星放大', factLocal: '1 AU 处 1 场景单位 ≈',
+      sceneUnit: '场景单位',
       modeTitle: '选择模式', modeDemo: '进入演示模式', modeDemoHint: '自由探索太阳系全景',
       modeTeach: '进入教学模式', modeTeachHint: '按教材章节逐步演示',
       groupScene: '场景',
@@ -380,6 +387,7 @@ SOLAR.I18N = {
       unitKm: '千米',
       langTitle: '语言',
       needApi: '置灰的开关尚需场景接口支持',
+      sound: '音效',
 
       /* ---------- 搜索 ---------- */
       searchPlaceholder: '搜索天体…',
@@ -401,6 +409,8 @@ SOLAR.I18N = {
 
       /* ---------- 信息卡分区 ---------- */
       orbitTitle: '轨道参数',
+      orbitChart: '日心轨道俯视图，标有近日点、当前位置和远日点',
+      orbitPeri: '近日', orbitNow: '当前', orbitApo: '远日',
       physicalTitle: '物理特性',
       atmosphereTitle: '大气',
       moonsTitle: '卫星',
@@ -574,7 +584,7 @@ SOLAR.I18N = {
       titania: { name: '天卫三', desc: '天王星最大的卫星，表面被巨大峡谷切割，说明其冰壳曾经被拉伸并裂开。' }
     },
 
-    comet: {
+    comets: {
       halley: { name: '哈雷彗星', desc: '周期约 75 年的彗星，轨道极度偏心且逆行，自公元前 240 年起就有观测记录。' },
       encke: { name: '恩克彗星 (2P)', desc: '已知周期最短的亮彗星，每 3.3 年回归一次；很可能是金牛座流星雨的母体。' },
       churyumov: { name: '丘留莫夫–格拉西缅科彗星 (67P)', desc: '木星族彗星，欧空局“罗塞塔”号曾环绕探测并绘制其“橡皮鸭”状彗核，还释放了“菲莱”着陆器。' }

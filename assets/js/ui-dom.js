@@ -43,6 +43,7 @@ SOLAR.UIDom = (function () {
     els.secData = SOLAR.UIUtil.byId('sec-data');
     els.secMoonsTitle = SOLAR.UIUtil.byId('sec-title-moons');
     els.infoOrbit = SOLAR.UIUtil.byId('info-orbit');
+    els.infoOrbitChart = SOLAR.UIUtil.byId('info-orbit-chart');
     els.infoPhysical = SOLAR.UIUtil.byId('info-physical');
     els.infoAtmosphere = SOLAR.UIUtil.byId('info-atmosphere');
     els.infoMoons = SOLAR.UIUtil.byId('info-moons');
@@ -67,6 +68,8 @@ SOLAR.UIDom = (function () {
     els.settingsPanel = SOLAR.UIUtil.byId('settings-panel');
     els.btnSettingsClose = SOLAR.UIUtil.byId('btn-settings-close');
     els.settingsNote = SOLAR.UIUtil.byId('settings-note');
+    /* 比例档换算数字由 ui-settings.refreshScaleNote 动态写入（幂律映射，无固定常数） */
+    els.scaleFacts = SOLAR.UIUtil.byId('scale-facts');
     els.segUnit = SOLAR.UIUtil.byId('seg-unit');
     els.segLang = SOLAR.UIUtil.byId('seg-lang');
     els.segQuality = SOLAR.UIUtil.byId('seg-quality');

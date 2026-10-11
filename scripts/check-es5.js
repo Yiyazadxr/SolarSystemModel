@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* check-es5.js — 零依赖：禁用 ES6+ 特性
- * 输入：assets/js/*.js 白名单（排除 textures.js）
+ * 输入：assets/js/*.js 白名单（排除 textures.js）及 index.html 内联脚本
  * 输出：违规行号 + 类型
  * 边界：先剥注释与字符串，避免误报
  */
@@ -45,6 +45,7 @@ function strip(src) {
         continue;
       }
       if (c === '`') {
+        out += '`';
         i++;
         while (i < src.length && src[i] !== '`') {
           if (src[i] === '\\') i++;
@@ -69,6 +70,7 @@ function strip(src) {
 }
 
 const RULES = [
+  { name: 'template',  re: /`/ },
   { name: 'let',       re: /\blet\b/ },
   { name: 'const',     re: /\bconst\b/ },
   { name: 'arrow',     re: /=>/ },
@@ -94,9 +96,9 @@ function scanLine(line, rules) {
   return hits;
 }
 
-function checkOne(file) {
-  const rel = path.relative(ROOT, file).replace(/\\/g, '/');
-  const src = strip(fs.readFileSync(file, 'utf8'));
+function checkOne(file, source, label) {
+  const rel = label || path.relative(ROOT, file).replace(/\\/g, '/');
+  const src = strip(source === undefined ? fs.readFileSync(file, 'utf8') : source);
   const lines = src.split('\n');
   const issues = [];
   for (let ln = 0; ln < lines.length; ln++) {
@@ -124,6 +126,17 @@ function main() {
         console.log('ERR ' + r.file + ':' + iss.line + ' [' + iss.kind + '] ' + iss.text);
         total++;
       }
+    }
+  }
+  const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  const inline = /<script\b(?![^>]*\bsrc\s*=)[^>]*>([\s\S]*?)<\/script>/gi;
+  let match;
+  while ((match = inline.exec(html)) !== null) {
+    const result = checkOne(null, match[1], 'index.html:inline');
+    const offset = html.slice(0, match.index).split('\n').length - 1;
+    for (const iss of result.issues) {
+      console.log('ERR index.html:' + (offset + iss.line) + ' [' + iss.kind + '] ' + iss.text);
+      total++;
     }
   }
   console.log('\nTotal violations: ' + total);

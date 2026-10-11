@@ -4,7 +4,7 @@
  *  1. assets/js/textures.js 存在
  *  2. assets/vendor/ 下所有文件被 index.html 引用
  *  3. index.html 中 <script src> 全部存在
- *  4. assets/textures/ 下 jpg/png 文件被 scripts/generate-textures.js 或 index.html 引用
+ *  4. assets/textures/ 中的源贴图在 textures.js 中有对应键
  */
 'use strict';
 
@@ -16,7 +16,6 @@ const HTML = path.join(ROOT, 'index.html');
 const JS_DIR = path.join(ROOT, 'assets', 'js');
 const VENDOR_DIR = path.join(ROOT, 'assets', 'vendor');
 const TEX_DIR = path.join(ROOT, 'assets', 'textures');
-const GEN_SCRIPT = path.join(ROOT, 'scripts', 'generate-textures.js');
 
 function exists(p) {
   try { fs.statSync(p); return true; } catch (e) { return false; }
@@ -31,7 +30,7 @@ function main() {
     const kb = fs.statSync(texJs).size / 1024;
     console.log('OK  assets/js/textures.js (' + kb.toFixed(2) + ' KB)');
   } else {
-    console.log('ERR 缺失 assets/js/textures.js（运行 npm scripts/generate-textures.js 生成）');
+    console.log('ERR 缺失 assets/js/textures.js（运行 node scripts/generate-textures.js 生成）');
     fail++;
   }
 
@@ -81,26 +80,22 @@ function main() {
     console.log('WARN assets/vendor/ 目录不存在');
   }
 
-  // 5. textures/ 下 jpg/png 是否被生成脚本提及
+  // 5. 生成器枚举目录，核对内嵌键而不是在生成器源码中搜索文件名
   console.log('\n=== textures 资产引用情况 ===');
-  let genSrc = '';
-  if (exists(GEN_SCRIPT)) genSrc = fs.readFileSync(GEN_SCRIPT, 'utf8');
-  else console.log('WARN 缺失 scripts/generate-textures.js');
-
-  if (exists(TEX_DIR)) {
-    const texFiles = fs.readdirSync(TEX_DIR);
-    let unref = 0;
+  if (!exists(TEX_DIR)) { console.log('ERR 缺失 assets/textures/'); fail++; }
+  else if (exists(texJs)) {
+    const embedded = new Set();
+    const text = fs.readFileSync(texJs, 'utf8');
+    const keyRe = /^\s*"([A-Za-z0-9_-]+)"\s*:\s*"data:/gm;
+    let key;
+    while ((key = keyRe.exec(text)) !== null) embedded.add(key[1]);
+    const texFiles = fs.readdirSync(TEX_DIR).filter(name => /\.(?:jpe?g|png|webp)$/i.test(name));
     for (const tf of texFiles) {
-      // 检查文件名是否出现在生成脚本里
-      // 也检查 index.html 或 js 里是否有引用
-      const referenced = genSrc.indexOf(tf) >= 0;
-      if (!referenced) {
-        unref++;
-        console.log('INFO ' + tf + ' 未在 generate-textures.js 中出现（可能是原始素材）');
-      }
+      const stem = path.basename(tf, path.extname(tf));
+      if (!embedded.has(stem)) { console.log('ERR 未内嵌 ' + tf); fail++; }
     }
-    if (unref === 0) console.log('OK  全部 textures 被 generate-textures.js 提及');
-    console.log('（生成脚本共 ' + texFiles.length + ' 个 texture 目标）');
+    if (!texFiles.length) { console.log('ERR 源目录无贴图'); fail++; }
+    else if (!fail) console.log('OK  ' + texFiles.length + ' 张源贴图均有内嵌键（内容一致性另用 generate-textures.js --check）');
   }
 
   console.log('\n=== 总结 ===');

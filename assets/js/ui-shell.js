@@ -94,6 +94,10 @@ SOLAR.UIShell = (function () {
       U.state.settings[key] = !U.state.settings[key];
       SOLAR.UISettings.applySetting(key);
       SOLAR.UISettings.refreshSwitches();
+      /* 比例说明里的标签文字随语言重建（数字本身与语言无关） */
+      if (SOLAR.UISettings && typeof SOLAR.UISettings.refreshScaleNote === 'function') {
+        SOLAR.UISettings.refreshScaleNote();
+      }
     });
   }
 
@@ -254,13 +258,12 @@ SOLAR.UIShell = (function () {
   /* ============ 语言、浮标、加载状态 ============ */
 
   function updateQualityLabels() {
-    if (!els.qualitySelect) return;
     var labels = SOLAR.lang === 'zh'
       ? ['超极限', '高', '中', '低']
       : ['ULTRA', 'HIGH', 'MEDIUM', 'LOW'];
     var segIds = ['seg-q-ultra', 'seg-q-high', 'seg-q-medium', 'seg-q-low'];
     for (var i = 0; i < labels.length; i++) {
-      if (els.qualitySelect.options[i]) els.qualitySelect.options[i].textContent = labels[i];
+      if (els.qualitySelect && els.qualitySelect.options[i]) els.qualitySelect.options[i].textContent = labels[i];
       var seg = SOLAR.UIUtil.byId(segIds[i]);
       if (seg) seg.textContent = labels[i];
     }
@@ -371,8 +374,8 @@ SOLAR.UIShell = (function () {
     var stage = value < 0.18 ? 1 : (value < 0.45 ? 2 : (value < 0.72 ? 3 : (value < 0.97 ? 4 : 5)));
     if (stage === load.stage) return;
     load.stage = stage;
-    /* 每个环节切换后冻结进度 20ms：阶段文案不至于一闪而过 */
-    load.stageHoldUntil = Date.now() + 20;
+    /* 每个环节切换后冻结进度 10ms（0.01s）：阶段文案不至于一闪而过 */
+    load.stageHoldUntil = Date.now() + 10;
     if (els.loaderStage) els.loaderStage.textContent = '· ' + SOLAR.t('ui.loadStage' + stage);
     if (els.loaderTicks && els.loaderTicks.children) {
       for (var i = 0; i < els.loaderTicks.children.length; i++) {
@@ -382,6 +385,11 @@ SOLAR.UIShell = (function () {
   }
 
   function progressStep() {
+    if (window.SOLAR_BOOT && window.SOLAR_BOOT.isFailed()) {
+      window.clearInterval(load.timer);
+      load.timer = null;
+      return;
+    }
     if (Date.now() < load.stageHoldUntil) return;     /* 环节切换的短暂停顿 */
     var diff = load.target - load.shown;
     /* 常态缓慢逼近；目标已满时快速收尾，保证进度条走到 100% */
@@ -397,6 +405,7 @@ SOLAR.UIShell = (function () {
   }
 
   function setProgress(value) {
+    if (window.SOLAR_BOOT && window.SOLAR_BOOT.isFailed()) return;
     value = typeof value === 'number' && isFinite(value) ? value : 0;
     value = Math.max(0, Math.min(1, value));
     load.target = value;
@@ -404,7 +413,7 @@ SOLAR.UIShell = (function () {
     startProgressTicker();
   }
 
-  function hideLoading() {
+  function hideLoading(done) {
     var screen = els.loadingScreen || SOLAR.UIUtil.byId('loading-screen');
     if (screen && !screen.classList.contains('hidden')) {
       /* 模式选择层必须等进度条真正走到 100% 再出现：先把目标强制推满，
@@ -412,15 +421,19 @@ SOLAR.UIShell = (function () {
          「进度还在 29% 就弹出选择窗」的突兀衔接。 */
       setProgress(1);
       var finishHide = function () {
+        if (window.SOLAR_BOOT && window.SOLAR_BOOT.isFailed()) return;
         screen.classList.add('hidden');
         if (loadingTimer) window.clearTimeout(loadingTimer);
         loadingTimer = window.setTimeout(function () {
+          if (window.SOLAR_BOOT && window.SOLAR_BOOT.isFailed()) return;
           screen.style.display = 'none';
           if (load.timer) { window.clearInterval(load.timer); load.timer = null; }
         }, 800);
         SOLAR.UISettings.showModeChoice();
+        if (done) done();
       };
       var waitProgress = function () {
+        if (window.SOLAR_BOOT && window.SOLAR_BOOT.isFailed()) return;
         if (load.shown < 0.995) { loadingTimer = window.setTimeout(waitProgress, 60); return; }
         finishHide();
       };
@@ -428,6 +441,9 @@ SOLAR.UIShell = (function () {
     } else if (load.timer) {
       window.clearInterval(load.timer);
       load.timer = null;
+      if (done) done();
+    } else if (done) {
+      done();
     }
   }
 

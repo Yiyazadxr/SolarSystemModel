@@ -73,6 +73,7 @@
 #teach-root .teach-panel,
 #teach-root .teach-info,
 #teach-root .teach-bar,
+#teach-root .teach-term-bar,
 #teach-root .teach-btn,
 #teach-root .teach-lesson-title,
 #teach-root .teach-step,
@@ -463,6 +464,69 @@
   color: var(--teach-text-dim);
 }
 
+/* 二分二至定位条：复用演示模式 .sun-view-bar 的胶囊语言（玻璃底 + 圆角按钮），
+   独立悬浮于画面底部中央（控制条上方），仅 step.termBar 的步骤出现 */
+#teach-root .teach-term-bar {
+  position: absolute; left: 50%; bottom: calc(var(--teach-bar-h) + 14px);
+  transform: translateX(-50%);
+  display: flex; gap: 6px; z-index: 1;
+  padding: 5px 8px;
+  background: var(--teach-glass);
+  border: 1px solid rgba(255, 255, 255, .10);
+  border-radius: 999px;
+  backdrop-filter: var(--teach-blur); -webkit-backdrop-filter: var(--teach-blur);
+  box-shadow: var(--teach-shadow);
+}
+#teach-root .teach-term-bar.is-hidden { display: none; }
+#teach-root .teach-term-btn {
+  min-height: var(--teach-tap);
+  font-family: var(--teach-mono);
+  font-size: var(--teach-fs-ui);
+  letter-spacing: .08em;
+  color: var(--teach-text-dim);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 4px 16px;
+  cursor: pointer;
+  transition: color .16s ease, background .16s ease, border-color .16s ease;
+}
+#teach-root .teach-term-btn:hover { color: var(--teach-text); }
+#teach-root .teach-term-btn.is-active {
+  color: var(--teach-accent);
+  border-color: var(--teach-accent-dim);
+  background: rgba(127, 252, 216, .08);
+}
+
+/* 节气信息小浮窗：点定位按钮后浮在定位条上方（画面底部中央）。
+   纯展示，不进 pointer-events 白名单，不挡相机拖拽 */
+#teach-root .teach-term-tip {
+  position: absolute; left: 50%; bottom: calc(var(--teach-bar-h) + 84px);
+  transform: translateX(-50%);
+  z-index: 1;
+  padding: 10px 22px;
+  background: var(--teach-glass);
+  border: 1px solid rgba(255, 255, 255, .10);
+  border-radius: var(--teach-radius-l);
+  backdrop-filter: var(--teach-blur); -webkit-backdrop-filter: var(--teach-blur);
+  box-shadow: var(--teach-shadow);
+  text-align: center;
+  animation: teachIn .35s cubic-bezier(.22, .8, .3, 1) both;
+}
+#teach-root .teach-term-tip.is-hidden { display: none; }
+#teach-root .teach-term-tip-title {
+  font-family: var(--teach-mono);
+  font-size: var(--teach-fs-ui);
+  letter-spacing: .06em;
+  color: var(--teach-accent);
+  text-shadow: 0 0 12px rgba(127, 252, 216, .25);
+}
+#teach-root .teach-term-tip-sub {
+  margin-top: 4px;
+  font-size: var(--teach-fs-mini);
+  color: var(--teach-text-dim);
+}
+
 /* 引导提示小面板（如太阳系章节「切换到演示模式」）：与演示模式面板同质感 */
 #teach-root .teach-tip {
   display: flex; align-items: center; gap: 12px;
@@ -681,7 +745,6 @@
     --teach-fs-ui: 18px;
     --teach-fs-mini: 15px;
   }
-  #teach-root .teach-info { width: calc(100% - var(--teach-edge-gap) * 2); }
 }
 
 @media (max-height: 720px) {

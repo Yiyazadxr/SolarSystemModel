@@ -587,6 +587,34 @@ SOLAR.Scene = (function () {
     return null;
   }
 
+  /* 当前比例档的换算事实（设置面板"显示比例"下方那行数字用）。
+     幂律映射没有单一"1 单位 = 多少 km"常数，只能给锚点处的局部值：
+     取 1 AU 与地球半径两个锚点，另给出"天体比同套距离映射应有的大小放大了多少倍"。
+     与信息卡的逐天体压缩倍数（getScaleCompress）口径一致，改 profiles 系数即自动跟随。 */
+  function getScaleFacts() {
+    var earth = null;
+    for (var i = 0; i < D.bodies.length; i++) {
+      if (D.bodies[i].id === 'earth') { earth = D.bodies[i]; break; }
+    }
+    if (!earth) return null;
+    var au = C.astro.AU_KM;
+    var orbitUnits = SOLAR.auToScene(1);
+    /* 局部换算：d(scene)/d(au) = distanceBase × exp × au^(exp−1)，锚点处 1 单位对应的 km */
+    var unitsPerAu = C.scale.distanceExp * orbitUnits;
+    var bodyUnits = SOLAR.kmToScene(earth.radiusKm);
+    /* 同套距离映射下地球半径的应有大小，用来反推"天体被放大多少倍" */
+    var bodyShould = SOLAR.auToScene(earth.radiusKm / au);
+    return {
+      mode: S.scaleMode,
+      orbitAu: 1,
+      orbitUnits: orbitUnits,
+      orbitKmPerUnit: unitsPerAu > 0 ? au / unitsPerAu : 0,
+      bodyRadiusKm: earth.radiusKm,
+      bodyUnits: bodyUnits,
+      exaggeration: bodyShould > 0 ? bodyUnits / bodyShould : 0
+    };
+  }
+
   function applyScaleMode() {
     var f = S.scaleFactors[S.scaleMode] || S.scaleFactors.compact;
     for (var i = 0; i < S.nodes.planets.length; i++) {
@@ -729,7 +757,7 @@ SOLAR.Scene = (function () {
     var d = SOLAR.I18N[SOLAR.lang] || SOLAR.I18N.en;
     if (d.bodies && d.bodies[id]) return d.bodies[id].name;
     if (d.moons && d.moons[id]) return d.moons[id].name;
-    if (d.comet && d.comet[id]) return d.comet[id].name;
+    if (d.comets && d.comets[id]) return d.comets[id].name;
     return id;
   }
 
@@ -908,7 +936,7 @@ SOLAR.Scene = (function () {
     /* 显示比例：压缩示意 / 弱压缩示意（映射参数见 config.profiles）
        与教学装置的「真实比例 / 示意比例」是两套独立语义，互不影响。 */
     setScaleMode: setScaleMode, getScaleMode: function () { return S.scaleMode; },
-    getScaleCompress: getScaleCompress,
+    getScaleCompress: getScaleCompress, getScaleFacts: getScaleFacts,
     refreshOrbitLines: function () { return SOLAR.Bodies.refreshOrbitLines(SOLAR.Bodies.currentOrbitEpoch(), true); },
     getSystemRoot: getSystemRoot,
     setProceduralSeed: setProceduralSeed, getProceduralSeed: getProceduralSeed,
