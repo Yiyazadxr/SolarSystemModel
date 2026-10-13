@@ -1,6 +1,6 @@
 /**
  * 场景共享状态注册表：场景节点表 / 临时对象池 / 跨模块 uniform
- * 依赖：three.min.js（全局 THREE，r128）、config.js（C.quality 初值）；无业务逻辑
+ * 依赖：three.min.js（全局 THREE，r150）、config.js（C.quality 初值）；无业务逻辑
  *
  * 为什么单独拆出来：scene-gfx / scene-sun / scene-bodies / scene-backdrop / scene
  * 五个模块要共享同一批场景节点（planets / cometObjs / systemRoot …）与临时向量。

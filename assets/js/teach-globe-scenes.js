@@ -321,7 +321,13 @@ SOLAR.GlobeScenes = (function () {
     var moonMat2 = SOLAR.TeachGlobeShared.track(SOLAR.GlobeBody.basicMat(0xd2d2d2, 1.0, false));
     var moon = new THREE.Mesh(SOLAR.TeachGlobeShared.track(new THREE.SphereGeometry(EARTH_R * 0.55, 32, 20)), moonMat2);
     moon.position.set(0, EARTH_R * 0.55, -EARTH_R * 0.35);
-    SOLAR.GlobeBody.loadRealTexture('moon', 'moon.jpg', function (t) { if (t) { moonMat2.map = t; moonMat2.needsUpdate = true; } });
+    SOLAR.GlobeBody.loadRealTexture('moon', 'moon.jpg', function (t) {
+      if (!t) return;
+      /* 月食月盘用 MeshBasicMaterial，必须让内置材质按 sRGB 解码贴图。 */
+      if (THREE.sRGBEncoding) t.encoding = THREE.sRGBEncoding;
+      moonMat2.map = t;
+      moonMat2.needsUpdate = true;
+    });
     G.nodes.eclipseGroup.add(moon);
     /* 地影锚定「世界几何」而非视空间：轴 = 地心→月球方向（地影从地球伸向
        月球，阴影永远落在月面朝地球的一面）；扫动方向 = 世界 UP × 轴

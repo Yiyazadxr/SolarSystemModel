@@ -616,8 +616,9 @@ SOLAR.Controls = (function () {
     return flyToInternal(id, alignView, true, flatMotion);
   }
 
-  function goToPreset(name, flatMotion) {
-    if (!camera || !controls) return false;
+  /* 预设 -> 太阳系局部坐标。goToPreset 与 primePresetView 共用同一套取景口径，
+     避免两边各解析一份、日后改了视图表只改一边导致瞬移点与飞行终点不一致。 */
+  function resolvePresetPose(name, outPos, outTarget) {
     var views = C.views || {};
     var mode = (SOLAR.Scene && typeof SOLAR.Scene.getScaleMode === 'function')
       ? SOLAR.Scene.getScaleMode() : 'compact';
@@ -626,18 +627,62 @@ SOLAR.Controls = (function () {
     var view = profileView || views[name] ||
       (profileViews && profileViews.home) || views.home;
     if (!view || !view.pos || !view.target) return false;
-    setFollow(null);
-    zoom.focusId = null;
     /* compact 沿用旧视角数值；faithful 使用单独的取景表。
        两档的 distanceExp 不同，统一乘 distanceBase/42 会让海王星出框。 */
     if (profileView) {
-      tmpA.set(view.pos[0], view.pos[1], view.pos[2]);
-      tmpB.set(view.target[0], view.target[1], view.target[2]);
+      outPos.set(view.pos[0], view.pos[1], view.pos[2]);
+      outTarget.set(view.target[0], view.target[1], view.target[2]);
     } else {
       var k = (C.scale && typeof C.scale.distanceBase === 'number') ? C.scale.distanceBase / 42 : 1;
-      tmpA.set(view.pos[0] * k, view.pos[1] * k, view.pos[2] * k);
-      tmpB.set(view.target[0] * k, view.target[1] * k, view.target[2] * k);
+      outPos.set(view.pos[0] * k, view.pos[1] * k, view.pos[2] * k);
+      outTarget.set(view.target[0] * k, view.target[1] * k, view.target[2] * k);
     }
+    return true;
+  }
+
+  /**
+   * 启动预热：把相机瞬移到预设机位同视线、更远的点上（不产生飞行）。
+   *
+   * 为什么必须有：Scene.init 按 home 局部坐标摆相机（世界原点附近），而
+   * galaxy.init 的 applyPosition() 已经（且每次都会）把 systemRoot 移到银心
+   * 轨道位置——约 25000 单位外。首帧 consumeDelta ≈ 0，panBy 空转，相机整个
+   * 启动期都停在世界原点望天：加载层背后的预热帧只画背景（实测约 54 个
+   * draw call），全套天体的 shader 编译与贴图上传被推迟到 goToPreset 飞行
+   * 途中才第一次发生——CPU 尖峰帧（ANGLE 编译 HLSL 跑在主线程）加 GPU
+   * upload stall，正是"刚进入演示模式到镜头移动完毕"那段卡顿的成因。
+   *
+   * 瞬移到同视线倍距点后：预热帧就能画到全套天体，编译与上传落在加载层
+   * 背后；随后 goToPreset 从该点飞入，飞行全程视野内容不变，无新增编译。
+   *
+   * 倍距下限 1（不小于 home 视距，保证 home 视野是预热视野的子集——frustum
+   * 裁剪按视锥不算遮挡，更远处同一视线看到的内容只多不少）；上限受
+   * maxDistance 约束，faithful 档 home 已贴近上限，倍距会自动退化为 1。
+   */
+  function primePresetView(name, wideFactor) {
+    if (!camera || !controls) return false;
+    if (!resolvePresetPose(name, tmpA, tmpB)) return false;
+    var off = sysOffset();
+    if (off) {
+      tmpA.add(off);                  // 局部 -> 世界（太阳系随银心公转平移）
+      tmpB.add(off);
+    }
+    tmpC.copy(tmpA).sub(tmpB);        // 视线方向 × home 视距
+    var homeDist = tmpC.length();
+    if (!(homeDist > 0)) return false;
+    var cap = rangeMax > 0 ? (rangeMax * 0.9) / homeDist : 1;
+    var f = clamp(wideFactor > 0 ? wideFactor : 1, 1, cap > 1 ? cap : 1);
+    camera.position.copy(tmpB).addScaledVector(tmpC, f);
+    controls.target.copy(tmpB);
+    return true;
+  }
+
+  function goToPreset(name, flatMotion) {
+    if (!camera || !controls) return false;
+    var mode = (SOLAR.Scene && typeof SOLAR.Scene.getScaleMode === 'function')
+      ? SOLAR.Scene.getScaleMode() : 'compact';
+    if (!resolvePresetPose(name, tmpA, tmpB)) return false;
+    setFollow(null);
+    zoom.focusId = null;
     /* 压缩示意的预设距离变化很大，保留轻微空间弧线即可；过大的抬升会让
        切换看起来像镜头先升空再回到太阳系。faithful 档保留完整的电影弧线。 */
     var presetArcScale = flatMotion ? 0 : (mode === 'compact' ? 0.18 : 1);
@@ -1452,6 +1497,7 @@ SOLAR.Controls = (function () {
     update: update,
     flyTo: flyTo,
     goToPreset: goToPreset,
+    primePresetView: primePresetView,
     goToView: goToView,
     setDistanceRange: setDistanceRange,
     panBy: panBy,

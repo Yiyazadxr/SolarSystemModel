@@ -1,6 +1,6 @@
 /**
  * 图形构建工具：贴图解析 / 程序化随机流 / B-V 色温 ramp / 通用小函数
- * 依赖：three.min.js（全局 THREE，r128）、scene-shared.js（SOLAR.SceneShared.S：texLoader / proceduralSeed / randomState）、textures.js（可选，SOLAR.TEXTURES 内嵌 base64）
+ * 依赖：three.min.js（全局 THREE，r150）、scene-shared.js（SOLAR.SceneShared.S：texLoader / proceduralSeed / randomState）、textures-loader.js（SOLAR.TEXTURES 分块内嵌 base64）
  *
  * 为什么单独拆出来：这些是与"建什么天体"无关的纯工具——太阳、行星、星空、小行星带
  * 都要用同一套随机流与同一张色温表。集中一处才能保证"同一个种子永远生成同一批粒子"，
@@ -57,7 +57,14 @@ SOLAR.Gfx = (function () {
     if (typeof url !== 'string' || !url) { apply(null); return null; }
     S.texLoader.load(url,
       function (t) {
-        if (THREE.sRGBEncoding) t.encoding = THREE.sRGBEncoding;
+        /* 刻意标 LinearEncoding：这些贴图全部进自定义 ShaderMaterial
+           （PLANET_FRAG / RING_FRAG，裸 texture2D 采样、不做颜色空间转换）。
+           r128 里 sRGB 解码只发生在内置材质的 mapTexelToLinear 中，自定义 shader
+           拿到的始终是原始值；r150 起 three 把解码挪到贴图上传阶段，标了 sRGB
+           会被 CPU/GPU 先解码一遍，而着色器不会编码回去，行星/卫星/环整体暗一半。
+           银河天穹走 MeshBasicMaterial（内置，两版都在上传阶段解码），
+           它在 scene-backdrop 的回调里自己重标 sRGB，不受这里影响。 */
+        if (THREE.LinearEncoding) t.encoding = THREE.LinearEncoding;
         t.anisotropy = 4;
         apply(t);
       },

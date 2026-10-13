@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /* check-syntax.js — 零依赖：node --check 语法校验
- * 输入：assets/js/*.js 白名单（排除 textures.js）
+ * 输入：assets/js/*.js 白名单（base64 生成物在 assets/js/textures/ 子目录，
+ *       readdirSync 非递归天然跳过——与旧 textures.js 的跳过理由相同：
+ *       全是 base64 大行，编译检查无意义且极慢）
  * 输出：OK: file.js 或 ERR: file.js:line:col - msg
  */
 'use strict';
@@ -11,7 +13,6 @@ const vm = require('vm');
 
 const ROOT = path.resolve(__dirname, '..');
 const JS_DIR = path.join(ROOT, 'assets', 'js');
-const EXCLUDE = new Set(['textures.js']);
 
 function stripCommentsAndStrings(src) {
   // 极简剥注释与字符串，仅用于粗略判断
@@ -88,7 +89,7 @@ function checkOne(file) {
 
 function main() {
   const files = fs.readdirSync(JS_DIR)
-    .filter(f => f.endsWith('.js') && !EXCLUDE.has(f))
+    .filter(f => f.endsWith('.js'))
     .map(f => path.join(JS_DIR, f))
     .sort();
 

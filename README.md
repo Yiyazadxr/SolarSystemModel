@@ -6,7 +6,7 @@
 
 [![Stars](https://img.shields.io/github/stars/Yiyazadxr/SolarSystemModel?style=flat-square)](https://github.com/Yiyazadxr/SolarSystemModel/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](./LICENSE)
-[![Three.js](https://img.shields.io/badge/Three.js-r128-000000?style=flat-square&logo=threedotjs&logoColor=white)](https://threejs.org)
+[![Three.js](https://img.shields.io/badge/Three.js-r150-000000?style=flat-square&logo=threedotjs&logoColor=white)](https://threejs.org)
 [![Build: none](https://img.shields.io/badge/build-none%20(零构建)-brightgreen?style=flat-square)](#运行)
 [![Offline 100%](https://img.shields.io/badge/offline-100%25-2ea44f?style=flat-square)](#运行)
 [![Zero runtime deps](https://img.shields.io/badge/runtime_deps-0-blueviolet?style=flat-square)](#技术栈)
@@ -51,7 +51,7 @@
 > 需支持 WebGL 的桌面浏览器。WebGL 不可用时，加载页给出**中英双语提示**，不会白屏。
 
 > [!TIP]
-> `assets/js/textures.js` 是生成物。改动 `assets/textures/` 下的贴图后，执行 `node scripts/generate-textures.js` 重新内嵌（`--check` 校验一致性）。
+> `assets/js/textures/` 分块贴图与 `assets/js/textures-manifest.js` 是生成物。改动 `assets/textures/` 下的贴图后，执行 `node scripts/generate-textures.js` 重新分块内嵌（`--check` 校验一致性）；新增贴图需在脚本的 `GROUPS` 里归组，否则生成直接报错。贴图由 `textures-loader.js` 在加载层可见后逐块注入，不会在首屏同步解析整包 base64。
 
 `assets/js/vsop87.js` 也是生成物。官方原始文件保存在 `assets/vsop87/`；运行 `node scripts/generate-vsop87.js --check` 可离线核验数据和官方主版本 80 组基准。
 
@@ -66,7 +66,7 @@
 
 ## 技术栈
 
-- **渲染**：Three.js r128（`assets/vendor/` 本地化 UMD）+ WebGL2 / WebGL1
+- **渲染**：Three.js r150.1（`assets/vendor/three.min.js` 官方 UMD 原版，`THREE.REVISION` 为 `150`）+ WebGL1 / WebGL2
 - **材质**：全部 `ShaderMaterial` 手写 GLSL（行星表面、大气、日冕、星点、拖尾、彗尾、环）
 - **后期**：`EffectComposer` + 分层 `UnrealBloomPass`（自发光物体渲到半分辨率 RT）+ 自定义收尾 `ShaderPass`（暗角 / 扫描线 / 色散 / 颗粒）
 - **天文算法**：VSOP87 八行星要素级数、开普勒方程（牛顿迭代 + 二分回退）、其他天体 JPL / SBDB 近似根数、儒略日换算
@@ -79,15 +79,15 @@
 ├── index.html                 单页入口（HUD 结构 + 加载动画 + 脚本装配）
 ├── assets/
 │   ├── css/                   HUD 与教学样式
-│   ├── js/                    40 个模块，加载顺序即依赖顺序
-│   │   ├── 基础                config / data / i18n / audio / vsop87 / astro / textures / effects
+│   ├── js/                    41 个模块，加载顺序即依赖顺序
+│   │   ├── 基础                config / data / i18n / audio / vsop87 / astro / textures-manifest / textures-loader / effects
 │   │   ├── 场景                scene-shaders / scene-shared / scene-gfx / scene-sun / scene-bodies / scene-backdrop / scene（门面）
 │   │   ├── 系统                galaxy / controls
 │   │   ├── 界面                ui-shared / ui-util / ui-dom / ui-nav / ui-info / ui-settings / ui-time / ui-shell / ui（门面）
 │   │   ├── 主循环              main
 │   │   └── 教学                teach-data / teach-globe-* / teach-orrery / teach-ground / teach-moonsync / teach-scenes / teach
 │   ├── vsop87/                IMCCE 官方原始要素文件及校验文件（仅供离线生成）
-│   └── textures/ vendor/      原始贴图 25 张（textures.js 的来源）；Three.js r128 + OrbitControls + 后期
+│   └── textures/ vendor/      原始贴图 25 张（分块内嵌至 assets/js/textures/）；Three.js r150 + OrbitControls + 后期
 ├── scripts/                   贴图生成 + 零依赖自检（语法 / ES5 / 离线 / 顺序 / i18n / 数据 / 资产 / 启动 / 轨道小图 / 教学数据）
 ├── docs/screenshots/          README 截图
 └── AGENTS.md · CLAUDE.md · LICENSE · NOTICE · README.md
@@ -134,7 +134,7 @@
 | 读数 / 网络 / 存储 | 内存读数依赖 `performance.memory`（**仅 Chromium 系**）；运行时不发外部请求，不使用 Cookie；仅音效开关状态写入 `localStorage`（禁用存储时退化为不记忆，功能不受影响） |
 | 分辨率 | 适配至约 1100×700 及以上，移动端未适配 |
 
-**验证状态**：脚本门禁在 Node 环境运行；此前主要演示路径曾在 **Chromium 无头环境**（SwiftShader 软件渲染）检查。`distanceBase 2000` 尺度重构与太阳公转拖尾**尚未**经无头截图复核，正在人工验证中；新增教学场景的逐步目视回归待执行。**Firefox / Safari 与真实 GPU 环境尚未实测**。
+**验证状态**：脚本门禁在 Node 环境运行；此前主要演示路径曾在 **Chromium 无头环境**（SwiftShader 软件渲染）检查。Three.js r150 升级后的浏览器画面与交互、`distanceBase 2000` 尺度重构与太阳公转拖尾**尚未**经无头截图复核，正在人工验证中；新增教学场景的逐步目视回归待执行。**Firefox / Safari 与真实 GPU 环境尚未实测**。
 
 VSOP87 原始级数对 IMCCE 官方主版本 80 组历元 × 6 要素对拍最大差 4.975e-11；生成版保留 23,103 项（942,392 B），相对全量在 J2000 ±4,000 年网格上的最大单要素差 1.206e-5（a 为 AU，其余为弧度）。
 VSOP87 接入的浏览器画面与交互尚待人工复核。
@@ -145,6 +145,7 @@ VSOP87 接入的浏览器画面与交互尚待人工复核。
 
 - `callisto.jpg`、`uranus_ring.png` 无可靠公开源，回退纯色 / 程序化渲染
 - `file://` 下不请求磁盘贴图（CORS），全部走内嵌 base64，缺图有兜底且控制台无报错
+- 官方 r150 UMD `three.min.js` 会在载入时输出一次 `build/three.min.js` 将于 r160 移除的弃用警告；这是官方文件自带的提示。控制台冒烟检查允许这一条，其余新增 warning/error 仍需排查
 - 演示模式**无法实现严格 1:1 真实比例**（需对数深度缓冲，见 `config.js`）：弱压缩档已尽量接近真实，但天体半径 ∶ 轨道半径仍被压缩（地球约 40 倍），太阳系外缘超出银河模型的银心距标注（推导见 `config.js` → `profiles.faithful`）
 - 最高倍速（1e9）下单步推进限制在 4 个模拟日，外行星仍有轻微步进感（刻意的平滑策略）
 - 银河系为**有观测依据的程序化统计模型**，非真实巡天目录重建
@@ -154,7 +155,7 @@ VSOP87 接入的浏览器画面与交互尚待人工复核。
 
 ## 规模
 
-当前 112 个文件（git 跟踪口径）、约 30 MB：`assets/js/` 约 12.6 MB（含 `textures.js` 约 10.9 MB base64）、`assets/textures/` 约 8.2 MB（原始贴图 25 张）、`assets/vendor/` 0.6 MB，其余 < 1 MB。`assets/js/` 共 40 个模块——`scene` / `ui` / `teach-globe` 拆分多出的 23 个文件都是纯源码，总体积增长可忽略。
+当前 117 个文件（git 跟踪口径）、约 30 MB：`assets/js/` 约 12.6 MB（含 `textures/` 分块贴图约 10.9 MB base64）、`assets/textures/` 约 8.2 MB（原始贴图 25 张）、`assets/vendor/` 0.6 MB，其余 < 1 MB。`assets/js/` 共 41 个模块——`scene` / `ui` / `teach-globe` 拆分多出的 23 个文件都是纯源码，总体积增长可忽略。
 
 ## 许可
 
@@ -162,7 +163,7 @@ VSOP87 接入的浏览器画面与交互尚待人工复核。
 
 - **源代码**：[MIT](./LICENSE) © 2026-present Yiyazadxr，可修改 / 商用 / 再分发，须保留版权与许可声明
 - **贴图资源**：来自 NASA、USGS 等机构的公有领域影像与 Solar System Scope（CC BY 4.0），分发时遵守来源机构政策，署名见 NOTICE
-- **第三方组件**：Three.js r128、OrbitControls、后期处理（均为 MIT，© three.js authors）
+- **第三方组件**：Three.js r150.1、OrbitControls、后期处理（均为 MIT，© three.js authors）
 - **品牌名称与标识**：不在开源许可范围内，不得用作品牌名称或暗示背书
 
 ## 致谢

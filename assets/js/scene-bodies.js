@@ -4,7 +4,7 @@
  *   - 彗星：彗核 + 彗发 + 离子尾 / 尘埃尾（数据驱动，D.comets 全量构建）；
  *   - 逐帧：自转、开普勒公转、潮汐锁定、Pluto-Charon 质心偏移、
  *     日食投影与月食本影（uniform 写入）、尾形随日心距演化。
- * 依赖：three.min.js（全局 THREE，r128）、config.js（C.scale / C.colors）、
+ * 依赖：three.min.js（全局 THREE，r150）、config.js（C.scale / C.colors）、
  *       data.js（D.bodies / D.moons / D.comets）、astro.js（A.heliocentric / A.toScene /
  *       A.solveKepler / A.orbitPath / A.toJulian）、
  *       scene-shared.js（SOLAR.SceneShared：S.nodes.planets / cometObjs / ...、U 共享 uniform）

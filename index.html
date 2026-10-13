@@ -463,6 +463,8 @@
     };
     window.addEventListener('error', function (event) {
       if (!ready && event.target && event.target.tagName === 'SCRIPT') {
+        /* 贴图分块由加载器自行处理失败；捕获阶段先于 script.onerror，不能抢先判启动失败。 */
+        if (event.target.hasAttribute && event.target.hasAttribute('data-solar-texture-chunk')) return;
         fail('脚本加载失败，请刷新页面 / Script could not be loaded; please refresh the page');
       }
     }, true);
@@ -488,7 +490,10 @@
 <script src="assets/js/audio.js"></script>
 <script src="assets/js/vsop87.js"></script>
 <script src="assets/js/astro.js"></script>
-<script src="assets/js/textures.js"></script>
+<!-- 贴图：清单与加载器是静态小文件；大块 base64（assets/js/textures/*.js）由
+     加载器在加载层可见后逐块注入，避免旧单文件 11MB 首屏同步解析把进度压在 0% -->
+<script src="assets/js/textures-manifest.js"></script>
+<script src="assets/js/textures-loader.js"></script>
 <script src="assets/js/effects.js"></script>
 <!-- 场景层：着色器源码 -> 共享状态 -> 图形工具 -> 太阳 -> 行星/彗星/轨道 -> 天穹与环带 -> 门面 -->
 <script src="assets/js/scene-shaders.js"></script>

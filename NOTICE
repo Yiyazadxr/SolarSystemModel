@@ -35,7 +35,7 @@ source code, the LICENSE file governs the source code.
 
 Bundled in assets/vendor/ (all MIT License):
 
-- three.js r128 — Copyright (c) 2010-2021 three.js authors.
+- three.js r150.1 — Copyright (c) 2010-2023 three.js authors.
   https://github.com/mrdoob/three.js
 - OrbitControls (examples/js/controls) — Copyright (c) three.js authors.
 - EffectComposer, RenderPass, ShaderPass, MaskPass, CopyShader, UnrealBloomPass,

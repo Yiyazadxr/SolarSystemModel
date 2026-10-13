@@ -4,10 +4,12 @@
  *  1. vendor 脚本必须在前（three.min.js 是根依赖）
  *  2. 自定义脚本顺序需与 EXPECTED_ORDER 一致
  *  3. 依赖方向：config → data → i18n → audio（叶子，无依赖）
- *     → vsop87 → astro → textures → effects
+ *     → vsop87 → astro → textures-manifest → textures-loader → effects
  *     → scene-* → galaxy → controls → ui-* → main
  *     → teach-data → teach-globe-* → teach-orrery → teach-scenes → teach
  *     同一层内（scene / ui / teach-globe）先共享与叶子模块，门面（无前缀的那个）最后。
+ *  注：大块 base64 贴图（assets/js/textures/*.js）由 textures-loader.js 动态注入，
+ *      不在本表内；清单 textures-manifest.js 必须先于加载器静态就位。
  */
 'use strict';
 
@@ -30,7 +32,8 @@ const EXPECTED_ORDER = [
   'audio.js',
   'vsop87.js',
   'astro.js',
-  'textures.js',
+  'textures-manifest.js',
+  'textures-loader.js',
   'effects.js',
   'scene-shaders.js',
   'scene-shared.js',

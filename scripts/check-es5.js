@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /* check-es5.js — 零依赖：禁用 ES6+ 特性
- * 输入：assets/js/*.js 白名单（排除 textures.js）及 index.html 内联脚本
+ * 输入：assets/js/*.js 白名单（base64 生成物在 assets/js/textures/ 子目录，
+ *       readdirSync 非递归天然跳过）及 index.html 内联脚本
  * 输出：违规行号 + 类型
  * 边界：先剥注释与字符串，避免误报
  */
@@ -11,7 +12,6 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
 const JS_DIR = path.join(ROOT, 'assets', 'js');
-const EXCLUDE = new Set(['textures.js']);
 
 // 剥注释与字符串（沿用 check-syntax.js 逻辑）
 function strip(src) {
@@ -112,7 +112,7 @@ function checkOne(file, source, label) {
 
 function main() {
   const files = fs.readdirSync(JS_DIR)
-    .filter(f => f.endsWith('.js') && !EXCLUDE.has(f))
+    .filter(f => f.endsWith('.js'))
     .map(f => path.join(JS_DIR, f))
     .sort();
 

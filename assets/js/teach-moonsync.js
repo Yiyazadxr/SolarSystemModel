@@ -103,7 +103,7 @@ SOLAR.TeachMoonSync = (function () {
     }));
   }
 
-  /* 复用项目内嵌的真实贴图（textures.js）；缺失时回退纯色 */
+  /* 复用项目内嵌的真实贴图（SOLAR.TEXTURES，由 textures-loader.js 分块注入）；缺失时回退纯色 */
   function loadRealTexture(key, fileName, mat) {
     var url = (SOLAR.TEXTURES && SOLAR.TEXTURES[key]) || null;
     if (!url && typeof location !== 'undefined' && location.protocol !== 'file:') {
@@ -112,7 +112,9 @@ SOLAR.TeachMoonSync = (function () {
     if (!url) return;
     try {
       new THREE.TextureLoader().load(url, function (t) {
-        if (THREE.sRGBEncoding) t.encoding = THREE.sRGBEncoding;
+        /* LinearEncoding：贴图进自定义 shader（mat.uniforms.uMap），r150 起
+           sRGB 解码挪到上传阶段，标 sRGB 会让地球/月球表面暗一半。 */
+        if (THREE.LinearEncoding) t.encoding = THREE.LinearEncoding;
         if (mat.uniforms && mat.uniforms.uMap) {
           mat.uniforms.uMap.value = t;
           mat.uniforms.uHasMap.value = 1;

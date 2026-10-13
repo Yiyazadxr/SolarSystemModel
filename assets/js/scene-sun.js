@@ -1,7 +1,7 @@
 /**
  * 太阳与日冕：程序化光球表面（米粒组织 / 临边昏暗 / 黑子）+ 单层日冕壳 +
  * 色球层配件（日珥 / 耀斑）+ 三档观测视图（光球层 / 色球层 / 日冕）。
- * 依赖：three.min.js（全局 THREE，r128）、config.js、data.js、scene-shared.js
+ * 依赖：three.min.js（全局 THREE，r150）、config.js、data.js、scene-shared.js
  *       （SOLAR.SceneShared：节点表 + 共享状态）、scene-shaders.js（SOLAR.Shaders）、
  *       scene-gfx.js（SOLAR.Gfx：radialTexture / smoothstep）
  *

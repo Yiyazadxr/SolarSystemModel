@@ -139,6 +139,7 @@ SOLAR.I18N = {
       scStep: '← / → — Prev / next body',
 
       /* ---------- 加载阶段 ---------- */
+      loadStage0: 'LOADING TEXTURES',
       loadStage1: 'BUILDING STAR',
       loadStage2: 'BUILDING PLANETS',
       loadStage3: 'BUILDING ORBITS',
@@ -762,6 +763,7 @@ SOLAR.I18N = {
       scStep: '← / → — 切换天体',
 
       /* ---------- 加载阶段 ---------- */
+      loadStage0: '加载星球贴图',
       loadStage1: '构建恒星',
       loadStage2: '构建行星与卫星',
       loadStage3: '生成轨道与带',

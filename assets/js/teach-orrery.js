@@ -130,7 +130,7 @@ var skipBase = false;
   ].join('\n');
 
   /* 通用的"只被太阳照亮一半"着色：月球/地球共用，明暗不作假；
-     有贴图时用真实贴图（assets/textures 已内嵌进 textures.js，零额外体积），
+      有贴图时用真实贴图（assets/textures/ 源图已分块内嵌进 SOLAR.TEXTURES，零额外体积），
      贴图尚未到位或缺失时回退到纯色。 */
   var BODY_FRAG = [
     'uniform sampler2D uMap;',
@@ -205,7 +205,7 @@ var skipBase = false;
     });
   }
 
-  /* 复用项目内嵌的真实贴图（键名见 textures.js）；缺失时回退纯色 */
+  /* 复用项目内嵌的真实贴图（键名见 assets/js/textures/ 分块内嵌）；缺失时回退纯色 */
   function loadRealTexture(key, fileName, mat, done) {
     var url = (SOLAR.TEXTURES && SOLAR.TEXTURES[key]) || null;
     if (!url && typeof location !== 'undefined' && location.protocol !== 'file:') {
@@ -214,7 +214,9 @@ var skipBase = false;
     if (!url) { if (done) done(); return; }
     try {
       new THREE.TextureLoader().load(url, function (t) {
-        if (THREE.sRGBEncoding) t.encoding = THREE.sRGBEncoding;
+        /* LinearEncoding：贴图进自定义 shader（bodyMat 的 uMap），r150 起
+           sRGB 解码挪到上传阶段，标 sRGB 会让地球/月球表面暗一半。 */
+        if (THREE.LinearEncoding) t.encoding = THREE.LinearEncoding;
         t.anisotropy = 4;
         mat.uniforms.uMap.value = t;
         mat.uniforms.uHasMap.value = 1;

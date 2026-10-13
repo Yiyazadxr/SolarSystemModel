@@ -15,7 +15,7 @@ const ROOT = path.resolve(__dirname, '..');
 const I18N_FILE = path.join(ROOT, 'assets', 'js', 'i18n.js');
 const HTML_FILE = path.join(ROOT, 'index.html');
 const JS_DIR = path.join(ROOT, 'assets', 'js');
-const EXCLUDE = new Set(['textures.js']);
+/* base64 贴图生成物在 assets/js/textures/ 子目录：readdirSync 非递归天然跳过 */
 
 /* 屏蔽字符串和注释后再扫描对象结构，避免英文正文里的 "world:"、
    "sphere:" 被误判成国际化键。保持换行，方便后续索引仍对应原文。 */
@@ -251,7 +251,7 @@ function main() {
 
   // 消费集合
   const files = fs.readdirSync(JS_DIR)
-    .filter(f => f.endsWith('.js') && !EXCLUDE.has(f))
+    .filter(f => f.endsWith('.js'))
     .map(f => path.join(JS_DIR, f));
   const literalKeys = collectConsumedKeys(files);
   const htmlKeys = collectHtmlKeys();

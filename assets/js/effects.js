@@ -500,7 +500,7 @@ SOLAR.Effects = (function () {
     var pw = 1, ph = 1;
     if (renderer && renderer.getDrawingBufferSize) {
       /* 本函数在模块作用域，而 T 只在 init 的 try 块内声明，这里取不到，
-         所以直接引用全局 THREE（同一个 r128 UMD 实例）。 */
+          所以直接引用全局 THREE（同一个 r150 UMD 实例）。 */
       var dsz = renderer.getDrawingBufferSize(new window.THREE.Vector2());
       pw = dsz.x; ph = dsz.y;
     }

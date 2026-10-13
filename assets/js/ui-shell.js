@@ -365,26 +365,41 @@ SOLAR.UIShell = (function () {
 
   /* ---------- 加载进度 ---------- */
 
+  /* 加载屏节点懒解析：贴图分块加载阶段（textures-loader.js）进度就会开始上报，
+     那时 UI.init() 还没跑到 cacheDom，els 是空的。与 hideLoading 里
+     `els.loadingScreen || byId(...)` 同一套路——取到就回填 els，之后走缓存。 */
+  function loadingEl(key, id) {
+    if (!els[key]) els[key] = SOLAR.UIUtil.byId(id);
+    return els[key];
+  }
+
   function paintProgress() {
     var value = load.shown;
-    if (els.loaderFill) els.loaderFill.style.width = (value * 100).toFixed(1) + '%';
-    if (els.loaderPct) els.loaderPct.textContent = Math.round(value * 100) + '%';
+    var fill = loadingEl('loaderFill', 'loader-fill');
+    if (fill) fill.style.width = (value * 100).toFixed(1) + '%';
+    var pct = loadingEl('loaderPct', 'loader-pct');
+    if (pct) pct.textContent = Math.round(value * 100) + '%';
     /* 进度弧：把 0~1 写进 #loading-screen 的 --load-p，CSS 侧
        .loader-ring.r2 的 conic-gradient 亮弧长度随之增长（弧长 = 值 × 360°） */
-    var screen = els.loadingScreen;
+    var screen = loadingEl('loadingScreen', 'loading-screen');
     if (screen && screen.style && screen.style.setProperty) {
       screen.style.setProperty('--load-p', value.toFixed(3));
     }
 
-    var stage = value < 0.18 ? 1 : (value < 0.45 ? 2 : (value < 0.72 ? 3 : (value < 0.97 ? 4 : 5)));
+    /* 阶段划分与 main.js 的加载流程对齐：0~85% 是贴图分块加载与预热
+       （TEXTURE_PHASE），之后才是场景构建、贴图应用与首帧编译。
+       旧阈值 0.18/0.45/0.72 是"边构建边解码"时代的产物，贴图前置后不再适用。 */
+    var stage = value < 0.85 ? 0 : (value < 0.90 ? 1 : (value < 0.94 ? 2 : (value < 0.97 ? 3 : (value < 0.995 ? 4 : 5))));
     if (stage === load.stage) return;
     load.stage = stage;
     /* 每个环节切换后冻结进度 10ms（0.01s）：阶段文案不至于一闪而过 */
     load.stageHoldUntil = Date.now() + 10;
-    if (els.loaderStage) els.loaderStage.textContent = '· ' + SOLAR.t('ui.loadStage' + stage);
-    if (els.loaderTicks && els.loaderTicks.children) {
-      for (var i = 0; i < els.loaderTicks.children.length; i++) {
-        SOLAR.UIUtil.setClass(els.loaderTicks.children[i], 'on', i < stage);
+    var stageEl = loadingEl('loaderStage', 'loader-stage');
+    if (stageEl) stageEl.textContent = '· ' + SOLAR.t('ui.loadStage' + stage);
+    var ticks = loadingEl('loaderTicks', 'loader-ticks');
+    if (ticks && ticks.children) {
+      for (var i = 0; i < ticks.children.length; i++) {
+        SOLAR.UIUtil.setClass(ticks.children[i], 'on', i < stage);
       }
     }
   }

@@ -1,6 +1,6 @@
 /**
  * 场景门面：渲染器 / 相机 / systemRoot 装配、画质档调度、显示比例档、分层 Bloom、天体标签、对外接口
- * 依赖：three.min.js（全局 THREE，r128）、config.js、data.js、i18n.js
+ * 依赖：three.min.js（全局 THREE，r150）、config.js、data.js、i18n.js
  *       scene-shared.js（SOLAR.SceneShared：S 场景节点表与临时向量 / U 共享 uniform）
  *       scene-shaders.js（SOLAR.Shaders）、scene-gfx.js（SOLAR.Gfx）
  *       scene-sun.js（SOLAR.Sun）、scene-bodies.js（SOLAR.Bodies）、scene-backdrop.js（SOLAR.Backdrop）

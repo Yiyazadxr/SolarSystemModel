@@ -12,7 +12,8 @@ const ROOT = path.resolve(__dirname, '..');
 const JS_DIR = path.join(ROOT, 'assets', 'js');
 const HTML = path.join(ROOT, 'index.html');
 const CSS_DIR = path.join(ROOT, 'assets', 'css');
-const EXCLUDE = new Set(['textures.js']);
+/* base64 贴图生成物在 assets/js/textures/ 子目录：readdirSync 非递归天然跳过
+   （与旧 textures.js 的排除理由相同——11MB 字符串逐字符剥注释太慢） */
 
 function strip(src) {
   let out = '';
@@ -92,7 +93,7 @@ function checkOne(file) {
 
 function main() {
   const files = fs.readdirSync(JS_DIR)
-    .filter(f => f.endsWith('.js') && !EXCLUDE.has(f))
+    .filter(f => f.endsWith('.js'))
     .map(f => path.join(JS_DIR, f))
     .sort();
 

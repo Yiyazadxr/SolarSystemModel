@@ -6,7 +6,7 @@
 **零构建、零运行时依赖、运行时不联网**，双击 `index.html` 即可运行。
 
 - 语言：ES5 + IIFE，无模块化 / 无转译 / 无框架
-- 引擎：Three.js **r128 UMD**，已本地化到 `assets/vendor/`
+- 引擎：Three.js **r150.1 官方 UMD**（`THREE.REVISION === '150'`），已本地化到 `assets/vendor/three.min.js`，不可手改；`assets/vendor/` 下的 examples 辅助脚本沿用原有全局 API 版本
 - 命名空间：`window.SOLAR.<Module>`（如 `SOLAR.Scene`、`SOLAR.UI`、`SOLAR.SceneShared`、`SOLAR.UIShared`）
 - 装配：`index.html` 按固定顺序引入 `assets/js/*.js`，**顺序即依赖顺序，不可打乱**
 
@@ -14,17 +14,19 @@
 
 1. **只能写 ES5**。禁用 `let` / `const` / 箭头函数 / 模板字符串 / `class` / 解构 / 展开运算符 / 默认参数 / `async`-`await` / 原生 `Promise`（运行时代码）。一律 `var` + IIFE。
 2. **零构建、零依赖**。不引入 npm 包、打包器、TypeScript、ESM；没有也不应新增 `package.json`。
-3. **运行时不发任何外部请求**。贴图以 base64 内嵌在 `assets/js/textures.js`。
+3. **运行时不发任何外部请求**。贴图以 base64 分块内嵌在 `assets/js/textures/`（清单 `textures-manifest.js`，加载器 `textures-loader.js`）。
 4. **必须支持 `file://` 直开**。不得依赖 `fetch` / `XHR` 读取本地文件。
 5. **WebGL1 为主路径**。探测顺序 `webgl` → `experimental-webgl` → `webgl2`；不支持时在加载层给中英双语提示，不白屏。
-6. **`assets/js/textures.js` 是生成物，勿手改**（8.5 MB base64）。改贴图请跑生成脚本。
+6. **`assets/js/textures/` 分块贴图与 `textures-manifest.js` 是生成物，勿手改**（合计约 11 MB base64）。改贴图请跑生成脚本；新增贴图必须在 `GROUPS` 归组。
+
+官方 r150 UMD 自带一次 `build/three.min.js` 弃用 `console.warn`（提示 r160 将移除）；控制台冒烟允许这一条，其他新增 warning/error 仍需排查。不要通过修改官方 vendor 文件来消除它。
 
 ## 命令与验证
 
 本仓库**没有**测试框架、linter、构建脚本，也没有 `package.json`。`scripts/` 下是零依赖的 Node 自检脚本，直接 `node` 运行：
 
 ```bash
-node scripts/check-syntax.js         # 逐文件语法校验（自动跳过 textures.js）
+node scripts/check-syntax.js         # 逐文件语法校验（自动跳过 assets/js/textures/ 生成物）
 node scripts/check-es5.js            # 禁用 ES6+ 运行时语法
 node scripts/check-offline.js        # 禁止 fetch / XHR / WebSocket 等联网 API
 node scripts/check-script-order.js   # index.html 加载顺序与依赖表一致
@@ -40,7 +42,7 @@ node scripts/check-dom-refs.js       # JS 查询的 DOM id 必须存在于 index
 node scripts/check-doc-counts.js     # README 模块数 / 贴图张数 / 文件总数与代码一致
 ```
 
-- 若是手动逐文件语法检查（**必须跳过 `textures.js`**——8.5 MB base64，检查无意义且极慢）：
+- 若是手动逐文件语法检查（**必须跳过 `assets/js/textures/`**——纯 base64 生成物，检查无意义且极慢）：
 
   ```bash
   node --check assets/js/config.js   # 其余模块同理
@@ -49,7 +51,7 @@ node scripts/check-doc-counts.js     # README 模块数 / 贴图张数 / 文件�
 - 贴图重新内嵌 / 校验：
 
   ```bash
-  node scripts/generate-textures.js          # 重新生成 assets/js/textures.js
+  node scripts/generate-textures.js          # 重新生成 assets/js/textures/ 分块贴图与清单
   node scripts/generate-textures.js --check  # 校验与 assets/textures/ 是否一致
   ```
 
@@ -69,7 +71,9 @@ node scripts/check-doc-counts.js     # README 模块数 / 贴图张数 / 文件�
 | `audio.js` | 程序化音效：Web Audio 实时合成（选中 / 模式切换 / 开关），零音频文件；默认开启，开关写 localStorage |
 | `vsop87.js` | IMCCE VSOP87 主版本八行星要素级数（生成物；地球项为 EMB） |
 | `astro.js` | 开普勒方程求解、行星位置、轨道采样、儒略日换算 |
-| `textures.js` | 内嵌 base64 贴图（生成物） |
+| `textures-manifest.js` | 贴图分块清单（生成物：分组顺序 + 字节权重） |
+| `textures-loader.js` | 贴图分块加载器：加载层可见后逐块注入 + 逐张预热解码 |
+| `textures/` | 分块 base64 贴图 core / outer / moons / far（生成物，勿手改） |
 | `effects.js` | 后期：分层 Bloom + 收尾 shader（暗角 / 扫描线 / 色散 / 颗粒 / 高光压缩） |
 | `scene-shaders.js` | 场景层 GLSL 源码：太阳 / 行星 / 大气 / 环 / 星点 等 shader 字符串（`SOLAR.Shaders`） |
 | `scene-shared.js` | 场景共享状态注册表：节点表 / 临时向量池 / disposal（`SOLAR.SceneShared`） |
@@ -79,7 +83,7 @@ node scripts/check-doc-counts.js     # README 模块数 / 贴图张数 / 文件�
 | `scene-backdrop.js` | 天穹与远景：ESO 银河全景 sky dome、程序化星点、小行星带与柯伊伯带、轨道线（`SOLAR.Backdrop`） |
 | `scene.js` | `SOLAR.Scene` 门面：装配上述子模块并转发；横切的逐帧 `update` 留在此 |
 | `galaxy.js` | 银河模型 + 太阳系绕银心公转 + 太阳公转拖尾（始终显示 + 距离提亮） |
-| `controls.js` | 相机控制、拾取、飞行、跟随、巡航、连珠切换 |
+| `controls.js` | 相机控制、拾取、飞行、跟随、巡航、连珠切换；启动预热瞬移 `primePresetView`（见已知坑 9） |
 | `ui-shared.js` | UI 共享宿主：dom 缓存 + 跨模块状态（`SOLAR.UIShared`） |
 | `ui-util.js` | 界面层基础工具：DOM 查询 / 数字与单位格式化 / 天体记录检索等纯函数，不持有 dom 缓存与跨模块状态（`SOLAR.UIUtil`） |
 | `ui-fx.js` | 界面层动效驱动：数字补间 / 动画重启 / 画质门控开关（`SOLAR.UIFx`；CSS 侧 keyframes 见 `style.css`「HUD 微动效」与文末「动效总门控」） |
@@ -153,6 +157,7 @@ node scripts/check-doc-counts.js     # README 模块数 / 贴图张数 / 文件�
 6. **无头环境只有 SwiftShader 软件渲染**，FPS 数值无参考意义（1–20）。只可用于相对比较，**禁止写入任何性能结论**。
 7. **`SOLAR.time` 已从 `ui.js` 迁到 `ui-time.js`**。外部契约不变（照旧 `SOLAR.time.xxx` 读写，`galaxy.js` / `main.js` / `teach.js` 的读法都不用改），但改时间控制逻辑请直接去 `ui-time.js` 找，`ui.js` 只是门面转发。
 8. **拆分文件的职责边界要看各自的顶部注释**，不要凭文件名猜。文档表格是导航用的，改了内部边界要同步改「架构地图」。
+9. **启动时相机不在太阳系上，预热帧会空画**。`Scene.init` 按 home 局部坐标摆相机（世界原点附近），而 `galaxy.init` 的 `applyPosition()` 已把 `systemRoot` 移到银心轨道位置（约 25000 单位外），首帧 `consumeDelta` ≈ 0、`panBy` 空转——相机整个启动期停在原点望天，加载层背后的预热帧只画背景（实测 54 个 draw call），全套 shader 编译与贴图上传被拖到 `goToPreset` 飞行途中（CPU 尖峰帧 + GPU upload stall）。`startScene` 里必须在 `Galaxy.init` 之后调 `SOLAR.Controls.primePresetView('home', PRIME_WIDE_FACTOR)` 瞬移到同视线倍距点；该函数内部按 `maxDistance` 收上限，faithful 档倍距自动退化为 1。
 
 ## 代码风格
 
@@ -171,6 +176,6 @@ node scripts/check-doc-counts.js     # README 模块数 / 贴图张数 / 文件�
 
 ## "完成"的定义
 
-1. 改 JS → 至少跑过 `node --check`（跳过 `textures.js`）。
+1. 改 JS → 至少跑过 `node --check`（跳过 `assets/js/textures/`）。
 2. 改视觉 / 画质 → 跑断言或数值即可；**目视复核只在用户明确要求时执行**，一般做法是改完后请求用户帮忙查看。
 3. 任何"修好了"的结论，必须写明**证据**与**所依赖的前提**。

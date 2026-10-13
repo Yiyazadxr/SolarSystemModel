@@ -1,6 +1,6 @@
 ﻿/**
  * 应用启动与主循环：串联场景、后期效果、交互控制和界面层
- * 依赖：Three.js r128 UMD 及全部 SOLAR 模块
+ * 依赖：Three.js r150 UMD 及全部 SOLAR 模块
  *
  * 设计要点（性能 / 稳定性）：
  *   1. 帧时间累加器：dt 做上限钳制；累加器按帧间隔"扣减取余"而非清零，避免长时间漂移；
@@ -36,8 +36,18 @@ window.SOLAR = window.SOLAR || {};
 
   var HOVER_INTERVAL_MS = 70;               // 悬停拾取节流（射线 + 屏幕空间兜底较贵）
   var MIN_LOADING_MS = 900;                 // 加载动画最短展示时长，避免一闪而过
-  var LOADING_FALLBACK_MS = 6000;           // 兜底：超时无条件进入场景
+  var LOADING_FALLBACK_MS = 6000;           // 兜底：UI 就绪（startScene 完成）后进度停滞则超时无条件进入场景；贴图阶段未完时它只置 pending，由 startScene 末尾补触发——真正的加载上限由 textures-loader 的 TOTAL_BUDGET_MS 与 startup 看门狗兜底
   var LOADING_IDLE_MS = 400;                // 该时间内没有加载回调（纹理数为 0）则直接补满进度
+  /* 贴图阶段占总进度的份额：0~TEXTURE_PHASE 由 textures-loader.js 的逐块注入 +
+     预热解码驱动（按 base64 字节加权），其余留给场景构建、贴图应用与首帧编译。
+     ui-shell.js 的加载阶段文案阈值与此对齐，改一处要同步另一处。 */
+  var TEXTURE_PHASE = 0.85;
+  /* 启动预热机位的视线倍距：沿 home 视线放到 2.5 倍处，让加载层背后的预热帧
+     就能画到全套天体（shader 编译 / 贴图上传落在加载层背后），随后
+     goToPreset('home') 从该点飞入，飞行全程视野内容不变、无新增编译。
+     controls.js 的 primePresetView 内部还会按 maxDistance 收一次上限，
+     改这个系数要同步看那边的注释。 */
+  var PRIME_WIDE_FACTOR = 2.5;
   var MAX_FRAME_ERRORS = 8;                 // 连续异常帧上限，超过则停止主循环
   var MAX_LOGGED_ERRORS = 3;                // 控制台最多打印的帧异常条数，避免刷屏
 
@@ -789,11 +799,49 @@ window.SOLAR = window.SOLAR || {};
     loadingStart = nowMs();
     loadingFallback = window.setTimeout(completeLoading, LOADING_FALLBACK_MS);
 
+    /* 贴图分块加载先行（替代旧的首屏同步解析 11MB 单文件 textures.js）：
+       此时加载层已可见，textures-loader.js 逐块注入 + 逐张预热解码，进度按
+       base64 字节加权，占前 TEXTURE_PHASE 份额；主线程在块与块之间空闲，
+       进度补间与加载层动画不会被一个长任务打断。 */
+    if (!SOLAR.TextureLoader || typeof SOLAR.TextureLoader.loadAll !== 'function') {
+      showStartupError('贴图加载器缺失，请刷新页面 / Texture loader missing; please refresh the page');
+      return;
+    }
+    SOLAR.TextureLoader.loadAll(
+      function (p) { onLoadProgress(clamp01(p) * TEXTURE_PHASE); },
+      function (result) {
+        if (window.SOLAR_BOOT && window.SOLAR_BOOT.isFailed()) return;
+        if (!result || !result.ok) {
+          showStartupError('星球贴图加载失败，请刷新页面 / Failed to load planet textures; please refresh the page');
+          return;
+        }
+        startScene(canvas);
+      }
+    );
+  }
+
+  /* 贴图就绪后再建场景：buildPlanets 里的 safeTexture 直接命中已注入的 base64，
+     LoadingManager 的逐张解码进度接上，映射到 TEXTURE_PHASE~100% 区间。 */
+  function startScene(canvas) {
     try {
-      context = SOLAR.Scene.init(canvas, onLoadProgress);
+      context = SOLAR.Scene.init(canvas, function (p) {
+        onLoadProgress(TEXTURE_PHASE + (1 - TEXTURE_PHASE) * clamp01(p));
+      });
       SOLAR.Effects.init(context.scene, context.camera, context.renderer, 'high');
       SOLAR.Controls.init(context.scene, context.camera, context.renderer, canvas);
       SOLAR.Galaxy.init(context.scene, 'high', context.camera);
+      /* 启动预热机位：galaxy.init 的 applyPosition() 已把 systemRoot 移到银心
+         轨道位置（约 25000 单位外），而 Scene.init 的相机还在世界原点望天，
+         首帧 consumeDelta ≈ 0、panBy 空转——不先瞬移过去，加载层背后的预热帧
+         只画背景，全套天体的 shader 编译与贴图上传会拖到 goToPreset 飞行途中
+         才发生（CPU 尖峰 + GPU upload stall，即"刚进演示模式到镜头停稳"那段
+         卡顿）。放在 Galaxy.init 之后：瞬移要加银心偏移，偏移此刻才就绪。 */
+      if (SOLAR.Controls && typeof SOLAR.Controls.primePresetView === 'function') {
+        if (!SOLAR.Controls.primePresetView('home', PRIME_WIDE_FACTOR) &&
+            window.console && console.warn) {
+          console.warn('[SOLAR.main] 预热机位瞬移失败，退化为原行为（飞行途中可能有编译卡顿）');
+        }
+      }
       galaxyDelta = new THREE.Vector3();
       currentQuality = 'high';
       SOLAR.UI.init();
@@ -804,15 +852,17 @@ window.SOLAR = window.SOLAR || {};
       /* 不起飞：homeFlightPending 会在加载层收起后的那一帧触发 goToPreset('home')，
          避免镜头补间和首帧的 shader 编译 / 贴图上传抢同一段时间。 */
 
-        bindPointer(canvas);
-        canvas.addEventListener('webglcontextlost', onContextLost, false);
-        canvas.addEventListener('webglcontextrestored', onContextRestored, false);
+      bindPointer(canvas);
+      canvas.addEventListener('webglcontextlost', onContextLost, false);
+      canvas.addEventListener('webglcontextrestored', onContextRestored, false);
       window.addEventListener('resize', onResize);
       document.addEventListener('visibilitychange', onVisibilityChange);
 
-      /* 纹理数为 0 时 LoadingManager 不会回调：短延时后直接补满进度（仍有最短动画时长） */
+      /* 纹理数为 0 时 LoadingManager 不会回调：短延时后直接补满进度（仍有最短动画时长）。
+         判据用 TEXTURE_PHASE 而不是 0——分块加载的前几百毫秒本来就没有场景侧回调，
+         旧判据会在贴图加载途中就把进度条一次性推到 100% 然后干等。 */
       window.setTimeout(function () {
-        if (progressTarget <= 0) onLoadProgress(1);
+        if (progressTarget <= TEXTURE_PHASE) onLoadProgress(1);
       }, LOADING_IDLE_MS);
 
       if (loadingPending) requestComplete();

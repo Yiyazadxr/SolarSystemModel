@@ -58,6 +58,12 @@ app.resourceError({ target: { tagName: 'SCRIPT' } });
 assert.strictEqual(app.window.SOLAR_BOOT.isFailed(), true);
 
 app = boot();
+app.resourceError({ target: { tagName: 'SCRIPT', hasAttribute: function (name) {
+  return name === 'data-solar-texture-chunk';
+} } });
+assert.strictEqual(app.window.SOLAR_BOOT.isFailed(), false, '分块脚本加载失败应由贴图加载器处理');
+
+app = boot();
 app.getTimer().fn();
 assert.strictEqual(app.window.SOLAR_BOOT.isFailed(), true);
 assert(app.tip.textContent.indexOf('超时') >= 0);
@@ -95,5 +101,58 @@ const main = fs.readFileSync(path.join(__dirname, '..', 'assets', 'js', 'main.js
 assert(/hideLoading\(function\s*\(\)\s*\{\s*loadingHidden\s*=\s*true;\s*confirmReady\(\)/.test(main), '加载层隐藏后需握手');
 assert(/firstFrameRendered\s*=\s*true;\s*confirmReady\(\)/.test(main), '首帧渲染后需握手');
 assert(/loadingHidden\s*&&\s*firstFrameRendered\s*&&\s*window\.SOLAR_BOOT/.test(main), '握手需同时满足加载层与首帧');
+
+function textureLoader(chunks) {
+  const scripts = [];
+  const images = [];
+  const timers = [];
+  const solar = { TEXTURES: {}, TEXTURE_MANIFEST: {
+    chunks: chunks, totalBytes: chunks.reduce(function (sum, chunk) { return sum + chunk.bytes; }, 0)
+  } };
+  const window = {
+    SOLAR: solar,
+    setTimeout: function (fn, ms) { const timer = { fn: fn, ms: ms, active: true }; timers.push(timer); return timer; },
+    clearTimeout: function (timer) { timer.active = false; },
+    console: { error: function () {} }
+  };
+  const document = {
+    createElement: function () { return {
+      tagName: 'SCRIPT',
+      setAttribute: function (key) { this.marker = key; },
+      hasAttribute: function (key) { return this.marker === key; }
+    }; },
+    head: { appendChild: function (script) { scripts.push(script); } }
+  };
+  function Image() { images.push(this); }
+  const source = fs.readFileSync(path.join(__dirname, '..', 'assets', 'js', 'textures-loader.js'), 'utf8');
+  vm.runInNewContext(source, { window: window, document: document, Image: Image, SOLAR: solar, console: window.console });
+  return { solar: solar, scripts: scripts, images: images, timers: timers };
+}
+
+let loader = textureLoader([{ file: 'core', bytes: 4 }, { file: 'outer', bytes: 4 }]);
+let results = [];
+loader.solar.TextureLoader.loadAll(null, function (result) { results.push(result); });
+assert.strictEqual(loader.scripts[0].hasAttribute('data-solar-texture-chunk'), true);
+loader.scripts[0].onerror();
+assert.strictEqual(loader.scripts.length, 2, '首块失败后仍须请求下一块');
+loader.solar.TEXTURES.earth = 'data';
+loader.scripts[1].onload();
+loader.images[0].onload();
+assert.strictEqual(results.length, 1);
+assert.strictEqual(results[0].ok, true);
+assert.strictEqual(results[0].failed.join(','), 'core');
+
+loader = textureLoader([{ file: 'core', bytes: 4 }]);
+results = [];
+loader.solar.TextureLoader.loadAll(null, function (result) { results.push(result); });
+loader.solar.TEXTURES.earth = 'data';
+loader.scripts[0].onload();
+assert.strictEqual(results.length, 0, '预热未完成时不能报告加载成功');
+const prewarmTimer = loader.timers.filter(function (timer) { return timer.active; })[0];
+prewarmTimer.fn();
+assert.strictEqual(results.length, 1, '预热超时应结算');
+assert.strictEqual(results[0].ok, false);
+loader.images[0].onload();
+assert.strictEqual(results.length, 1, '迟到的图片回调不能重复结算');
 
 console.log('OK: 启动兜底与主应用握手');

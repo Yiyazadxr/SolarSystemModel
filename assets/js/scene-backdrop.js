@@ -2,7 +2,7 @@
  * 天穹与远景：ESO 银河全景 sky dome、程序化星点（星等分布 + B-V 色温 + 银道带增密
  * + 亮星星芒）、小行星带与柯伊伯带（幂律尺寸分布 + Kirkwood 空隙 + 偏心/倾角抖动
  * + 辉带补正）。
- * 依赖：three.min.js（全局 THREE，r128）、config.js（C.galaxy / C.scale）、
+ * 依赖：three.min.js（全局 THREE，r150）、config.js（C.galaxy / C.scale）、
  *       data.js（D.belts）、scene-shared.js（SOLAR.SceneShared：S.nodes / S / U）
  *       scene-shaders.js（SOLAR.Shaders：STAR / SPIKE / BELT / BAND 四组着色器）
  *       scene-gfx.js（SOLAR.Gfx：safeTexture / bvToRgb / disposePoints / 程序化随机流）
@@ -63,7 +63,7 @@ SOLAR.Backdrop = (function () {
     /* 顶点 alpha：赤道（地平线）处 0 → 向天顶 15% 高度内平滑升到 1。
        银河带最亮的部分贴近赤道，直接硬切会与下方深空形成一条割裂的
        水平分界线；渐隐让它像真实地平线一样柔和沉入背景。
-       r128 支持 4 分量顶点色（含 alpha），配合 transparent 生效。 */
+        r150 支持 4 分量顶点色（含 alpha），配合 transparent 生效。 */
     var posAttr = geo.attributes.position;
     var vc = new Float32Array(posAttr.count * 4);
     for (var vi = 0; vi < posAttr.count; vi++) {

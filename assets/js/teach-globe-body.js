@@ -56,9 +56,9 @@ SOLAR.GlobeBody = (function () {
 
   /* ============ 工具 ============ */
 
-  /* 加载项目里已有的真实贴图（assets/textures/*.jpg 已内嵌在 textures.js 的 base64 里，
-     零额外体积、file:// 直开可用）。key 取自 textures.js 的键名（去扩展名）。
-     失败时回退到程序化贴图，保证任何环境下都有画面。 */
+  /* 加载项目里已有的真实贴图（assets/textures/ 的源图已由 textures-loader.js
+      分块注入 SOLAR.TEXTURES，零额外体积、file:// 直开可用）。key 取自分块内嵌
+      键名（去扩展名）。失败时回退到程序化贴图，保证任何环境下都有画面。 */
   function loadRealTexture(key, fileName, apply) {
     var url = (SOLAR.TEXTURES && SOLAR.TEXTURES[key]) || null;
     if (!url && typeof location !== 'undefined' && location.protocol !== 'file:') {
@@ -67,7 +67,10 @@ SOLAR.GlobeBody = (function () {
     if (!url) { apply(null); return; }
     try {
       new THREE.TextureLoader().load(url, function (t) {
-        if (THREE.sRGBEncoding) t.encoding = THREE.sRGBEncoding;
+        /* 默认 LinearEncoding：地球 / 云层 / 日食太阳使用自定义 ShaderMaterial，
+           r150 起 three 把 sRGB 解码挪到贴图上传阶段，标 sRGB 会让它们被先解码
+           一遍而着色器不编码回去，表面整体暗一半。内置材质的调用方自行标 sRGB。 */
+        if (THREE.LinearEncoding) t.encoding = THREE.LinearEncoding;
         t.anisotropy = 4;
         apply(t);
       }, undefined, function () { apply(null); });
@@ -111,7 +114,9 @@ SOLAR.GlobeBody = (function () {
 
     var tex = new THREE.CanvasTexture(cvs);
     tex.wrapS = THREE.RepeatWrapping;
-    if (THREE.sRGBEncoding) tex.encoding = THREE.sRGBEncoding;
+    /* LinearEncoding：只给地球自定义 shader 用（GLOBE_FRAG 裸采样、无颜色空间转换），
+       r150 起 sRGB 解码挪到上传阶段，标 sRGB 会让表面暗一半。 */
+    if (THREE.LinearEncoding) tex.encoding = THREE.LinearEncoding;
     return tex;
   }
 
