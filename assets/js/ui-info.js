@@ -21,6 +21,9 @@ SOLAR.UIInfo = (function () {
     var tag = document.createElement('span');
     tag.className = 'tag';
     tag.textContent = text;
+    /* 标签错峰入场：按当前条数延迟，封顶 240ms（标签一般 ≤5 个）。
+       元素随每次渲染重建，动画自然重播，不需要 JS 重启。 */
+    tag.style.animationDelay = Math.min(els.infoTags.children.length * 0.04, 0.24) + 's';
     els.infoTags.appendChild(tag);
   }
 
@@ -588,6 +591,10 @@ SOLAR.UIInfo = (function () {
 
     els.panelEmpty.hidden = true;
     els.panelBody.hidden = false;
+    /* 切换天体：内容已重建，重播卡片入场。panel-body 是静态节点不重建，
+       靠 UIFx.restart（移除类 + 强制重排 + 加回）确定性强袭，不依赖
+       display 重启的浏览器差异。 */
+    if (SOLAR.UIFx && typeof SOLAR.UIFx.restart === 'function') SOLAR.UIFx.restart(els.panelBody, 'fx-card');
     if (els.infoPanel) {
       els.infoPanel.classList.remove('collapsed');
       /* 设置面板打开期间被自动收起的信息栏保持收起，避免被重新渲染时闪回。 */
@@ -669,6 +676,9 @@ SOLAR.UIInfo = (function () {
 
   /* 只更新选中态与信息面板，不发起飞行（飞行由调用方自己安排） */
   function applySelection(id) {
+    /* 场景侧选中：提亮该天体的轨道线。列表 / 搜索 / 巡航 / 键盘选中最终都
+       汇到本函数，因此这是唯一收口；传 null 即全部恢复基础值。 */
+    if (SOLAR.Scene && typeof SOLAR.Scene.setSelected === 'function') SOLAR.Scene.setSelected(id);
     if (id == null) {
       U.state.selectedId = null;
       U.state.selectedRecord = null;

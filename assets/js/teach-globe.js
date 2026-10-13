@@ -105,6 +105,12 @@ SOLAR.TeachGlobe = (function () {
       return true;
     },
 
+    /* 语言切换后重贴地球仪场景内的 3D 标签（航线名 / 尺寸标注 / 本初子午线）。
+       标签贴图是构建时烘焙的，转发给 GlobeScenes 的 relabel。 */
+    relabel: function () {
+      if (SOLAR.GlobeScenes && typeof SOLAR.GlobeScenes.relabel === 'function') SOLAR.GlobeScenes.relabel();
+    },
+
     apply: function (params, scale) { SOLAR.GlobeApply.apply(params, scale); },
 
     resetMotion: function () {

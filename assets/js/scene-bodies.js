@@ -414,6 +414,7 @@ var TRAIL_MAX_SUBSTEPS = 8;
       color: col, transparent: true, opacity: C.scale.orbitOpacity * 0.7
     }));
     mo.orbitLine = line;
+    markOrbitBase(line);
     refreshMoonOrbitLine(mo);
     return line;
   }
@@ -436,6 +437,38 @@ var TRAIL_MAX_SUBSTEPS = 8;
     mo.orbitLine.geometry.computeBoundingSphere();
   }
 
+  /* ---------- 轨道线高亮 ----------
+     LineBasicMaterial 在 WebGL 下没有 linewidth，能动的只有 color 与 opacity，
+     所以"提亮"= 向强调色混入 + 放大透明度。基础值在创建时登记进 userData
+     （三档基础透明度不同：行星 = C.scale.orbitOpacity、卫星 ×0.7、彗星 0.18），
+     这样恢复时能回到各自的原值，而不是统一按行星档写死。
+     重建轨道线只换 geometry、保留 material，高亮不会丢；整条线被重建时
+     （refreshOrbitLine 的 line 缺失分支）由 scene 侧重贴一次。 */
+  var ORBIT_HI_LERP = 0.75;        /* 高亮色 = 基础色向强调色混入的比例 */
+  var ORBIT_HI_OPACITY_MUL = 2.8;  /* 高亮时透明度放大倍数 */
+  var ORBIT_HI_OPACITY_MAX = 0.92; /* 封顶：再高就成了实线，失去"轨道"的轻质感 */
+    var ORBIT_HI_COLOR = new THREE.Color(C.colors.accent);
+
+    function markOrbitBase(line) {
+    if (!line || !line.material) return;
+    line.userData.orbitBaseColor = line.material.color.clone();
+    line.userData.orbitBaseOpacity = line.material.opacity;
+  }
+
+  function setOrbitHighlight(line, on) {
+    if (!line || !line.material) return;
+    var base = line.userData.orbitBaseColor;
+    var baseOpacity = line.userData.orbitBaseOpacity;
+    if (!base || typeof baseOpacity !== 'number') return;  /* 未登记基础值：不动 */
+    if (on) {
+      line.material.color.copy(base).lerp(ORBIT_HI_COLOR, ORBIT_HI_LERP);
+      line.material.opacity = Math.min(ORBIT_HI_OPACITY_MAX, baseOpacity * ORBIT_HI_OPACITY_MUL);
+    } else {
+      line.material.color.copy(base);
+      line.material.opacity = baseOpacity;
+    }
+  }
+
   function makeOrbitLine(orb, bodyColor, jd) {
     var geo = makeOrbitGeometry(orb, isFinite(jd) ? jd : currentOrbitEpoch());
     /* 基础轨道灰混入天体本色，既统一又有辨识度 */
@@ -446,6 +479,7 @@ var TRAIL_MAX_SUBSTEPS = 8;
     var line = new THREE.Line(geo, new THREE.LineBasicMaterial({
       color: col, transparent: true, opacity: C.scale.orbitOpacity
     }));
+    markOrbitBase(line);
     S.nodes.systemRoot.add(line);
     return line;
   }
@@ -569,6 +603,7 @@ var TRAIL_MAX_SUBSTEPS = 8;
 
     var orbitLine = makeOrbitLine(cd.orbital, 0x9fe8ff);
     orbitLine.material.opacity = 0.18;
+    markOrbitBase(orbitLine);   /* 彗星轨道比行星更淡，基础值必须覆盖后重记 */
 
     S.nodes.cometObjs.push({
       data: cd, mesh: mesh, uniforms: uniforms, glow: headGlow, halo: halo,
@@ -918,6 +953,7 @@ var TRAIL_MAX_SUBSTEPS = 8;
     makeMoonOrbitLine: makeMoonOrbitLine, refreshMoonOrbitLine: refreshMoonOrbitLine,
     makeOrbitLine: makeOrbitLine, refreshOrbitLine: refreshOrbitLine,
     refreshOrbitLines: refreshOrbitLines,
+    markOrbitBase: markOrbitBase, setOrbitHighlight: setOrbitHighlight,
     makeTrail: makeTrail,
     /* 彗星 */
     buildComets: buildComets, buildOneComet: buildOneComet,

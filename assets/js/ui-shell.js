@@ -146,6 +146,16 @@ SOLAR.UIShell = (function () {
       });
     }
 
+    /* 收起态的独立恢复钮：面板整体隐藏时唯一入口，点它把面板放回来。
+       按钮自身的显隐由 CSS 兄弟选择器跟随 .collapsed，这里只管展开。 */
+    if (els.btnNavOpen && els.bodyNav) {
+      els.btnNavOpen.addEventListener('click', function () {
+        U.state.navUserToggled = true;
+        U.state.navAutoCollapsed = false;
+        els.bodyNav.classList.remove('collapsed');
+      });
+    }
+
     /* 搜索框：即时过滤 + 回车飞向第一个匹配项 */
     if (els.bodySearch) {
       els.bodySearch.addEventListener('input', function () { SOLAR.UINav.setSearch(els.bodySearch.value); });
@@ -191,18 +201,6 @@ SOLAR.UIShell = (function () {
         els.shortcuts.hidden = !on;
         SOLAR.UIUtil.setClass(els.btnHelp, 'active', on);
         if (on) SOLAR.UISettings.toggleSettings(false);
-      });
-    }
-
-    if (els.qualitySelect) {
-      els.qualitySelect.addEventListener('change', function () {
-        SOLAR.UISettings.applyQuality(els.qualitySelect.value);
-      });
-    }
-
-    if (els.btnLang) {
-      els.btnLang.addEventListener('click', function () {
-        SOLAR.setLang(SOLAR.lang === 'en' ? 'zh' : 'en');
       });
     }
 
@@ -263,9 +261,8 @@ SOLAR.UIShell = (function () {
       : ['ULTRA', 'HIGH', 'MEDIUM', 'LOW'];
     var segIds = ['seg-q-ultra', 'seg-q-high', 'seg-q-medium', 'seg-q-low'];
     for (var i = 0; i < labels.length; i++) {
-      if (els.qualitySelect && els.qualitySelect.options[i]) els.qualitySelect.options[i].textContent = labels[i];
-      var seg = SOLAR.UIUtil.byId(segIds[i]);
-      if (seg) seg.textContent = labels[i];
+        var seg = SOLAR.UIUtil.byId(segIds[i]);
+        if (seg) seg.textContent = labels[i];
     }
   }
 
@@ -286,6 +283,8 @@ SOLAR.UIShell = (function () {
     SOLAR.UISettings.setSegActive(els.segLang, SOLAR.lang);
     SOLAR.UINav.buildSearchIndex();
     SOLAR.UINav.buildBodyList();
+    /* 教学模式的按钮 / 标题是动态创建的，不在 [data-i18n] 体系内，交给 teach 自己重贴 */
+    if (SOLAR.Teach && typeof SOLAR.Teach.refreshLanguage === 'function') SOLAR.Teach.refreshLanguage();
 
     if (U.state.selectedId) {
       U.state.selectedRecord = SOLAR.UIUtil.findRecord(U.state.selectedId);
@@ -370,6 +369,12 @@ SOLAR.UIShell = (function () {
     var value = load.shown;
     if (els.loaderFill) els.loaderFill.style.width = (value * 100).toFixed(1) + '%';
     if (els.loaderPct) els.loaderPct.textContent = Math.round(value * 100) + '%';
+    /* 进度弧：把 0~1 写进 #loading-screen 的 --load-p，CSS 侧
+       .loader-ring.r2 的 conic-gradient 亮弧长度随之增长（弧长 = 值 × 360°） */
+    var screen = els.loadingScreen;
+    if (screen && screen.style && screen.style.setProperty) {
+      screen.style.setProperty('--load-p', value.toFixed(3));
+    }
 
     var stage = value < 0.18 ? 1 : (value < 0.45 ? 2 : (value < 0.72 ? 3 : (value < 0.97 ? 4 : 5)));
     if (stage === load.stage) return;

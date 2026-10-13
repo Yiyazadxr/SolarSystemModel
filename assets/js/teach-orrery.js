@@ -37,13 +37,17 @@ SOLAR.TeachOrrery = (function () {
   /* 二十四节气：以立春为首，第 n 个对应 λ = -45° + n*15°。
      刻度与标签必须标在【地球所在的轨道位置】，即日心黄经 λ+180° 方向——
      此前标在 λ 方向（太阳侧），点「冬至」地球却停在「夏至」标签旁。 */
-  var TERMS = ['立春', '雨水', '惊蛰', '春分', '清明', '谷雨',
-    '立夏', '小满', '芒种', '夏至', '小暑', '大暑',
-    '立秋', '处暑', '白露', '秋分', '寒露', '霜降',
-    '立冬', '小雪', '大雪', '冬至', '小寒', '大寒'];
+  /* 二十四节气：数组只存 i18n 子键，顺序即黄经每前进 15° 一个节气；
+     显示文案由 SOLAR.t 取（中文原名已移入 i18n.js 的 teach.t24）。
+     顺序索引还有一个用途：二分二至恰好落在 t % 6 === 3（见 buildMarks）。 */
+  var TERM_KEYS = ['lichun', 'yushui', 'jingzhe', 'chunfen', 'qingming', 'guyu',
+    'lixia', 'xiaoman', 'mangzhong', 'xiazhi', 'xiaoshu', 'dashu',
+    'liqiu', 'chushu', 'bailu', 'qiufen', 'hanlu', 'shuangjiang',
+    'lidong', 'xiaoxue', 'daxue', 'dongzhi', 'xiaohan', 'dahan'];
 
-  /* 二分二至 -> λ（度） */
-  var TERM_LAMBDA = { '春分': 0, '夏至': 90, '秋分': 180, '冬至': 270 };
+  /* 二分二至 -> λ（度）。键用内部 id，与 teach.js 的 TERM_INFO、
+     teach-ground 的 TERM_LAMBDA 保持一致（定点参数由 teach.js 传入）。 */
+  var TERM_LAMBDA = { spring: 0, summer: 90, autumn: 180, winter: 270 };
 
   /* 四季配色：TERMS 序列每 6 个为一季（春：立春…谷雨，夏：立夏…大暑，
      秋：立秋…霜降，冬：立冬…大寒），用于节气名称的季节示意。 */
@@ -277,15 +281,35 @@ var skipBase = false;
     /* 节气名称：与刻度同侧（地球所在的轨道位置）；显隐档位在 apply() 里按 orbitMarks 过滤。
        名称按四季配色（TERMS 每 6 个为一季：立春起春、立夏起夏、立秋起秋、立冬起冬），
        只是季节归属的示意，不代表任何物理量。 */
-    for (var t = 0; t < TERMS.length; t++) {
-      var lb = makeLabel(TERMS[t], 44, SEASON_COLORS[Math.floor(t / 6)]);
+    for (var t = 0; t < TERM_KEYS.length; t++) {
+      var lb = makeLabel(SOLAR.t('teach.t24.' + TERM_KEYS[t]), 44, SEASON_COLORS[Math.floor(t / 6)]);
       track(lb.texture);
-      var big = (TERMS[t] === '春分' || TERMS[t] === '夏至' || TERMS[t] === '秋分' || TERMS[t] === '冬至');
+      /* 二分二至在序列里的位置固定：第 4 / 10 / 16 / 22 项，即 t % 6 === 3。
+         原先靠比对中文名，抽键后改用索引，两种语言下判定一致。 */
+      var big = (t % 6 === 3);
       var lamF = (135 + t * 15) * DEG;
       lb.sprite.position.set(Math.cos(lamF) * 1.12, 0.06, Math.sin(lamF) * 1.12);
       lb.sprite.userData.isMajor = big;
       markGroup.add(lb.sprite);
       termLabels.push(lb.sprite);
+    }
+  }
+
+  /* 语言切换后重贴节气标签。标签是 init 时一次性烘焙的 canvas 贴图，
+     不重建就跟不上语言；这里只换 map 并按新文字的宽高比重设缩放，
+     几何与位置不动（不进逐帧路径，仅切语言时触发一次）。 */
+  function relabel() {
+    for (var t = 0; t < termLabels.length; t++) {
+      var sp = termLabels[t];
+      if (!sp || !sp.material) continue;
+      var lb = makeLabel(SOLAR.t('teach.t24.' + TERM_KEYS[t]), 44, SEASON_COLORS[Math.floor(t / 6)]);
+      track(lb.texture);
+      var old = sp.material.map;
+      if (old && old.dispose) old.dispose();
+      sp.material.map = lb.texture;
+      sp.material.needsUpdate = true;
+      var img = lb.texture.image;
+      if (img && img.width && img.height) sp.scale.set(img.width / img.height * 0.30, 0.30, 1);
     }
   }
 
@@ -755,12 +779,13 @@ var skipBase = false;
       return Math.asin(s > 1 ? 1 : (s < -1 ? -1 : s)) / DEG;
     },
 
+    relabel: relabel,
     getTermName: function () {
       if (!built) return '';
       var lam = lambdaOf(cur.dayOfYear === undefined ? 80 : cur.dayOfYear);
       var n = Math.round((lam + 45) / 15);
       n = ((n % 24) + 24) % 24;
-      return TERMS[n];
+      return SOLAR.t('teach.t24.' + TERM_KEYS[n]);
     },
 
     /* 供教学 UI 定点：把地球移到二分二至位置（春分/夏至/秋分/冬至）。

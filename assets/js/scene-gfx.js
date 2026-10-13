@@ -31,7 +31,10 @@ SOLAR.Gfx = (function () {
   /* 贴图键名 -> 实际 URL：优先内嵌 base64（file:// 可用）；
      file:// 下不再请求磁盘文件（会被 CORS 拦截），直接走纯色兜底 */
   /* 源贴图已统一为 WebP；保留按键映射，避免内嵌贴图不可用时在线回退仍请求
-     已删除的 jpg/png 文件。 */
+     已删除的 jpg/png 文件。
+     扩展名剥离必须覆盖 webp：data.js 的路径全是 .webp，漏掉这一项会让键名
+     带上 .webp 后缀、内嵌查找全部落空，静默退化成纯色兜底（46f51fc 转
+     WebP 时就因漏改此处导致全量贴图未加载，表现为"行星只剩程序化条纹"）。 */
   var TEX_EXT = {
     sun: 'webp', earth: 'webp', earth_night: 'webp', earth_clouds: 'webp', earth_specular: 'webp',
     enceladus: 'webp', europa: 'webp', ganymede: 'webp', io: 'webp', jupiter: 'webp', mars: 'webp', mercury: 'webp',
@@ -42,7 +45,7 @@ SOLAR.Gfx = (function () {
 
   function resolveTexture(path) {
     if (typeof path !== 'string' || !path) return null;
-    var key = path.replace(/^.*\//, '').replace(/\.(jpg|jpeg|png)$/i, '');
+    var key = path.replace(/^.*\//, '').replace(/\.(jpg|jpeg|png|webp)$/i, '');
     if (!key) return null;
     if (SOLAR.TEXTURES && SOLAR.TEXTURES[key]) return SOLAR.TEXTURES[key];
     if (isFileProtocol) return null;

@@ -115,6 +115,8 @@ SOLAR.Scene = (function () {
     /* 统计跨后期通道累计：three.js 默认在每次 render() 前清零 info，
        经 EffectComposer 后只剩最后一个全屏通道的 2 个三角形。改为手动清零。 */
     if (S.nodes.renderer.info) S.nodes.renderer.info.autoReset = false;
+    /* 默认画质 HIGH：兼顾观感与帧率，ULTRA 留给用户手动选；
+       低帧时自适应降级兜底（降级始终允许，手动选档只阻止回升） */
     S.qualityName = 'high';
     S.quality = C.quality.high;
     S.qv = QUAL.high;
@@ -563,6 +565,10 @@ SOLAR.Scene = (function () {
     for (var ci6 = 0; ci6 < S.nodes.cometObjs.length; ci6++) {
       S.nodes.cometObjs[ci6].orbitLine = SOLAR.Bodies.refreshOrbitLine(S.nodes.cometObjs[ci6].orbitLine, S.nodes.cometObjs[ci6].data.orbital, 0x9fe8ff, S.orbitEpochJd || SOLAR.Bodies.currentOrbitEpoch());
     }
+    /* 防御性重贴：refreshOrbitLine 实际只换 geometry、保留 material（缺失时走
+       makeOrbitLine 内部就会 markOrbitBase），所以高亮不会因重建丢失。
+       留着这一次调用，是为了将来真整条重建时高亮不丢。 */
+    applyOrbitHighlight();
     SOLAR.Backdrop.buildBelts();
   }
 
@@ -664,6 +670,37 @@ SOLAR.Scene = (function () {
     applyScaleProfile();
     applyScaleMode();
     return S.scaleMode;
+  }
+
+  /* ---------- 选中天体：提亮对应轨道线 ---------- */
+
+  /* 场景侧此前没有"选中"概念。这里只做一件事：记录选中 id 并把它的轨道线
+     提亮，其余轨道线回到各自基础值（由 scene-bodies 登记的 userData）。
+     只在条目被重建（refreshOrbitLine 的 line 缺失分支）时才会丢高亮，
+     因此凡是整批重建轨道线的地方都要重贴一次 applyOrbitHighlight。 */
+  function applyOrbitHighlight() {
+    var sel = S.selectedId;
+    var i, j;
+    for (i = 0; i < S.nodes.planets.length; i++) {
+      var p = S.nodes.planets[i];
+      var pid = (p.data && p.data.id) || p.id;
+      SOLAR.Bodies.setOrbitHighlight(p.orbitLine, !!sel && sel === pid);
+        var ms = p.moons || [];
+        for (j = 0; j < ms.length; j++) {
+          /* 卫星记录没有 id 字段（只有 data），写 ms[j].id 恒不命中，
+             选中月球/火卫一时这条分支永远走不到，轨道高亮静默失效。 */
+          SOLAR.Bodies.setOrbitHighlight(ms[j].orbitLine, !!sel && sel === (ms[j].data && ms[j].data.id));
+        }
+    }
+    for (i = 0; i < S.nodes.cometObjs.length; i++) {
+      var c = S.nodes.cometObjs[i];
+      SOLAR.Bodies.setOrbitHighlight(c.orbitLine, !!sel && sel === (c.data && c.data.id));
+    }
+  }
+
+  function setSelected(id) {
+    S.selectedId = (typeof id === 'string' && id) ? id : null;
+    applyOrbitHighlight();
   }
 
   /* ---------- 显示开关（供设置面板调用） ---------- */
@@ -924,6 +961,7 @@ SOLAR.Scene = (function () {
     getEffectivePixelRatio: function () { return S.effectivePixelRatio; },
     getSunScreenFraction: getSunScreenFraction,
     setOrbitsVisible: setOrbitsVisible, setTrailsVisible: setTrailsVisible,
+    setSelected: setSelected,
     setGasFx: function (on) { S.gasTarget = on ? 1 : 0; return S.gasTarget; },
     setStarfieldVisible: setStarfieldVisible, setBeltsVisible: setBeltsVisible,
     setLabelsVisible: setLabelsVisible, refreshLabels: refreshLabels,
@@ -937,7 +975,11 @@ SOLAR.Scene = (function () {
        与教学装置的「真实比例 / 示意比例」是两套独立语义，互不影响。 */
     setScaleMode: setScaleMode, getScaleMode: function () { return S.scaleMode; },
     getScaleCompress: getScaleCompress, getScaleFacts: getScaleFacts,
-    refreshOrbitLines: function () { return SOLAR.Bodies.refreshOrbitLines(SOLAR.Bodies.currentOrbitEpoch(), true); },
+    refreshOrbitLines: function () {
+      var rebuilt = SOLAR.Bodies.refreshOrbitLines(SOLAR.Bodies.currentOrbitEpoch(), true);
+      applyOrbitHighlight();   /* 整批重建后重贴选中高亮 */
+      return rebuilt;
+    },
     getSystemRoot: getSystemRoot,
     setProceduralSeed: setProceduralSeed, getProceduralSeed: getProceduralSeed,
     /* 以下六个是子模块按运行时限定名回挑的门面能力（见各文件顶部注释），

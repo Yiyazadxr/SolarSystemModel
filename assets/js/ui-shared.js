@@ -25,6 +25,7 @@ SOLAR.UIShared = {
     settings: {
       orbits: true, labels: true, trails: true, stars: true, belts: true,
       bloom: true, scanline: true, vignette: true, gasFx: true,
+      hudFx: true,                     /* 界面动效总开关：默认开启，不随系统减弱动效偏好 */
       sound: true                        /* 音效默认开启，可随时在设置面板关掉 */
     },
     api: {},
@@ -32,17 +33,20 @@ SOLAR.UIShared = {
     switchIds: {
       orbits: 'sw-orbits', labels: 'sw-labels', trails: 'sw-trails', stars: 'sw-stars', belts: 'sw-belts',
       bloom: 'sw-bloom', scanline: 'sw-scanline', vignette: 'sw-vignette', gasFx: 'sw-gasfx',
+      hudFx: 'sw-hudfx',
       sound: 'sw-sound'
     },
     infoCollapsedBySettings: false,
     lastFollowId: null,
     lastSpeedShown: null,
+    /* 倍速读数的补间目标（含倒流符号）：目标没变就不重启滚动——tick 因
+       effectiveSpeed 每帧变化都会调 refreshSpeed，无脑重开补间会让读数
+       永远停在起点、还和即时落值抢写 textContent */
+    lastSpeedTarget: null,
     lastEffectiveSpeedShown: null,
     /* 时钟 / JD 文本的变化检测缓存：ui-time 写入，ui-shell 的 applyLanguage 清零 */
     lastClockSecond: null,
     lastJdText: '',
-    /* 画质下拉与设置面板分段控件的同步缓存：ui-settings 与门面 syncExternalState 共用 */
-    lastQuality: null,
     /* 左侧搜索关键词：ui-nav 维护，ui-shell 的快捷键 Esc 需要读取 */
     searchQuery: '',
     initialized: false,

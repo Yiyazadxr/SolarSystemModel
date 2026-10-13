@@ -49,7 +49,8 @@
         <button class="btn" id="btn-cruise" data-i18n="ui.cruise">CRUISE</button>
         <button class="btn" id="btn-reset" data-i18n-title="ui.reset">&#10227;&nbsp;<span data-i18n="ui.resetLabel">RESET</span></button>
         <button class="btn" id="btn-immersive" data-i18n-title="ui.immersive">&#9974;&nbsp;<span data-i18n="ui.immersiveLabel">IMMERSIVE</span></button>
-        <button class="btn btn-icon" id="btn-settings" data-i18n-title="ui.settings">&#9881;</button>
+        <!-- 设置图标用「滑杆」而不是齿轮：齿轮的辐射齿在太阳系应用里会被读成太阳 -->
+        <button class="btn btn-icon" id="btn-settings" data-i18n-title="ui.settings"><svg class="hud-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="15" cy="7" r="1.9"/><circle cx="9" cy="12" r="1.9"/><circle cx="14" cy="17" r="1.9"/></svg></button>
       </div>
     </nav>
   </header>
@@ -58,17 +59,22 @@
   <aside class="hud-left" id="body-nav">
     <div class="panel-title-row">
       <h2 class="panel-head" data-i18n="ui.navTitle">BODIES</h2>
-      <button class="panel-toggle" id="btn-nav-toggle" data-i18n-title="ui.navToggle">&#8249;</button>
+      <button class="panel-toggle" id="btn-nav-toggle" data-i18n-title="ui.navToggle"><svg class="hud-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 5.5 8.5 12l7 6.5"/></svg></button>
     </div>
 
     <div class="search-row" id="search-row">
       <input type="text" id="body-search" class="input search-input" autocomplete="off" spellcheck="false" />
-      <button class="search-clear" id="btn-search-clear" data-i18n-title="ui.searchClear" hidden>&#10005;</button>
+      <button class="search-clear" id="btn-search-clear" data-i18n-title="ui.searchClear" hidden><svg class="hud-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg></button>
     </div>
     <p class="search-empty" id="search-empty" hidden data-i18n="ui.searchEmpty">NO MATCH</p>
 
     <ul id="body-list"></ul>
   </aside>
+
+  <!-- 左侧导航收起后的独立恢复钮：与右侧信息窗关闭后不再占位同理——面板整体隐藏，
+       只留一枚按钮，画面上不再出现「外框 + 框内小钮」两层。显隐交给 CSS 兄弟选择器
+       （.hud-left.collapsed ~ .nav-open），JS 只需切换面板那一个类。 -->
+  <button class="nav-open" id="btn-nav-open" type="button" data-i18n-title="ui.navToggle"><svg class="hud-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 5.5 15.5 12l-7 6.5"/></svg></button>
 
   <!-- 右侧信息面板 -->
   <aside class="hud-right" id="info-panel">
@@ -84,14 +90,14 @@
           <h2 id="info-name"></h2>
         </div>
         <span class="badge-follow" id="info-follow" hidden data-i18n="ui.follow">FOLLOWING</span>
-        <button class="info-close" id="btn-info-close" data-i18n-title="ui.close">&#10005;</button>
+        <button class="info-close" id="btn-info-close" data-i18n-title="ui.close"><svg class="hud-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg></button>
       </header>
 
       <div class="info-tags" id="info-tags"></div>
 
       <section class="info-sec" id="sec-overview" data-sec="overview">
         <button class="sec-head" id="sec-head-overview" type="button" aria-expanded="true">
-          <span class="sec-caret" id="sec-caret-overview" aria-hidden="true">&#9656;</span>
+          <span class="sec-caret" id="sec-caret-overview" aria-hidden="true"><svg class="hud-ico" viewBox="0 0 24 24"><path d="M10 7l4.5 5-4.5 5"/></svg></span>
           <h3 id="sec-title-overview" data-i18n="ui.descTitle">OVERVIEW</h3>
         </button>
         <div class="sec-body" id="sec-body-overview">
@@ -101,7 +107,7 @@
 
       <section class="info-sec" id="sec-compare" data-sec="compare">
         <button class="sec-head" id="sec-head-compare" type="button" aria-expanded="true">
-          <span class="sec-caret" id="sec-caret-compare" aria-hidden="true">&#9656;</span>
+          <span class="sec-caret" id="sec-caret-compare" aria-hidden="true"><svg class="hud-ico" viewBox="0 0 24 24"><path d="M10 7l4.5 5-4.5 5"/></svg></span>
           <h3 id="sec-title-compare" data-i18n="ui.compareTitle">RELATIVE TO EARTH</h3>
         </button>
         <div class="sec-body" id="sec-body-compare">
@@ -111,7 +117,7 @@
 
       <section class="info-sec" id="sec-orbit" data-sec="orbit">
         <button class="sec-head" id="sec-head-orbit" type="button" aria-expanded="true">
-          <span class="sec-caret" id="sec-caret-orbit" aria-hidden="true">&#9656;</span>
+          <span class="sec-caret" id="sec-caret-orbit" aria-hidden="true"><svg class="hud-ico" viewBox="0 0 24 24"><path d="M10 7l4.5 5-4.5 5"/></svg></span>
           <h3 id="sec-title-orbit" data-i18n="ui.orbitTitle">ORBIT</h3>
         </button>
         <div class="sec-body" id="sec-body-orbit">
@@ -122,7 +128,7 @@
 
       <section class="info-sec" id="sec-physical" data-sec="physical">
         <button class="sec-head" id="sec-head-physical" type="button" aria-expanded="true">
-          <span class="sec-caret" id="sec-caret-physical" aria-hidden="true">&#9656;</span>
+          <span class="sec-caret" id="sec-caret-physical" aria-hidden="true"><svg class="hud-ico" viewBox="0 0 24 24"><path d="M10 7l4.5 5-4.5 5"/></svg></span>
           <h3 id="sec-title-physical" data-i18n="ui.physicalTitle">PHYSICAL</h3>
         </button>
         <div class="sec-body" id="sec-body-physical">
@@ -132,7 +138,7 @@
 
       <section class="info-sec" id="sec-atmosphere" data-sec="atmosphere">
         <button class="sec-head" id="sec-head-atmosphere" type="button" aria-expanded="false">
-          <span class="sec-caret" id="sec-caret-atmosphere" aria-hidden="true">&#9656;</span>
+          <span class="sec-caret" id="sec-caret-atmosphere" aria-hidden="true"><svg class="hud-ico" viewBox="0 0 24 24"><path d="M10 7l4.5 5-4.5 5"/></svg></span>
           <h3 id="sec-title-atmosphere" data-i18n="ui.atmosphereTitle">ATMOSPHERE</h3>
         </button>
         <div class="sec-body" id="sec-body-atmosphere">
@@ -142,7 +148,7 @@
 
       <section class="info-sec" id="sec-moons" data-sec="moons">
         <button class="sec-head" id="sec-head-moons" type="button" aria-expanded="true">
-          <span class="sec-caret" id="sec-caret-moons" aria-hidden="true">&#9656;</span>
+          <span class="sec-caret" id="sec-caret-moons" aria-hidden="true"><svg class="hud-ico" viewBox="0 0 24 24"><path d="M10 7l4.5 5-4.5 5"/></svg></span>
           <h3 id="sec-title-moons" data-i18n="ui.moonsTitle">MOONS</h3>
         </button>
         <div class="sec-body" id="sec-body-moons">
@@ -153,7 +159,7 @@
 
       <section class="info-sec" id="sec-discovery" data-sec="discovery">
         <button class="sec-head" id="sec-head-discovery" type="button" aria-expanded="false">
-          <span class="sec-caret" id="sec-caret-discovery" aria-hidden="true">&#9656;</span>
+          <span class="sec-caret" id="sec-caret-discovery" aria-hidden="true"><svg class="hud-ico" viewBox="0 0 24 24"><path d="M10 7l4.5 5-4.5 5"/></svg></span>
           <h3 id="sec-title-discovery" data-i18n="ui.discoveryTitle">DISCOVERY</h3>
         </button>
         <div class="sec-body" id="sec-body-discovery">
@@ -163,7 +169,7 @@
 
       <section class="info-sec" id="sec-fact" data-sec="fact">
         <button class="sec-head" id="sec-head-fact" type="button" aria-expanded="true">
-          <span class="sec-caret" id="sec-caret-fact" aria-hidden="true">&#9656;</span>
+          <span class="sec-caret" id="sec-caret-fact" aria-hidden="true"><svg class="hud-ico" viewBox="0 0 24 24"><path d="M10 7l4.5 5-4.5 5"/></svg></span>
           <h3 id="sec-title-fact" data-i18n="ui.factTitle">DID YOU KNOW</h3>
         </button>
         <div class="sec-body" id="sec-body-fact">
@@ -173,7 +179,7 @@
 
       <section class="info-sec" id="sec-data" data-sec="data">
         <button class="sec-head" id="sec-head-data" type="button" aria-expanded="false">
-          <span class="sec-caret" id="sec-caret-data" aria-hidden="true">&#9656;</span>
+          <span class="sec-caret" id="sec-caret-data" aria-hidden="true"><svg class="hud-ico" viewBox="0 0 24 24"><path d="M10 7l4.5 5-4.5 5"/></svg></span>
           <h3 id="sec-title-data" data-i18n="ui.panelTitle">DATA</h3>
         </button>
         <div class="sec-body" id="sec-body-data">
@@ -189,7 +195,7 @@
   <section class="settings-panel" id="settings-panel" hidden>
     <header class="settings-head">
       <h3 id="settings-title" data-i18n="ui.settings">SETTINGS</h3>
-      <button class="panel-toggle" id="btn-settings-close" data-i18n-title="ui.close">&#10005;</button>
+      <button class="panel-toggle" id="btn-settings-close" data-i18n-title="ui.close"><svg class="hud-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg></button>
     </header>
 
     <div class="settings-group" id="group-scene">
@@ -235,6 +241,10 @@
       <div class="set-row" id="row-gasfx">
         <span class="set-label" id="lbl-gasfx" data-i18n="ui.gasFx">GAS EFFECTS</span>
         <button class="switch" id="sw-gasfx" type="button" role="switch" aria-checked="true" data-i18n-title="ui.gasFx"><i id="sw-knob-gasfx"></i></button>
+      </div>
+      <div class="set-row" id="row-hudfx">
+        <span class="set-label" id="lbl-hudfx" data-i18n="ui.hudFx">界面动效</span>
+        <button class="switch" id="sw-hudfx" type="button" role="switch" aria-checked="true" data-i18n-title="ui.hudFx"><i id="sw-knob-hudfx"></i></button>
       </div>
     </div>
 
@@ -313,8 +323,8 @@
 
 
   <!-- 行星连珠模式 -->
-  <button class="align-arrow left" id="align-prev" data-i18n-title="ui.alignPrev">&#8249;</button>
-  <button class="align-arrow right" id="align-next" data-i18n-title="ui.alignNext">&#8250;</button>
+    <button class="align-arrow left" id="align-prev" data-i18n-title="ui.alignPrev"><svg class="hud-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 5.5 8.5 12l7 6.5"/></svg></button>
+    <button class="align-arrow right" id="align-next" data-i18n-title="ui.alignNext"><svg class="hud-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 5.5 15.5 12l-7 6.5"/></svg></button>
 
   <!-- 悬停浮标 / 调试面板 / 快捷键 -->
   <div id="tooltip" class="tooltip"></div>
@@ -355,8 +365,23 @@
 
 <!-- ============ 加载动画 ============ -->
 <div id="loading-screen">
+  <!-- 氛围层：星云漂移 / 星点呼吸 / 扫描带掠过（纯 CSS，无外部资源） -->
+  <div class="loader-nebula" aria-hidden="true"></div>
+  <div class="loader-stars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="loader-scan" aria-hidden="true"></div>
   <div class="loader">
-    <div class="loader-orbit"><span class="loader-dot"></span></div>
+    <!-- 四角瞄框：取景器语言，替代旧的两角 pseudo -->
+    <i class="loader-corner tl" aria-hidden="true"></i>
+    <i class="loader-corner tr" aria-hidden="true"></i>
+    <i class="loader-corner bl" aria-hidden="true"></i>
+    <i class="loader-corner br" aria-hidden="true"></i>
+    <!-- 轨道仪：虚线环（逆向）/ 进度弧（联动 --load-p）/ 卫星环 / 中心核 -->
+    <div class="loader-orbit" aria-hidden="true">
+      <i class="loader-ring r1"></i>
+      <i class="loader-ring r2"></i>
+      <i class="loader-ring r3"></i>
+      <span class="loader-core"></span>
+    </div>
     <div class="loader-text">
       <p class="loader-title" data-i18n="ui.loading">正在初始化</p>
       <p class="loader-tip" data-i18n="ui.loadingTip">正在构建太阳系…</p>
@@ -475,9 +500,10 @@
 <script src="assets/js/scene.js"></script>
 <script src="assets/js/galaxy.js"></script>
 <script src="assets/js/controls.js"></script>
-<!-- 界面层：共享宿主 -> 工具 -> DOM 缓存 -> 导航 -> 信息卡 -> 设置 -> 时间 -> 外壳 -> 门面 -->
+<!-- 界面层：共享宿主 -> 工具 -> 动效 -> DOM 缓存 -> 导航 -> 信息卡 -> 设置 -> 时间 -> 外壳 -> 门面 -->
 <script src="assets/js/ui-shared.js"></script>
 <script src="assets/js/ui-util.js"></script>
+<script src="assets/js/ui-fx.js"></script>
 <script src="assets/js/ui-dom.js"></script>
 <script src="assets/js/ui-nav.js"></script>
 <script src="assets/js/ui-info.js"></script>

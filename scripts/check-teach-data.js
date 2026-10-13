@@ -7,7 +7,14 @@ const path = require('path');
 const vm = require('vm');
 
 const file = path.join(__dirname, '..', 'assets', 'js', 'teach-data.js');
-const solar = {};
+const i18nFile = path.join(__dirname, '..', 'assets', 'js', 'i18n.js');
+
+/* i18n.js 首行是 window.SOLAR = window.SOLAR || {}，之后一律裸写 SOLAR。
+   所以沙箱必须让 window 指向自身（bare 标识符才能解析到 SOLAR）。 */
+const sandbox = { console: console };
+sandbox.window = sandbox;
+vm.runInNewContext(fs.readFileSync(i18nFile, 'utf8'), sandbox, { filename: i18nFile });
+const solar = sandbox.window.SOLAR;
 vm.runInNewContext(fs.readFileSync(file, 'utf8'), { window: { SOLAR: solar }, SOLAR: solar }, { filename: file });
 const data = solar.TEACH_DATA;
 const errors = [];
@@ -22,10 +29,27 @@ function checkId(item, where) {
   else ids.add(item.id);
 }
 
+/* 词键存在性：teach-data 里的 title / text / ask / gotoDemo / summary / points
+   全是 i18n 键名，渲染时才 SOLAR.t 取值。SOLAR.t 缺键时原样返回路径本身，
+   所以"取出值 === 键名"就是拼错的判据——data-i18n 门禁扫不到这些动态键。 */
+function checkKey(value, where) {
+  if (typeof value !== 'string' || !value) return;
+  if (value.indexOf('teach.') !== 0) return;
+  if (solar.t && solar.t(value) === value) {
+    errors.push(where + ': 词键在 i18n.js 中不存在 -> ' + value);
+  }
+}
+
 function checkStep(step, where) {
   count++;
   checkId(step, where);
   if (!step.title || !step.text) errors.push(where + ': 缺少标题或正文');
+  checkKey(step.title, where + '.title');
+  checkKey(step.text, where + '.text');
+  checkKey(step.ask, where + '.ask');
+  checkKey(step.gotoDemo, where + '.gotoDemo');
+  if (step.summary) checkKey(step.summary, where + '.summary');
+  (step.points || []).forEach(function (point, i) { checkKey(point, where + '.points[' + i + ']'); });
   if (!sources.has(step.src)) errors.push(where + ': 无效来源 ' + step.src);
   if (!step.state || !rigs.has(step.state.rig)) errors.push(where + ': 无效装置');
   if (step.cameraOverride) errors.push(where + ': 旧 cameraOverride 字段');

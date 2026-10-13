@@ -98,6 +98,46 @@ function main() {
     else if (!fail) console.log('OK  ' + texFiles.length + ' 张源贴图均有内嵌键（内容一致性另用 generate-textures.js --check）');
   }
 
+  // 6. data.js 贴图路径 -> textures.js 内嵌键的可解析性（回归门禁）
+  //    46f51fc 贴图转 WebP 时漏改 scene-gfx 的键名剥离正则，导致全量贴图
+  //    静默走纯色兜底（行星只剩程序化条纹、卫星变灰球）。这里直接复用
+  //    scene-gfx.js 的正则源码做断言：正则必须覆盖 webp，且 data.js 每条
+  //    贴图路径剥离扩展名后都能在 textures.js 找到内嵌键。
+  console.log('\n=== data.js 贴图路径解析 ===');
+  const dataJs = path.join(JS_DIR, 'data.js');
+  const gfxJs = path.join(JS_DIR, 'scene-gfx.js');
+  if (exists(dataJs) && exists(gfxJs) && exists(texJs)) {
+    const gfxText = fs.readFileSync(gfxJs, 'utf8');
+    const gfxRe = /replace\(\/\\\.\(([^)]+)\)\$\/i/.exec(gfxText);
+    const gfxExts = gfxRe ? gfxRe[1].split('|') : [];
+    const needExt = ['jpg', 'jpeg', 'png', 'webp'];
+    const missingExt = needExt.filter(e => gfxExts.indexOf(e) < 0);
+    if (missingExt.length) {
+      console.log('ERR scene-gfx.js 键名剥离正则缺少扩展名: ' + missingExt.join(', ') +
+        '（会导致对应路径的内嵌查找落空、静默退化为纯色兜底）');
+      fail++;
+    } else if (gfxExts.length) {
+      console.log('OK  scene-gfx.js 键名剥离正则覆盖 ' + gfxExts.join('/'));
+    }
+
+    const texText = fs.readFileSync(texJs, 'utf8');
+    const embedded2 = new Set();
+    const keyRe2 = /^\s*"([A-Za-z0-9_-]+)"\s*:\s*"data:/gm;
+    let k2;
+    while ((k2 = keyRe2.exec(texText)) !== null) embedded2.add(k2[1]);
+
+    const dataText = fs.readFileSync(dataJs, 'utf8');
+    const pathRe = /texture(?:Night|Clouds|Specular)?\s*:\s*'(assets\/textures\/[^']+)'/g;
+    let pm;
+    let resolved = 0;
+    while ((pm = pathRe.exec(dataText)) !== null) {
+      const key = pm[1].replace(/^.*\//, '').replace(/\.[a-z]+$/i, '');
+      if (embedded2.has(key)) resolved++;
+      else { console.log('ERR 贴图路径无法解析为内嵌键: ' + pm[1] + ' -> "' + key + '"'); fail++; }
+    }
+    if (resolved > 0) console.log('OK  data.js ' + resolved + ' 条贴图路径均可解析为内嵌键');
+  }
+
   console.log('\n=== 总结 ===');
   if (fail === 0) {
     console.log('OK  所有必需资产存在。');

@@ -105,6 +105,10 @@ SOLAR.UINav = (function () {
         index.textContent = SOLAR.UIUtil.pad(number, 2);
         number++;
 
+        /* 错峰入场：全局可见序号 × 30ms，封顶 400ms（条目多时不拖沓）。
+           内联 delay 而非逐条规则；列表重建（初始化 / 切语言）时自动重播。 */
+        li.style.animationDelay = Math.min((number - 1) * 0.03, 0.4) + 's';
+
         li.appendChild(dot);
         li.appendChild(name);
         li.appendChild(index);
@@ -203,6 +207,12 @@ SOLAR.UINav = (function () {
     SOLAR.UIUtil.setClass(sec, 'open', open);
     var head = sec.querySelector('.sec-head');
     if (head) head.setAttribute('aria-expanded', open ? 'true' : 'false');
+    /* sec-fade 类显式增删：展开即播淡入、收起即摘（下次展开重新起播）。
+       比在 .sec-body 上挂裸 animation 确定——不依赖 display:none→block
+       的动画重启行为（浏览器之间有差异）；重复 applySectionStates
+       （渲染 / 切语言）时类已存在，不会重播。 */
+    var body = sec.querySelector('.sec-body');
+    if (body) SOLAR.UIUtil.setClass(body, 'sec-fade', open);
   }
 
   function applySectionStates() {

@@ -47,6 +47,10 @@ SOLAR.SceneShared = {
     qualityName: 'high',
     quality: SOLAR.CONFIG.quality.high,
     qv: null,               // 画质细节档（见门面 QUAL 表）
+    /* 当前选中天体 id（演示模式）。场景侧此前没有"选中"概念，引入它只为提亮
+       对应轨道线；由 ui-info.applySelection 经 SOLAR.Scene.setSelected 写入
+       （唯一收口），null 表示无选中。 */
+    selectedId: null,
     sphereGeos: {},
     manager: null, texLoader: null,
     simDays: 0,

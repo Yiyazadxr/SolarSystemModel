@@ -10,7 +10,7 @@
    （2px 硬直角 / blur(6px) / 无投影），才出现
    「教学模式硬边扁平、演示模式玻璃胶囊」的割裂感。
 
-   去廉价感的具体做法：
+   做法：
      1) 面板用玻璃渐变 + 内高光 + 外投影，而不是纯色实底
      2) 排版分主次：等宽大标题发光、正文大字但字重正常、来源弱化
      3) 控件有微交互：hover 上浮 + 发光描边，按下有反馈
@@ -162,7 +162,7 @@
   background: rgba(255, 255, 255, .03); border-color: var(--teach-line);
   box-shadow: none;
 }
-/* 方形图标按钮（☰ / —） */
+/* 方形图标按钮（‹ › — +） */
 #teach-root .teach-btn.teach-icon {
   width: var(--teach-tap);
   padding: 0;
@@ -170,6 +170,20 @@
   font-size: 22px;
   line-height: 1;
 }
+/* 图标按钮内的 SVG：currentColor 描边 + 绝对居中，替掉不居中的文字字形。
+   pointer-events:none 保证点击穿透到按钮本身。 */
+#teach-root .teach-ico {
+  display: block;
+  width: 18px; height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+/* 展开态那枚贴在面板里的小折叠钮只有 22px，图标随之缩一档 */
+#teach-root .teach-btn.teach-panel-toggle .teach-ico { width: 13px; height: 13px; }
 
 /* ===========================================================
    左侧目录面板
@@ -271,17 +285,26 @@
   color: rgba(233, 236, 239, .90);
   cursor: pointer;
   user-select: none; -webkit-user-select: none;
-  transition: background .18s ease, color .18s ease, border-color .18s ease;
+  /* 与演示模式 #body-list li 同一套交互语言：右滑 + 辉光 + 按压回缩 */
+  transition: transform .18s cubic-bezier(.22,.8,.3,1), background .18s ease,
+              color .18s ease, border-color .18s ease, box-shadow .18s ease;
 }
 #teach-root .teach-lesson-title:hover {
+  transform: translateX(3px);
   background: rgba(255, 255, 255, .06);
   color: var(--teach-accent);
+  border-color: rgba(127, 252, 216, .18);
+  box-shadow: var(--teach-glow);
 }
+#teach-root .teach-lesson-title:active { transform: translateX(1px) scale(.98); }
 #teach-root .teach-lesson-title.is-active {
   color: var(--teach-accent);
   background: linear-gradient(90deg, rgba(127, 252, 216, .14), rgba(127, 252, 216, .04));
   border-color: rgba(127, 252, 216, .18);
   box-shadow: inset 0 0 0 1px rgba(127, 252, 216, .12), var(--teach-glow);
+}
+#teach-root .teach-lesson-title.is-active:hover {
+  background: linear-gradient(90deg, rgba(127, 252, 216, .20), rgba(127, 252, 216, .07));
 }
 
 /* 步骤（可点） */
@@ -302,13 +325,17 @@
   color: rgba(233, 236, 239, .82);
   cursor: pointer;
   user-select: none; -webkit-user-select: none;
-  transition: background .18s ease, color .18s ease, box-shadow .18s ease;
+  transition: transform .18s cubic-bezier(.22,.8,.3,1), background .18s ease,
+              color .18s ease, box-shadow .18s ease;
 }
 #teach-root .teach-step + .teach-step { margin-top: 4px; }
 #teach-root .teach-step:hover {
-  background: rgba(255, 255, 255, .06);
+  transform: translateX(3px);
+  background: rgba(127, 252, 216, .07);
   color: var(--teach-accent);
+  box-shadow: var(--teach-glow);
 }
+#teach-root .teach-step:active { transform: translateX(1px) scale(.98); }
 /* 当前步骤：左侧发光的强调色条 + 渐变底衬（替代整块色块，避免塑料感）*/
 #teach-root .teach-step.is-active {
   color: var(--teach-accent);
@@ -325,27 +352,19 @@
   box-shadow: 0 0 10px var(--teach-accent);
 }
 
-/* 收起：与演示模式 .hud-left.collapsed 同款——40px 自适应小方块（bottom:auto 脱离全高），
-   藏目录与标题，折叠钮旋转 180° */
-#teach-root .teach-panel.is-collapsed,
-#teach-root .teach-panel.collapsed {
-  width: 40px;
-  bottom: auto;
-  max-height: none;
-  padding: 12px 6px;
-  overflow: hidden;
-  align-items: center;
+/* 收起态由 JS 驱动（teach.js 的 panelCollapsed / updatePanelVisibility）：
+   面板本体整体隐藏，只留下面这枚独立恢复钮，所以这里不再需要
+   「收窄成小方块」那套规则——画面上不允许出现第二层盒子。 */
+#teach-root .teach-panel-open {
+  position: absolute;
+  left: var(--teach-edge-gap);
+  top: var(--teach-top-h);
+  z-index: 1;
+  background: var(--teach-glass-strong);
+  backdrop-filter: var(--teach-blur);
+  -webkit-backdrop-filter: var(--teach-blur);
+  box-shadow: var(--teach-shadow);
 }
-#teach-root .teach-panel.is-collapsed .teach-toc,
-#teach-root .teach-panel.collapsed .teach-toc,
-#teach-root .teach-panel.is-collapsed .teach-panel-title,
-#teach-root .teach-panel.collapsed .teach-panel-title { display: none; }
-#teach-root .teach-panel.is-collapsed .teach-panel-head,
-#teach-root .teach-panel.collapsed .teach-panel-head {
-  justify-content: center; margin-bottom: 0;
-}
-#teach-root .teach-panel.is-collapsed .teach-panel-toggle,
-#teach-root .teach-panel.collapsed .teach-panel-toggle { transform: rotate(180deg); }
 
 /* ===========================================================
    顶部标题：教学模式 + 副标题（与演示模式品牌区同款）
@@ -476,7 +495,13 @@
   border-radius: 999px;
   backdrop-filter: var(--teach-blur); -webkit-backdrop-filter: var(--teach-blur);
   box-shadow: var(--teach-shadow);
+  /* 按钮文案双语后长度差 3 倍以上（中文 2 字 / 英文 14–23 字符），
+     flex 不换行也不限宽会在窄窗外溢出且不可滚动——限宽 + 横向滚动兜底。 */
+  max-width: calc(100vw - 24px);
+  overflow-x: auto;
+  scrollbar-width: none;
 }
+#teach-root .teach-term-bar::-webkit-scrollbar { display: none; }
 #teach-root .teach-term-bar.is-hidden { display: none; }
 #teach-root .teach-term-btn {
   min-height: var(--teach-tap);
@@ -489,9 +514,12 @@
   border-radius: 999px;
   padding: 4px 16px;
   cursor: pointer;
-  transition: color .16s ease, background .16s ease, border-color .16s ease;
+  transition: transform .16s cubic-bezier(.22,.8,.3,1), color .16s ease,
+              background .16s ease, border-color .16s ease;
 }
-#teach-root .teach-term-btn:hover { color: var(--teach-text); }
+#teach-root .teach-term-btn:hover { color: var(--teach-text); transform: translateY(-1px); }
+#teach-root .teach-term-btn:active { transform: translateY(0) scale(.97); }
+#teach-root .teach-term-btn.is-active:hover { color: var(--teach-accent); }
 #teach-root .teach-term-btn.is-active {
   color: var(--teach-accent);
   border-color: var(--teach-accent-dim);
@@ -761,7 +789,6 @@
   #teach-root .teach-bar { left: 22px; right: 22px; transform: none; width: auto; }
 }
 
-/* 无障碍：降低动效 */
-@media (prefers-reduced-motion: reduce) {
-  #teach-root, #teach-root * { animation: none !important; transition: none !important; }
-}
+/* 教学界面动效不跟随系统 prefers-reduced-motion：课堂投影场景由讲师掌控，
+   动效取舍在 App 内决定（演示模式 HUD 有「界面动效」总开关，教学模式面向
+   投影与希沃白板，入场过渡是步骤引导的一部分，不因系统设置整体熄灯）。 */

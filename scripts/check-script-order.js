@@ -43,6 +43,7 @@ const EXPECTED_ORDER = [
   'controls.js',
   'ui-shared.js',
   'ui-util.js',
+  'ui-fx.js',
   'ui-dom.js',
   'ui-nav.js',
   'ui-info.js',

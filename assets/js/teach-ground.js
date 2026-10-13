@@ -25,19 +25,33 @@ SOLAR.TeachGround = (function () {
   var OBLIQUITY = 23.5;           /* 黄赤交角 */
   var YEAR_DAYS = 365.2422;
   var SPRING_DAY = 80;            /* 春分 ≈ 一年中的第 80 天 */
-  var TERM_LAMBDA = { '春分': 0, '夏至': 90, '秋分': 180, '冬至': 270 };
+  /* 二分二至 -> λ（度）。键用内部 id（spring/summer/autumn/winter），
+     与 teach.js 的 TERM_INFO、teach-orrery 的 TERM_LAMBDA 一致；
+     节气名原先直接用中文当键，双语后必须拆成 id + 显示文案。 */
+  var TERM_LAMBDA = { spring: 0, summer: 90, autumn: 180, winter: 270 };
 
-  /* 三条轨迹弧：赤纬、颜色、名称（春秋分共用一条弧） */
+  /* 三条轨迹弧：赤纬、颜色、id（春秋分共用一条弧）。
+     id 对应 teach.term.* 的 i18n 键，弧名标签由 buildArcs 按当前语言生成。 */
   var ARCS = [
-    { name: '夏至', delta: 23.5, color: 0xffd166 },
-    { name: '春分 / 秋分', delta: 0, color: 0x7ffcd8 },
-    { name: '冬至', delta: -23.5, color: 0x8fb0d8 }
+    { id: 'summer', delta: 23.5, color: 0xffd166 },
+    { id: 'equinox', delta: 0, color: 0x7ffcd8 },
+    { id: 'winter', delta: -23.5, color: 0x8fb0d8 }
   ];
+  /* 轨迹弧显示名：逐分支写字面量（理由同 teach.js 的 termLabel ——
+     字符串拼接会让 check-i18n 扫不到真实键名）。 */
+  function arcName(id) {
+    if (id === 'summer') return SOLAR.t('teach.term.summer');
+    if (id === 'equinox') return SOLAR.t('teach.term.equinox');
+    if (id === 'winter') return SOLAR.t('teach.term.winter');
+    return '';
+  }
+
+  /* 方位标签：name 改存 i18n 子键（东/南/西/北 → E/S/W/N），显示由 SOLAR.t 取 */
   var CARDINALS = [
-    { name: '东', x: 1, z: 0 },
-    { name: '南', x: 0, z: 1 },
-    { name: '西', x: -1, z: 0 },
-    { name: '北', x: 0, z: -1 }
+    { id: 'e', x: 1, z: 0 },
+    { id: 's', x: 0, z: 1 },
+    { id: 'w', x: -1, z: 0 },
+    { id: 'n', x: 0, z: -1 }
   ];
 
   var built = false;
@@ -49,6 +63,7 @@ SOLAR.TeachGround = (function () {
   var sunMesh = null, sunGlow = null;
   var altLabel = null;                          /* 太阳高度角读数 */
   var arcLines = [];                            /* { line, label } */
+  var cardinalLabels = [];                      /* 方位标签精灵，切语言时重贴 */
   var disposeList = [];
   var cam = null;
 
@@ -132,11 +147,12 @@ SOLAR.TeachGround = (function () {
 
     /* 方位标注：贴地平圈外侧 */
     for (var c = 0; c < CARDINALS.length; c++) {
-      var lb = makeLabel(CARDINALS[c].name, 44);
+      var lb = makeLabel(SOLAR.t('teach.dir.' + CARDINALS[c].id), 44);
       track(lb.texture);
       lb.sprite.position.set(CARDINALS[c].x * (GROUND_R + 1.2), 0.4, CARDINALS[c].z * (GROUND_R + 1.2));
       lb.sprite.scale.multiplyScalar(2.6);
       root.add(lb.sprite);
+      cardinalLabels.push(lb.sprite);
     }
   }
 
@@ -168,11 +184,42 @@ SOLAR.TeachGround = (function () {
       );
       line.frustumCulled = false;
       root.add(line);
-      var lb = makeLabel(ARCS[i].name, 40);
+      var lb = makeLabel(arcName(ARCS[i].id), 40);
       track(lb.texture);
       lb.sprite.scale.multiplyScalar(2.2);
       root.add(lb.sprite);
       arcLines.push({ line: line, label: lb.sprite, delta: ARCS[i].delta });
+    }
+  }
+
+  /* 语言切换后重贴 3D 标签（方位 + 轨迹弧）。标签是 init 时烘焙的 canvas 贴图，
+     不重建就跟不上语言；这里只换 map，并按新文字的宽高比重设缩放（沿用
+     构建时各自的放大倍数：方位 2.6、轨迹弧 2.2）。不进逐帧路径。 */
+  function relabel() {
+    var i, sp, lb, old, img;
+    for (i = 0; i < cardinalLabels.length; i++) {
+      sp = cardinalLabels[i];
+      if (!sp || !sp.material) continue;
+      lb = makeLabel(SOLAR.t('teach.dir.' + CARDINALS[i].id), 44);
+      track(lb.texture);
+      old = sp.material.map;
+      if (old && old.dispose) old.dispose();
+      sp.material.map = lb.texture;
+      sp.material.needsUpdate = true;
+      img = lb.texture.image;
+      if (img && img.width && img.height) sp.scale.set(img.width / img.height * 0.30 * 2.6, 0.30 * 2.6, 1);
+    }
+    for (i = 0; i < arcLines.length; i++) {
+      sp = arcLines[i] && arcLines[i].label;
+      if (!sp || !sp.material) continue;
+      lb = makeLabel(arcName(ARCS[i].id), 40);
+      track(lb.texture);
+      old = sp.material.map;
+      if (old && old.dispose) old.dispose();
+      sp.material.map = lb.texture;
+      sp.material.needsUpdate = true;
+      img = lb.texture.image;
+      if (img && img.width && img.height) sp.scale.set(img.width / img.height * 0.30 * 2.2, 0.30 * 2.2, 1);
     }
   }
 
@@ -289,7 +336,7 @@ SOLAR.TeachGround = (function () {
 
     /* 太阳高度角读数：贴在太阳上方，跨 1° 才换字 */
     var altDeg = Math.round(alt / DEG);
-    var txt = '高度 ' + altDeg + '°';
+    var txt = SOLAR.t('teach.sunAlt') + ' ' + altDeg + '°';
     if (altLabel.userData.text !== txt) {
       altLabel.userData.text = txt;
       var fresh = makeLabel(txt, 36).sprite;
@@ -337,6 +384,7 @@ SOLAR.TeachGround = (function () {
 
     /* 节气条「选轨迹」：只换当天赤纬（轨迹弧），保持当前时角继续播放，
        不暂停、不归零——太阳沿新选的弧接着走。 */
+    relabel: relabel,
     goToTerm: function (name) {
       if (!built || TERM_LAMBDA[name] === undefined) return false;
       cur.term = name;
@@ -378,9 +426,12 @@ SOLAR.TeachGround = (function () {
       for (var i = 0; i < disposeList.length; i++) {
         try { if (disposeList[i] && typeof disposeList[i].dispose === 'function') disposeList[i].dispose(); } catch (e) { /* 忽略 */ }
       }
-      disposeList.length = 0;
-      arcLines.length = 0;
-      built = false;
+        disposeList.length = 0;
+        arcLines.length = 0;
+        /* 方位标签也要清：漏这一句的话，二次 init 后数组里新旧各 4 个，
+           relabel 会按索引给已离场景的旧精灵重贴贴图（泄漏且白干）。 */
+        cardinalLabels.length = 0;
+        built = false;
     }
   };
 })();

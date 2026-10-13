@@ -201,6 +201,11 @@ SOLAR.Controls = (function () {
     var pointerId = null;
 
     api.enabled = true;
+    /* 与 OrbitControls 保持同一种形状：外部（teach.js 的教学机位保存/还原、
+      teach-ground / teach-orrery 取相机）一律按 controls.object 取相机。
+      自研控制器此前不暴露 object，那些调用只能静默放弃——表现为退出教学模式后
+      视角没被还原，且只在回落到自研控制器的环境里出现（偶发、难复现）。 */
+    api.object = cam;
     api.target = new THREE.Vector3();
     api.enableDamping = true;
     api.dampingFactor = 0.08;
@@ -495,13 +500,21 @@ SOLAR.Controls = (function () {
   }
 
   function interruptFlight() {
-    if (!flight.active) return false;
-    flight.active = false;
-    flight.id = null;
-    flight.focusDirValid = false;
-    flight.rollNow = 0;
-    if (controls) controls.enabled = true;
-    return true;
+    var wasActive = flight.active;
+    if (flight.active) {
+      flight.active = false;
+      flight.id = null;
+      flight.focusDirValid = false;
+      flight.flatMotion = false;
+      flight.rollNow = 0;
+      if (controls) controls.enabled = true;
+    }
+    /* 取消飞行 = 放弃一切自动镜头移动。缩放是逐帧施加的：教学模式里滚轮
+       累积的 zoom.remaining 存活到退出之后，会在随后几帧把刚还原好的机位
+       又推走，看起来就是"切回演示模式视角没重置"。
+       放在 if 外面：飞行已结束时（教学机位飞行早已落地）也要清。 */
+    zoom.remaining = 0;
+    return wasActive;
   }
 
   /**

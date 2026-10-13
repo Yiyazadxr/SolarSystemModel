@@ -79,7 +79,7 @@
 ├── index.html                 单页入口（HUD 结构 + 加载动画 + 脚本装配）
 ├── assets/
 │   ├── css/                   HUD 与教学样式
-│   ├── js/                    39 个模块，加载顺序即依赖顺序
+│   ├── js/                    40 个模块，加载顺序即依赖顺序
 │   │   ├── 基础                config / data / i18n / audio / vsop87 / astro / textures / effects
 │   │   ├── 场景                scene-shaders / scene-shared / scene-gfx / scene-sun / scene-bodies / scene-backdrop / scene（门面）
 │   │   ├── 系统                galaxy / controls
@@ -87,7 +87,7 @@
 │   │   ├── 主循环              main
 │   │   └── 教学                teach-data / teach-globe-* / teach-orrery / teach-ground / teach-moonsync / teach-scenes / teach
 │   ├── vsop87/                IMCCE 官方原始要素文件及校验文件（仅供离线生成）
-│   └── textures/ vendor/      原始贴图 24 张（textures.js 的来源）；Three.js r128 + OrbitControls + 后期
+│   └── textures/ vendor/      原始贴图 25 张（textures.js 的来源）；Three.js r128 + OrbitControls + 后期
 ├── scripts/                   贴图生成 + 零依赖自检（语法 / ES5 / 离线 / 顺序 / i18n / 数据 / 资产 / 启动 / 轨道小图 / 教学数据）
 ├── docs/screenshots/          README 截图
 └── AGENTS.md · CLAUDE.md · LICENSE · NOTICE · README.md
@@ -154,7 +154,7 @@ VSOP87 接入的浏览器画面与交互尚待人工复核。
 
 ## 规模
 
-拆分前 81 个文件，拆分后约 100 个文件、约 30 MB：`assets/js/` 约 12.4 MB（含 `textures.js` 约 10.9 MB base64）、`assets/textures/` 约 8.2 MB（原始贴图 24 张）、`assets/vendor/` 0.6 MB，其余 < 1 MB。`assets/js/` 由 17 个模块增至 36 个——`scene` / `ui` / `teach-globe` 拆分多出的 19 个文件都是纯源码，总体积增长可忽略。
+当前 112 个文件（git 跟踪口径）、约 30 MB：`assets/js/` 约 12.6 MB（含 `textures.js` 约 10.9 MB base64）、`assets/textures/` 约 8.2 MB（原始贴图 25 张）、`assets/vendor/` 0.6 MB，其余 < 1 MB。`assets/js/` 共 40 个模块——`scene` / `ui` / `teach-globe` 拆分多出的 23 个文件都是纯源码，总体积增长可忽略。
 
 ## 许可
 

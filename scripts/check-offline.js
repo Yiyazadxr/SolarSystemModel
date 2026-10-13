@@ -110,10 +110,13 @@ function main() {
   }
 
   /* JS 资源 URL 可以由 Image.src 等 API 消费，单查联网 API 会漏掉它们。 */
+  /* 例外：SVG / XHTML 命名空间是常量标识符，浏览器不会因它发请求——
+     内联 SVG（createElementNS）必须带这个 URI，否则本项目用不了 SVG 图标。 */
+  const NAMESPACE_URL = /['"]https?:\/\/www\.w3\.org\/(?:2000\/svg|1999\/xhtml)['"]/i;
   for (const f of files) {
     const lines = fs.readFileSync(f, 'utf8').split('\n');
     for (let ln = 0; ln < lines.length; ln++) {
-      if (/['"]https?:\/\//i.test(lines[ln])) {
+      if (/['"]https?:\/\//i.test(lines[ln]) && !NAMESPACE_URL.test(lines[ln])) {
         console.log('ERR ' + path.relative(ROOT, f).replace(/\\/g, '/') + ':' + (ln + 1) + ' [remoteURL]');
         total++;
       }

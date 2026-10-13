@@ -57,7 +57,11 @@ SOLAR.TeachGlobeShared = (function () {
       eclipseTmpA: null, eclipseTmpT: null, eclipseTmpE: null,
       solarTmpA: null, solarTmpT: null, solarTmpE: null
     },
-    built: false,
+      built: false,
+      /* 3D 标签的换语文创（闭包）注册表：teach-globe-scenes 的 trackRelabel 往里推，
+         relabel 统一跑。必须随 built 一起复位——否则 dispose 后二次 init 会再推一遍，
+         旧闭包持有已离场景的精灵，只增不减。 */
+      relabelFns: [],
     cur: {},                // 上一次生效的 params（缺省字段沿用）
     curScale: 'real',
     anim: { spin: false, revolve: false, playing: false, speed: 1 },
@@ -88,8 +92,9 @@ SOLAR.TeachGlobeShared = (function () {
       var o = disposeList[i];
       try { if (o && typeof o.dispose === 'function') o.dispose(); } catch (e) { /* 忽略 */ }
     }
-    disposeList.length = 0;
-    S.built = false;
+      disposeList.length = 0;
+      S.relabelFns.length = 0;
+      S.built = false;
   }
 
   return {

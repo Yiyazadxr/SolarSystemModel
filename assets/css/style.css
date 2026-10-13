@@ -20,6 +20,11 @@
 }
 
 :root {
+  /* 告知浏览器「本页是暗色主题」：原生下拉弹层、滚动条等系统绘制的小部件才会跟着用暗色。
+     不写这一行时，浅色模式的系统会把 <select> 弹层画成浅色底，而选项文字颜色取自
+     color: var(--text)（浅色），凑成白字白底根本看不清。html/body 的 background 是
+     显式黑色，不受该属性影响。 */
+  color-scheme: dark;
   --accent: #7ffcd8;
   --accent-dim: rgba(127, 252, 216, .45);
   --line: rgba(255, 255, 255, .14);
@@ -108,6 +113,10 @@ html, body {
 }
 .input { width: 120px; }
 .select:focus, .input:focus { border-color: var(--accent-dim); }
+/* 下拉弹层兜底：color-scheme: dark 已让现代浏览器用暗色画弹层，但旧版内核只看
+   option 自身样式，取不到就用系统浅色。这里必须给不透明底色——半透明色在弹层里
+   会跟系统白底叠成灰，选中态同样会糊掉。 */
+select option { background: #06080a; color: var(--text); }
 
 .range { -webkit-appearance: none; appearance: none; width: 150px; height: 2px; background: var(--line-strong); outline: none; }
 .range::-webkit-slider-thumb {
@@ -161,9 +170,32 @@ html, body {
   scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .22) transparent;
 }
   .hud-left { left: var(--hud-edge); width: var(--hud-left-w); transition: width .25s ease, padding .25s ease; }
-.hud-left.collapsed { width: 40px; padding: 12px 6px; overflow: hidden; }
-.hud-left.collapsed .panel-head, .hud-left.collapsed #body-list,
-.hud-left.collapsed .search-row, .hud-left.collapsed .search-empty { display: none; }
+/* 收起 = 面板整体隐藏，只留下面那枚独立恢复钮。
+   旧做法是把面板收窄成 40px 小方块、折叠钮留在框内，结果是「外框 + 框内小钮」
+   两层盒子；现在面板 display:none，两层一起消失。显隐由 .nav-open 的兄弟
+   选择器跟随 .collapsed，JS 不需要额外同步状态。 */
+.hud-left.collapsed { display: none; }
+.nav-open {
+  position: absolute;
+  left: var(--hud-edge);
+  top: 96px;                    /* 与 .hud-left 的 top 对齐，停在面板原位置 */
+  z-index: 3;
+  width: 40px; height: 40px;
+  padding: 0;
+  display: none;
+  color: var(--text-dim);
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: 2px;           /* 与 .btn / .panel-toggle 同款直角风格 */
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: var(--shadow-m);
+  cursor: pointer;
+  transition: color .18s ease, border-color .18s ease;
+}
+.hud-left.collapsed ~ .nav-open { display: inline-flex; align-items: center; justify-content: center; }
+.nav-open:hover { color: var(--accent); border-color: var(--accent-dim); }
+@media (max-height: 720px) { .nav-open { top: 84px; } }
   .hud-right { right: var(--hud-edge); width: var(--hud-right-w); transition: transform .25s ease; }
 .hud-right.shifted { transform: translateX(-318px); }
 
@@ -176,7 +208,26 @@ html, body {
   transition: all .18s ease;
 }
 .panel-toggle:hover { color: var(--accent); border-color: var(--accent-dim); }
-.hud-left.collapsed .panel-toggle { transform: rotate(180deg); }
+/* HUD 图标按钮内部改用 SVG：文字字形（‹ › ✕ ⚙ ▸）随字体度量漂移，按钮里不居中；
+   SVG 用 viewBox + 对称坐标，与字体无关。stroke 走 currentColor 继承 hover 变色。 */
+.hud-ico {
+  display: block;
+  width: 14px; height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+/* 块级 SVG 不吃 vertical-align，居中由按钮自身的 flex 负责，才与字体无关 */
+.panel-toggle, .info-close, .search-clear, .btn-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.panel-toggle .hud-ico { width: 12px; height: 12px; }
+.info-close .hud-ico { width: 11px; height: 11px; }
+.search-clear .hud-ico { width: 10px; height: 10px; }
+.sec-caret .hud-ico { width: 9px; height: 9px; }
 .hud-right.collapsed { display: none; }
 .hud-left::-webkit-scrollbar, .hud-right::-webkit-scrollbar,
 .settings-panel::-webkit-scrollbar { width: 4px; }
@@ -205,7 +256,17 @@ html, body {
   font-family: var(--mono); font-size: 12px; letter-spacing: .06em;
   transition: all .16s ease;
 }
-#body-list li:hover { background: rgba(255, 255, 255, .05); border-left-color: var(--accent-dim); }
+/* 悬停：右滑 +  accent 底色 + 左侧勾选线；按下轻微回缩。
+   动画优先级高于作者样式，故入场动画必须用 backwards 填充（见下方微动效区），
+   否则 both 的结束态 transform:none 会盖掉这里的 translateX。 */
+#body-list li:hover {
+  transform: translateX(3px);
+  background: rgba(127, 252, 216, .07);
+  border-left-color: var(--accent-dim);
+}
+#body-list li:hover .dot { box-shadow: 0 0 10px currentColor, 0 0 3px currentColor; }
+#body-list li:active { transform: translateX(1px) scale(.98); }
+#body-list li.active:hover { background: rgba(127, 252, 216, .16); }
 #body-list li.active { background: rgba(127, 252, 216, .10); border-left-color: var(--accent); color: var(--accent); }
 #body-list li:focus-visible { background: rgba(255, 255, 255, .07); }
 #body-list .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; box-shadow: 0 0 6px currentColor; }
@@ -246,10 +307,12 @@ html, body {
   display: flex; align-items: center; gap: 8px; width: 100%;
   background: none; border: none; padding: 9px 0; cursor: pointer; text-align: left;
 }
-.sec-head:hover h3 { color: var(--accent); }
+.sec-head:hover h3 { color: var(--accent); text-shadow: 0 0 10px rgba(127, 252, 216, .35); }
 .sec-caret { font-size: 9px; color: var(--accent); transition: transform .2s ease; display: inline-block; }
 .info-sec.open .sec-caret { transform: rotate(90deg); }
-.sec-body { padding: 0 0 12px 16px; animation: secFade .22s ease; }
+/* 淡入改由 .sec-fade 类显式驱动（ui-nav.applySectionState 增删），
+   比裸 animation 确定：不依赖 display:none→block 的重启行为 */
+.sec-body { padding: 0 0 12px 16px; }
 .info-sec:not(.open) .sec-body { display: none; }
 @keyframes secFade { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
 
@@ -257,7 +320,7 @@ html, body {
   font-family: var(--mono); font-size: 10px; letter-spacing: .18em;
   color: var(--text-dim); margin: 0; text-transform: uppercase;
   border-left: 2px solid var(--accent); padding-left: 8px;
-  transition: color .18s ease;
+  transition: color .18s ease, text-shadow .18s ease;
 }
 .desc { margin: 0; font-size: 12.5px; line-height: 1.75; color: rgba(233, 236, 239, .86); }
 .fact { margin: 0; font-size: 12px; line-height: 1.7; color: var(--accent); opacity: .85; }
@@ -266,7 +329,10 @@ html, body {
 .orbit-chart {
   display: block; width: 100%; height: 180px; margin: 0 0 10px;
   border: 1px solid var(--line); background: rgba(0, 0, 0, .28);
+  transition: border-color .15s ease, box-shadow .15s ease;
 }
+/* 轨道小图悬停：描边转 accent + 外辉光（纯装饰，画布内容不变） */
+.orbit-chart:hover { border-color: var(--accent-dim); box-shadow: 0 0 12px rgba(127, 252, 216, .12); }
 
 /* 与地球对比条 */
 .compare { display: flex; flex-direction: column; gap: 8px; }
@@ -284,7 +350,10 @@ html, body {
   font-family: var(--mono); font-size: 11px; letter-spacing: .04em; color: var(--text);
   transition: all .16s ease;
 }
-.moon-item:hover { background: rgba(255, 255, 255, .05); border-left-color: var(--accent-dim); color: var(--accent); }
+/* 卫星条目是可点按钮：hover 右滑 + accent 底色，按下回缩 */
+.moon-item { transition: transform .15s cubic-bezier(.22, .8, .3, 1), background .15s ease, border-color .15s ease, color .15s ease; }
+.moon-item:hover { transform: translateX(3px); background: rgba(127, 252, 216, .07); border-left-color: var(--accent-dim); color: var(--accent); }
+.moon-item:active { transform: translateX(1px) scale(.98); }
 .moon-item .moon-sub { margin-left: auto; font-size: 9.5px; color: var(--text-dim); }
 .moon-note { margin: 8px 0 0; font-family: var(--mono); font-size: 9.5px; letter-spacing: .06em; color: var(--text-dim); }
 
@@ -349,7 +418,6 @@ html, body {
   text-transform: uppercase; transition: all .18s ease;
 }
 .seg-btn:first-child { border-left: none; }
-.seg-btn:hover { color: var(--accent); background: rgba(127, 252, 216, .08); }
 .seg-btn.active { color: #04120e; background: var(--accent); }
 
 .settings-note {
@@ -435,22 +503,9 @@ html, body {
 @media (max-width: 1600px) { .galaxy-hud span:nth-child(7) { display: none; } }
 @media (max-width: 1250px) { .galaxy-hud span:nth-child(n+5) { display: none; } }
 
-/* 收起态的左侧天体栏：一条带竖排标题的窄把手，而不是又长又空的圆角隧道 */
-.hud-left.collapsed {
-  width: 38px; min-width: 38px; height: auto; bottom: auto;
-  padding: 12px 0 10px; overflow: hidden;
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-}
-.hud-left.collapsed .panel-title-row {
-  flex-direction: column; gap: 10px; padding: 0; margin: 0; align-items: center;
-}
-.hud-left.collapsed .panel-head {
-  writing-mode: vertical-rl; letter-spacing: .2em; font-size: 11px; margin: 0;
-}
-.hud-left.collapsed .panel-toggle { transform: rotate(180deg); }
-.hud-left.collapsed .search-row,
-.hud-left.collapsed .search-empty,
-.hud-left.collapsed #body-list { display: none; }
+/* 左侧导航收起态的旧规则（收窄成 38px 竖排标题把手、折叠钮留在框内）已删除：
+   收敛为「面板 display:none + 一枚独立恢复钮」，见 .hud-left.collapsed 与 .nav-open。
+   留意 .panel-head 曾被 L165 的规则 display:none，竖排标题其实从来没显示出来过。 */
 
 /* ---------- 模式选择（加载完成后：演示 / 教学） ---------- */
 #mode-layer {
@@ -553,11 +608,15 @@ body.align-mode .align-arrow { display: flex; }
   color: var(--accent); border-color: var(--accent-dim);
   background: rgba(127, 252, 216, .08);
 }
-.sun-view-bar.is-hidden { display: none; }
-  font-family: var(--mono); font-size: 10px; letter-spacing: .06em; color: var(--text-dim);
-  background: var(--bg-panel); border: 1px solid var(--line);
-  padding: 12px 14px; backdrop-filter: blur(6px);
-}
+  .sun-view-bar.is-hidden { display: none; }
+  /* 这条规则原先丢了选择器：裸声明会被解析器整段丢弃，快捷键弹层因此一直没有
+     内边距，文字贴着玻璃边缘（丢失的那段尾部还多出一个右花括号）。
+     背景 / 模糊 / 阴影由下方 917 行的 .shortcuts 负责，这里只补字体与内边距。 */
+  .shortcuts {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .06em; color: var(--text-dim);
+    border: 1px solid var(--line);
+    padding: 12px 14px;
+  }
 .shortcuts h4 { margin: 0 0 6px; font-size: 10px; letter-spacing: .18em; font-weight: 400; color: var(--text); }
 .shortcuts ul { margin: 0; padding: 0; list-style: none; line-height: 1.8; }
 
@@ -571,30 +630,69 @@ body.align-mode .align-arrow { display: flex; }
   animation: secFade .3s ease;
 }
 
-/* ---------- 加载动画 ---------- */
+/* ---------- 加载动画：深空轨道仪启动序列 ----------
+   设计意图：不做"转圈 + 进度条"的功能性等待，而是一台轨道仪的校准过程——
+   星云极慢漂移、星点错峰呼吸、扫描带缓缓掠过、四角瞄框明灭；中央轨道仪
+   三层环各走各的速率：虚线环逆向 18s、进度弧与真实加载进度联动
+   （--load-p 由 ui-shell.paintProgress 写入）、卫星环 3.6s。
+   只动 transform / opacity / 背景渐变，零外部资源，file:// 直开可用。 */
 #loading-screen {
   position: fixed; inset: 0; z-index: 20;
   background: #000; display: flex; align-items: center; justify-content: center;
   overflow: hidden;
   transition: opacity .7s ease;
 }
+/* 网格地面：纵深暗示，压慢压淡（44px 大格 + 中心微光，边缘渐隐） */
 #loading-screen::before {
   content: ''; position: absolute; inset: 0; pointer-events: none;
   background:
-    linear-gradient(rgba(127, 252, 216, .035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(127, 252, 216, .035) 1px, transparent 1px),
-    radial-gradient(circle at 50% 50%, rgba(127, 252, 216, .08), transparent 44%);
+    linear-gradient(rgba(127, 252, 216, .030) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(127, 252, 216, .030) 1px, transparent 1px),
+    radial-gradient(circle at 50% 46%, rgba(127, 252, 216, .08), transparent 44%);
   background-size: 44px 44px, 44px 44px, 100% 100%;
   mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent);
-  animation: loaderGrid 8s linear infinite;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent);
+  animation: loaderGrid 12s linear infinite;
 }
-#loading-screen::after {
-  content: ''; position: absolute; left: 0; right: 0; top: -12%; height: 1px;
-  pointer-events: none; background: linear-gradient(90deg, transparent, var(--accent), transparent);
+/* 星云：三层大半径渐变（青 / 蓝 / 中心），22s 极慢漂移 */
+.loader-nebula {
+  position: absolute; inset: -18%; pointer-events: none;
+  background:
+    radial-gradient(ellipse 44% 36% at 63% 33%, rgba(127, 252, 216, .055), transparent 70%),
+    radial-gradient(ellipse 38% 32% at 31% 67%, rgba(80, 130, 255, .05), transparent 70%),
+    radial-gradient(ellipse 30% 24% at 50% 50%, rgba(127, 252, 216, .030), transparent 70%);
+  animation: nebulaDrift 22s ease-in-out infinite alternate;
+}
+/* 星点：7 枚微光，错峰呼吸（位置写死，不依赖随机） */
+.loader-stars { position: absolute; inset: 0; pointer-events: none; }
+.loader-stars i {
+  position: absolute; width: 2px; height: 2px; border-radius: 50%;
+  background: #fff; opacity: 0;
+  box-shadow: 0 0 6px rgba(255, 255, 255, .85);
+  animation: twinkle 3.6s ease-in-out infinite;
+}
+.loader-stars i:nth-child(1) { left: 11%; top: 20%; }
+.loader-stars i:nth-child(2) { left: 23%; top: 68%; animation-delay: .5s; animation-duration: 4.4s; }
+.loader-stars i:nth-child(3) { left: 38%; top: 31%; animation-delay: 1.1s; }
+.loader-stars i:nth-child(4) { left: 47%; top: 78%; animation-delay: 1.7s; animation-duration: 5s; }
+.loader-stars i:nth-child(5) { left: 62%; top: 24%; animation-delay: .8s; }
+.loader-stars i:nth-child(6) { left: 74%; top: 62%; animation-delay: 2.2s; animation-duration: 4.8s; }
+.loader-stars i:nth-child(7) { left: 86%; top: 36%; animation-delay: 1.4s; width: 3px; height: 3px; }
+/* 扫描带：22vh 柔光带 + 1px 亮核，7.5s 缓缓掠过 */
+.loader-scan {
+  position: absolute; left: 0; right: 0; top: -22vh; height: 22vh;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, rgba(127, 252, 216, .045) 60%, rgba(127, 252, 216, .09) 88%, transparent);
+  animation: scanBand 7.5s ease-in-out infinite;
+}
+.loader-scan::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
   box-shadow: 0 0 16px 2px var(--accent-dim);
-  opacity: .55; animation: loaderScan 4.8s ease-in-out infinite;
+  opacity: .5;
 }
 #loading-screen.hidden { opacity: 0; pointer-events: none; }
+/* 面板：玻璃渐变 + 内高光 + 外辉光；四角瞄框见 .loader-corner */
 .loader {
   position: relative; display: flex; align-items: center; gap: 28px;
   min-width: 520px; padding: 30px 34px;
@@ -603,48 +701,122 @@ body.align-mode .align-arrow { display: flex; }
   box-shadow: 0 0 0 1px rgba(255, 255, 255, .025) inset, 0 0 46px rgba(0, 0, 0, .65), 0 0 34px rgba(127, 252, 216, .07);
   animation: loaderBoot .8s cubic-bezier(.2, .8, .2, 1) both;
 }
-.loader::before, .loader::after {
-  content: ''; position: absolute; width: 9px; height: 9px; pointer-events: none;
-  border-color: var(--accent); border-style: solid; opacity: .75;
+/* 四角瞄框：L 形描边 + 3.2s 错峰呼吸，取景器语言 */
+.loader-corner {
+  position: absolute; width: 14px; height: 14px; pointer-events: none;
+  border-color: var(--accent); border-style: solid;
+  animation: cornerBreathe 3.2s ease-in-out infinite;
 }
-.loader::before { left: -1px; top: -1px; border-width: 1px 0 0 1px; }
-.loader::after { right: -1px; bottom: -1px; border-width: 0 1px 1px 0; }
+.loader-corner.tl { left: -1px; top: -1px; border-width: 1px 0 0 1px; }
+.loader-corner.tr { right: -1px; top: -1px; border-width: 1px 1px 0 0; animation-delay: .4s; }
+.loader-corner.bl { left: -1px; bottom: -1px; border-width: 0 0 1px 1px; animation-delay: .8s; }
+.loader-corner.br { right: -1px; bottom: -1px; border-width: 0 1px 1px 0; animation-delay: 1.2s; }
+/* 轨道仪：容器自身不转（外圈辉光由下方「更有仪式感」段的 box-shadow 负责），三层环自转 */
 .loader-orbit {
-  width: 84px; height: 84px; border: 1px solid var(--line-strong);
-  border-radius: 50%; position: relative; flex: none; animation: spin 2.4s linear infinite;
+  width: 92px; height: 92px; position: relative; flex: none;
+  border-radius: 50%;
+  animation: loaderOrbit .7s cubic-bezier(.22, .8, .3, 1) .1s both;
 }
-.loader-orbit::before {
-  content: ''; position: absolute; inset: 12px;
-  border: 1px solid rgba(127, 252, 216, .28); border-radius: 50%;
+.loader-ring { position: absolute; border-radius: 50%; }
+/* r1 虚线环：18s 逆向 */
+.loader-ring.r1 {
+  inset: 0;
+  border: 1px dashed rgba(127, 252, 216, .30);
+  animation: spinReverse 18s linear infinite;
 }
-.loader-dot {
-  position: absolute; top: -3px; left: 50%; margin-left: -3px;
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--accent); box-shadow: 0 0 12px var(--accent);
+/* r2 进度弧：conic 亮弧，弧长 = --load-p × 360deg（0~1，paintProgress 写入）；
+   mask 挖空中心成环；进度为 0 时只余一圈极淡底环 */
+.loader-ring.r2 {
+  inset: 10px;
+  background: conic-gradient(from 0deg,
+    var(--accent) 0deg,
+    var(--accent) calc(var(--load-p, 0) * 360deg),
+    rgba(127, 252, 216, .10) calc(var(--load-p, 0) * 360deg),
+    rgba(127, 252, 216, .10) 360deg);
+  -webkit-mask-image: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+  mask-image: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+  filter: drop-shadow(0 0 5px rgba(127, 252, 216, .30));
+}
+/* r3 卫星环：细实线 + 顶端白点卫星，3.6s 顺时针 */
+.loader-ring.r3 {
+  inset: 22px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  animation: spin 3.6s linear infinite;
+}
+.loader-ring.r3::after {
+  content: ''; position: absolute; top: -2.5px; left: 50%; margin-left: -2.5px;
+  width: 5px; height: 5px; border-radius: 50%;
+  background: #fff; box-shadow: 0 0 10px var(--accent), 0 0 3px #fff;
+}
+/* 中心核：辉光 + 2.8s 呼吸 */
+.loader-core {
+  position: absolute; left: 50%; top: 50%;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 14px 2px rgba(127, 252, 216, .55), 0 0 4px #fff;
+  animation: coreBreathe 2.8s ease-in-out infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spinReverse { to { transform: rotate(-360deg); } }
 @keyframes loaderGrid { to { background-position: 0 44px, 44px 0, 0 0; } }
-@keyframes loaderScan { 0%, 100% { transform: translateY(0); opacity: 0; } 14%, 78% { opacity: .55; } 50% { transform: translateY(112vh); } }
 @keyframes loaderBoot { from { opacity: 0; transform: translateY(8px) scale(.985); filter: blur(3px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes nebulaDrift {
+  from { transform: translate3d(-1.5%, 1%, 0) scale(1); opacity: .8; }
+  to   { transform: translate3d(1.5%, -1%, 0) scale(1.06); opacity: 1; }
+}
+@keyframes twinkle { 0%, 100% { opacity: 0; } 50% { opacity: .9; } }
+@keyframes scanBand { 0% { transform: translateY(0); } 100% { transform: translateY(144vh); } }
+@keyframes cornerBreathe { 0%, 100% { opacity: .35; } 50% { opacity: .8; } }
+@keyframes loaderOrbit { from { opacity: 0; transform: scale(.55); } to { opacity: 1; transform: none; } }
+@keyframes coreBreathe {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50%      { transform: translate(-50%, -50%) scale(1.35); }
+}
 
+/* 文字区：面板 boot 后逐条级联淡入 */
+.loader-text > * { animation: loaderItem .5s cubic-bezier(.22, .8, .3, 1) both; }
+.loader-text > *:nth-child(1) { animation-delay: .18s; }
+.loader-text > *:nth-child(2) { animation-delay: .28s; }
+.loader-text > *:nth-child(3) { animation-delay: .38s; }
+.loader-text > *:nth-child(4) { animation-delay: .48s; }
+.loader-text > *:nth-child(5) { animation-delay: .58s; }
+@keyframes loaderItem { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .loader-title { margin: 0; font-family: var(--mono); font-size: 14px; letter-spacing: .3em; text-shadow: 0 0 16px rgba(127, 252, 216, .28); }
 .loader-tip { margin: 6px 0 14px; font-family: var(--mono); font-size: 10px; letter-spacing: .1em; color: var(--text-dim); }
-.loader-bar { width: 260px; height: 2px; background: rgba(255, 255, 255, .12); position: relative; overflow: hidden; }
+/* 进度条：3px 高 + 刻度纹理（::before，压在填充之上）+ 柔光 shimmer（::after）；
+   填充右端以近白渐变收头作「读数头」（overflow:hidden 内自然裁切，无需额外元素） */
+.loader-bar { width: 260px; height: 3px; background: rgba(255, 255, 255, .12); position: relative; overflow: hidden; }
+.loader-bar::before {
+  content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: repeating-linear-gradient(90deg, transparent 0 22px, rgba(0, 0, 0, .40) 22px 23px);
+}
 .loader-bar::after {
   content: ''; position: absolute; inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .30), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .22), transparent);
   transform: translateX(-100%); animation: shimmer 1.6s linear infinite;
 }
 @keyframes shimmer { to { transform: translateX(100%); } }
-.loader-bar i { display: block; height: 100%; width: 0; background: var(--accent); box-shadow: 0 0 8px var(--accent-dim); transition: width .25s ease; }
+.loader-bar i {
+  display: block; height: 100%; width: 0; position: relative;
+  background: linear-gradient(90deg, rgba(127, 252, 216, .55) 0%, var(--accent) 88%, #fff 100%);
+  box-shadow: 0 0 10px var(--accent-dim);
+  transition: width .25s ease;
+}
+/* 百分比：大号等宽 accent + 辉光；阶段文案保持小字弱化 */
 .loader-pct {
-  display: flex; align-items: baseline; gap: 8px;
-  margin: 8px 0 0; font-family: var(--mono); font-size: 10px; color: var(--accent); letter-spacing: .12em;
+  display: flex; align-items: baseline; gap: 10px;
+  margin: 10px 0 0; font-family: var(--mono); letter-spacing: .12em;
+}
+#loader-pct {
+  font-size: 20px; font-weight: 500; color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 14px rgba(127, 252, 216, .45);
 }
 .loader-stage { color: var(--text-dim); font-size: 9px; letter-spacing: .14em; }
-.loader-ticks { display: flex; gap: 3px; margin-top: 8px; }
-.loader-ticks i { width: 18px; height: 2px; background: rgba(255, 255, 255, .12); transition: background .3s ease, box-shadow .3s ease; }
-.loader-ticks i.on { background: var(--accent); box-shadow: 0 0 6px var(--accent-dim); }
+/* 阶段刻度：点亮时拉高（scaleY）+ 辉光 */
+.loader-ticks { display: flex; gap: 4px; margin-top: 10px; }
+.loader-ticks i { width: 20px; height: 2px; background: rgba(255, 255, 255, .12); transition: background .3s ease, box-shadow .3s ease, transform .3s ease; }
+.loader-ticks i.on { background: var(--accent); box-shadow: 0 0 8px var(--accent-dim); transform: scaleY(1.6); }
 .loader-ticks i:not(.on) { animation: loaderTick 1.8s ease-in-out infinite; }
 .loader-ticks i:nth-child(2) { animation-delay: .12s; }
 .loader-ticks i:nth-child(3) { animation-delay: .24s; }
@@ -813,10 +985,86 @@ body.align-mode .align-arrow { display: flex; }
 }
 
 /* 数据表：斑马纹 + 行悬浮 */
-.data-table tr { border-bottom: 1px solid rgba(255, 255, 255, .05); }
+.data-table tr { border-bottom: 1px solid rgba(255, 255, 255, .05); transition: background .15s ease; }
 .data-table tr:nth-child(even) { background: rgba(255, 255, 255, .025); }
-.data-table tr:hover { background: rgba(127, 252, 216, .05); }
-.data-table td { padding: 6px 4px; }
+/* 行悬停：底色加深一倍 + 字段名转 accent（含 #info-orbit 轨道表） */
+.data-table tr:hover { background: rgba(127, 252, 216, .10); }
+.data-table tr:hover td.k { color: var(--accent); }
+.data-table td { padding: 6px 4px; transition: color .15s ease; }
+
+/* ---------- HUD 微动效（JS 侧驱动见 ui-fx.js） ----------
+   一次性入场 / 切换动画与选中脉冲。统一缓动 cubic-bezier(.22,.8,.3,1)，
+   与既有 panelIn / teachIn / barIn 同一曲线语言；只动 transform / opacity
+   （数字补间除外——那是小文本节点的重绘），不走布局属性。
+   fill: both 是错峰入场的前提：延迟期间保持初始态，不会先闪一下再播。 */
+@keyframes navItemIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes tagIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+/* 对比条填充：scaleX 替代 width 动画——零布局（FLIP 思想）；
+   目标宽度仍由 JS 写 width，动画只负责"长出来"的过程 */
+@keyframes barGrow {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+/* 选中脉冲：transform scale 走合成器；7px 圆点的 glow 随缩放自然呼吸 */
+@keyframes dotPulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.4); }
+}
+/* 读数变化高亮：只改 text-shadow（终态 none = 读数元素本身无投影，安全） */
+@keyframes valueFlash {
+  0%   { text-shadow: 0 0 12px var(--accent), 0 0 3px var(--accent); }
+  100% { text-shadow: none; }
+}
+
+/* 左侧列表错峰入场：delay 由 ui-nav 按全局可见序号内联（封顶 400ms）。
+   填充用 backwards 不用 both：both 的动画结束态（transform:none）优先级
+   高于作者样式，会盖掉 #body-list li:hover 的 translateX，悬停位移失效；
+   backwards 只在延迟期间保持初始态，结束后回到自然样式，hover 正常。 */
+#body-list li { animation: navItemIn .35s cubic-bezier(.22, .8, .3, 1) backwards; }
+/* 选中项圆点脉冲（无限循环；LOW 档 / 减弱动效时关闭，见文末门控） */
+#body-list li.active .dot { animation: dotPulse 1.8s ease-in-out infinite; }
+/* 列表圆点辉光过渡（配合 hover 增亮） */
+#body-list .dot { transition: box-shadow .15s ease; }
+
+/* 信息卡切换：panel-body 是静态节点不重建，renderInfo 后由
+   UIFx.restart(el, 'fx-card') 移除类 + 强制重排 + 加回，确定性强袭 */
+.panel-body.fx-card { animation: cardIn .3s cubic-bezier(.22, .8, .3, 1) both; }
+/* 标签错峰：元素随每次渲染重建，动画自然重播；delay 由 addTag 内联（封顶 240ms）。
+   同样用 backwards（理由同列表项）；标签在 .info-tags（flex 容器）里是 flex
+   子项、display 已被块状化，transform 生效。 */
+.tag {
+  animation: tagIn .3s cubic-bezier(.22, .8, .3, 1) backwards;
+  transition: transform .15s cubic-bezier(.22, .8, .3, 1), color .15s ease,
+    border-color .15s ease, background .15s ease, box-shadow .15s ease;
+}
+/* 标签悬停：不可点也给反馈（HUD「万物可感」语言），不装 pointer 光标 */
+.tag:hover {
+  transform: translateY(-1px);
+  color: var(--accent);
+  border-color: var(--accent-dim);
+  background: rgba(127, 252, 216, .07);
+  box-shadow: 0 0 10px rgba(127, 252, 216, .12);
+}
+/* 分区展开淡入：类由 applySectionState 显式增删（展开即播、收起即摘） */
+.sec-body.sec-fade { animation: secFade .24s cubic-bezier(.22, .8, .3, 1); }
+
+/* 对比条填充生长（origin 左，配合 overflow:hidden 的 .compare-bar） */
+.compare-bar i {
+  transform-origin: left center;
+  animation: barGrow .45s cubic-bezier(.22, .8, .3, 1) both;
+}
+/* 读数变化高亮：UIFx.restart(el, 'fx-flash') 重播 */
+.fx-flash { animation: valueFlash .5s ease both; }
 
 /* 卫星条目圆角 */
 .moon-item { border-radius: var(--radius-s); }
@@ -833,14 +1081,20 @@ body.align-mode .align-arrow { display: flex; }
 .settings-group h4 { color: rgba(127, 252, 216, .55); }
 
 /* 开关：更大更圆润的胶囊 */
-.switch { width: 40px; height: 20px; border-radius: 10px; box-shadow: var(--edge); }
-.switch i { top: 2px; left: 2px; width: 14px; height: 14px; box-shadow: 0 1px 3px rgba(0, 0, 0, .5); }
+.switch { width: 40px; height: 20px; border-radius: 10px; box-shadow: var(--edge); transition: border-color .15s ease, background .15s ease, box-shadow .15s ease; }
+/* 滑块位移补过渡：否则开关拨动时 knob 硬跳（left 是布局属性但仅在点击时变一次，
+   频次极低，用 transition 换手感，不进逐帧路径） */
+.switch i { top: 2px; left: 2px; width: 14px; height: 14px; box-shadow: 0 1px 3px rgba(0, 0, 0, .5); transition: left .18s cubic-bezier(.22, .8, .3, 1), box-shadow .15s ease; }
+/* 悬停：轨道提亮 + knob 辉光（未勾选态也给「可拨」的预感） */
+.switch:hover { border-color: var(--accent-dim); background: rgba(255, 255, 255, .12); }
+.switch:hover i { box-shadow: 0 0 6px var(--accent-dim), 0 1px 3px rgba(0, 0, 0, .5); }
 .switch[aria-checked="true"] { box-shadow: 0 0 12px rgba(127, 252, 216, .22), var(--edge); }
 .switch[aria-checked="true"] i { left: 22px; }
 
 /* 分段选择：圆角容器 */
 .seg { border-radius: var(--radius-s); }
-.seg-btn { padding: 5px 9px; }
+.seg-btn { padding: 5px 9px; transition: color .15s ease, background .15s ease, text-shadow .15s ease; }
+.seg-btn:hover { color: var(--accent); background: rgba(127, 252, 216, .08); text-shadow: 0 0 8px rgba(127, 252, 216, .4); }
 .seg-btn.active { font-weight: 600; box-shadow: 0 0 12px rgba(127, 252, 216, .30); }
 
 /* ---------- 底部时间条：悬浮胶囊 ---------- */
@@ -904,7 +1158,7 @@ body.align-mode .align-arrow { display: flex; }
   -webkit-text-fill-color: transparent; color: transparent;
 }
 .loader-bar { height: 3px; border-radius: 2px; }
-.loader-bar i { border-radius: 2px; background: linear-gradient(90deg, rgba(127, 252, 216, .6), var(--accent)); }
+.loader-bar i { border-radius: 2px; background: linear-gradient(90deg, rgba(127, 252, 216, .55), var(--accent) 88%, #fff); }
 .loader-ticks i { border-radius: 1px; }
 
 @media (max-width: 640px) {
@@ -938,3 +1192,31 @@ body.align-mode .align-arrow { display: flex; }
   font-size: 11px;
   color: var(--text-dim, rgba(255,255,255,.45));
 }
+
+/* ---------- 动效总门控 ----------
+   1) body.no-hud-fx：设置面板「界面动效」总开关（默认开启）。关闭时 HUD 的
+      装饰动画与过渡全部熄灯。刻意不跟随系统 prefers-reduced-motion——那会让
+      关了系统动画的用户连基本交互反馈都拿不到；本项目的 HUD 动效由用户在
+      设置里显式决定。类由 ui-settings.applyHudFx 打。
+   2) body.quality-low（LOW 画质档）：只关无限循环的装饰动画——脉冲常开
+      就是每帧合成负担；一次性入场 / 切换动画保留，成本与一次 transition
+      无异，低画质用户同样需要基本反馈。类由 ui.js 门面 setQuality 打
+      （手动选档与自动降级都经此收口）。加载屏的进度弧（.loader-ring.r2）
+      是信息性组件，不在此列。 */
+body.no-hud-fx #hud,
+body.no-hud-fx #hud * { animation: none !important; transition: none !important; }
+body.quality-low .badge-follow,
+body.quality-low #body-list li.active .dot,
+body.quality-low .loader-orbit::after,
+body.quality-low .loader-nebula,
+body.quality-low .loader-stars i,
+body.quality-low .loader-scan,
+body.quality-low .loader-scan::after,
+body.quality-low .loader-corner,
+body.quality-low .loader-ring.r1,
+body.quality-low .loader-ring.r3,
+body.quality-low .loader-ring.r3::after,
+body.quality-low .loader-core,
+body.quality-low .loader-bar::after,
+body.quality-low .loader-ticks i:not(.on),
+body.quality-low .loader-text > * { animation: none !important; }

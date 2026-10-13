@@ -38,12 +38,8 @@ SOLAR.UI = (function () {
   }
 
   /* 外部（自动画质降级等）改动状态时的同步 */
-  function syncExternalState() {
-    if (els.qualitySelect && els.qualitySelect.value !== U.state.lastQuality) {
-      U.state.lastQuality = els.qualitySelect.value;
-      SOLAR.UISettings.setSegActive(els.segQuality, U.state.lastQuality);
-    }
-    var cruising = (SOLAR.Controls && SOLAR.Controls.isCruising) ? SOLAR.Controls.isCruising() : null;
+    function syncExternalState() {
+      var cruising = (SOLAR.Controls && SOLAR.Controls.isCruising) ? SOLAR.Controls.isCruising() : null;
     if (cruising !== lastCruise) {
       lastCruise = cruising;
       SOLAR.UITime.refreshCruiseButton();
@@ -89,9 +85,20 @@ SOLAR.UI = (function () {
     }
   }
 
-  /* 主循环自动调整画质时同步下拉框显示 */
+  /* 主循环自动调整画质时同步下拉框显示。
+     画质同时是 HUD 动效的门控之一：手动选档（ui-settings → setManualQuality）
+      与自动降级（main.js → syncQualityUi）都最终经此处。
+     LOW 档关掉 JS 数字补间；CSS 侧无限循环装饰动画由 body.quality-low 关闭
+     （style.css 末尾「动效总门控」），一次性入场动画保留。
+     注意与「界面动效」总开关合并判定：用户关掉界面动效后，即使切回高画质
+     也不自动恢复——总开关的优先级高于画质档。 */
   function setQuality(name) {
-    if (els.qualitySelect && els.qualitySelect.value !== name) els.qualitySelect.value = name;
+    if (document.body && document.body.classList) {
+      document.body.classList.toggle('quality-low', name === 'low');
+    }
+    if (SOLAR.UIFx && typeof SOLAR.UIFx.setEnabled === 'function') {
+      SOLAR.UIFx.setEnabled(U.state.settings.hudFx !== false && name !== 'low');
+    }
   }
 
   /* 主循环下发的额外运行指标（可选） */

@@ -28,6 +28,8 @@ SOLAR.UISettings = (function () {
     U.state.api.scanline = (typeof E.setOverlay === 'function') || !!SOLAR.UIUtil.byId('fx-scanline');
     U.state.api.vignette = (typeof E.setOverlay === 'function') || !!SOLAR.UIUtil.byId('fx-vignette');
     U.state.api.gasFx = (typeof S.setGasFx === 'function');
+    /* 界面动效：纯本地 CSS + UIFx，永远可用（不探测） */
+    U.state.api.hudFx = true;
     /* 音效：环境没有 Web Audio 时开关置灰（audio.js 自己也有静默兜底） */
     U.state.api.sound = !!(SOLAR.Audio && typeof SOLAR.Audio.play === 'function' && SOLAR.Audio.isSupported());
     /* 开关初值以 audio.js 的实际状态为准：它自己读 localStorage，可能和上面的静态
@@ -131,6 +133,17 @@ SOLAR.UISettings = (function () {
     }
   }
 
+  /* 界面动效总开关：默认开启，无视系统 prefers-reduced-motion——那会导致
+     关了系统动画的用户连基本交互反馈都拿不到，本项目的 HUD 动效改由用户
+     在设置面板显式决定。关闭时 body.no-hud-fx 熄掉全部 HUD 装饰动画与
+     过渡（style.css 末尾门控），JS 数字补间直接落终值。 */
+  function applyHudFx(on) {
+    if (document.body && document.body.classList) {
+      document.body.classList.toggle('no-hud-fx', !on);
+    }
+    if (SOLAR.UIFx && typeof SOLAR.UIFx.setEnabled === 'function') SOLAR.UIFx.setEnabled(!!on);
+  }
+
   function applySetting(name) {
     var value = !!U.state.settings[name];
     if (name === 'orbits') applyOrbits(value);
@@ -145,6 +158,7 @@ SOLAR.UISettings = (function () {
       /* 气态动效：作用待定，状态先存于 settings；场景侧接口就绪后在此接线 */
       if (SOLAR.Scene && typeof SOLAR.Scene.setGasFx === 'function') SOLAR.Scene.setGasFx(value);
     }
+    else if (name === 'hudFx') applyHudFx(value);
     else if (name === 'sound') {
       if (SOLAR.Audio && typeof SOLAR.Audio.setEnabled === 'function') {
         var already = (typeof SOLAR.Audio.isEnabled === 'function') ? SOLAR.Audio.isEnabled() : null;
@@ -323,8 +337,6 @@ SOLAR.UISettings = (function () {
   /* 画质：顶栏下拉与设置面板分段控件双向同步 */
   function applyQuality(name) {
     if (!C.quality[name]) return;
-    U.state.lastQuality = name;
-    if (els.qualitySelect) els.qualitySelect.value = name;
     setSegActive(els.segQuality, name);
     /* 交给主循环统一应用：手动选档会置manualQuality，
        否则自动降级会在下一采样窗口把用户的选择（例如ULTRA）改回去。 */

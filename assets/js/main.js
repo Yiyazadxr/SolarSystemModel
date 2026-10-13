@@ -89,6 +89,10 @@ window.SOLAR = window.SOLAR || {};
   var loadingComplete = false;
   var loadingHidden = false;
   var firstFrameRendered = false;
+  /* 启动时先不起飞：首帧要承担 shader 编译与整包 base64 贴图上传，让它们落在
+     加载层背后；等加载层收起（预热早已完成）再 goToPreset('home')，
+     用户看到的那段补间才干净。见 renderFrame 末尾的起飞判断。 */
+  var homeFlightPending = true;
   var loadingFallback = null;
   var loadingStart = 0;
   var progressValue = 0;
@@ -317,9 +321,9 @@ window.SOLAR = window.SOLAR || {};
 
   /* ================= 自适应画质 ================= */
 
-  function syncQualitySelect(name) {
-    var select = document.getElementById('quality-select');
-    if (select && select.value !== name) select.value = name;   // 程序化赋值不会触发 change，安全
+  /* 把当前画质档同步给界面层：顶栏画质控件早已从 <select> 换成分段按钮
+     #seg-quality，旧 select 的查询成了空转死路径，这里只走 UI 接口。 */
+  function syncQualityUi(name) {
     /* 可选扩展：若 UI 提供了同步接口则一并调用 */
     if (SOLAR.UI && typeof SOLAR.UI.setQuality === 'function') {
       try { SOLAR.UI.setQuality(name); } catch (e) { logError('UI.setQuality', e); }
@@ -332,7 +336,7 @@ window.SOLAR = window.SOLAR || {};
     currentQuality = name;
     try { SOLAR.Scene.setQuality(name); } catch (e) { logError('Scene.setQuality', e); }
     try { SOLAR.Effects.setQuality(name); } catch (e) { logError('Effects.setQuality', e); }
-    syncQualitySelect(name);
+    syncQualityUi(name);
     lastQualityChange = nowMs();
     badWindows = 0;
     goodWindows = 0;
@@ -361,6 +365,13 @@ window.SOLAR = window.SOLAR || {};
     if (!config || !config.enabled || !(config.sampleWindow > 0)) return;
     if (!autoDegradeAllowed) return;          // 教学模式等场景会临时关闭自动降/升画质
     if (!(fps > 0)) return;
+    /* 两类帧不参与画质判定，否则会把"应有的慢"误判成"机器不行"：
+       1) 镜头飞行中——补间只吃墙上时钟，观众盯着的是镜头而非帧率，而首帧的
+          shader 编译 / 贴图上传会把采样拉低，导致飞行中途翻档（重建 bloom
+          渲染目标又是一次毛刺，正好落在用户盯着的那段动画上）；
+       2) 加载层还没收起——那几帧就是预热本身，采样值没有参考意义。 */
+    if (SOLAR.Controls && typeof SOLAR.Controls.isFlying === 'function' && SOLAR.Controls.isFlying()) return;
+    if (!loadingHidden) return;
 
     degradeSamples.push(fps);
     degradeSum += fps;
@@ -564,6 +575,14 @@ window.SOLAR = window.SOLAR || {};
       frameErrors = 0;                     // 任一帧成功即重置连续失败计数
       firstFrameRendered = true;
       confirmReady();
+      /* 启动飞行推迟到加载层收起之后：那之前渲染的帧就是预热（shader 编译 +
+         贴图上传都在加载层背后完成），此后再起飞，补间全程都是有效画面。
+         必须排在 confirmReady() 之后——启动兜底自检（check-startup.js）
+         校验的契约就是「首帧渲染后立即握手」，两句之间不能插东西。 */
+      if (homeFlightPending && loadingHidden) {
+        homeFlightPending = false;
+        SOLAR.Controls.goToPreset('home');
+      }
     } catch (error) {
       onFrameError(error);
     }
@@ -748,21 +767,6 @@ window.SOLAR = window.SOLAR || {};
     }, RESIZE_DEBOUNCE_MS);
   }
 
-  /* 用户在下拉框里手动选画质：记录为手动档，后续不再自动回升 */
-  function bindQualitySelect() {
-    var select = document.getElementById('quality-select');
-    if (!select || !select.addEventListener) return;
-    select.addEventListener('change', function () {
-      var name = select.value;
-      if (!C.quality[name]) return;
-      currentQuality = name;
-      manualQuality = true;
-      lastQualityChange = nowMs();
-      badWindows = 0;
-      goodWindows = 0;
-    });
-  }
-
   /* ================= 启动 ================= */
 
   function bootstrap() {
@@ -795,14 +799,14 @@ window.SOLAR = window.SOLAR || {};
       SOLAR.UI.init();
       uiReady = true;
       expectedJd = SOLAR.time ? SOLAR.time.jd : null;
-      syncQualitySelect(currentQuality);
+      syncQualityUi(currentQuality);
 
-      SOLAR.Controls.goToPreset('home');
+      /* 不起飞：homeFlightPending 会在加载层收起后的那一帧触发 goToPreset('home')，
+         避免镜头补间和首帧的 shader 编译 / 贴图上传抢同一段时间。 */
 
-      bindPointer(canvas);
-      bindQualitySelect();
-      canvas.addEventListener('webglcontextlost', onContextLost, false);
-      canvas.addEventListener('webglcontextrestored', onContextRestored, false);
+        bindPointer(canvas);
+        canvas.addEventListener('webglcontextlost', onContextLost, false);
+        canvas.addEventListener('webglcontextrestored', onContextRestored, false);
       window.addEventListener('resize', onResize);
       document.addEventListener('visibilitychange', onVisibilityChange);
 

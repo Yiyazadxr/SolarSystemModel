@@ -59,13 +59,34 @@ SOLAR.UITime = (function () {
   function refreshSpeed() {
     var speed = Math.abs(SOLAR.time.speed);
     var effective = Math.abs(typeof SOLAR.time.effectiveSpeed === 'number' ? SOLAR.time.effectiveSpeed : speed);
-    if (els.speedValue) {
-      els.speedValue.textContent = (SOLAR.time.reverse ? '−' : '') + SOLAR.UIUtil.formatDecimal(speed, 0) + '×';
+    /* 目标值（含倒流符号）真变了才（重）启数字滚动。门面 tick 会因
+       effectiveSpeed 每帧变化而调用本函数——若无脑重开补间，滚动永远停在
+       起点，还会和即时落值抢写 textContent（曾出现 10x→1x→又爬回 10x）。 */
+    var signed = (SOLAR.time.reverse ? -1 : 1) * speed;
+    var targetChanged = signed !== U.state.lastSpeedTarget;
+    if (targetChanged) U.state.lastSpeedTarget = signed;
+    var canTween = !!(SOLAR.UIFx && typeof SOLAR.UIFx.tweenText === 'function');
+    if (els.speedValue && (targetChanged || !canTween)) {
+      /* 从上一档补间到新档（350ms easeOut，与 UIFx 统一曲线）；LOW 档
+         UIFx 直接落终值。倒流符号取调用时刻的值，350ms 内不会变。 */
+      var from = (typeof U.state.lastSpeedShown === 'number' && isFinite(U.state.lastSpeedShown)) ?
+        Math.abs(U.state.lastSpeedShown) : speed;
+      if (canTween) {
+        SOLAR.UIFx.tweenText(els.speedValue, from, speed, 350, function (v) {
+          return (SOLAR.time.reverse ? '−' : '') + SOLAR.UIUtil.formatDecimal(v, 0) + '×';
+        });
+      } else {
+        els.speedValue.textContent = (SOLAR.time.reverse ? '−' : '') + SOLAR.UIUtil.formatDecimal(speed, 0) + '×';
+      }
     }
     if (els.speedHint) {
       var requested = speedHuman(SOLAR.time.speed);
       var actual = speedHuman(effective);
       els.speedHint.textContent = requested + ' · ' + SOLAR.t('ui.effective') + ' ' + actual;
+      /* 变化高亮只在倍速真变时闪一下；每帧重启动画会变成常亮 */
+      if (targetChanged && SOLAR.UIFx && typeof SOLAR.UIFx.restart === 'function') {
+        SOLAR.UIFx.restart(els.speedHint, 'fx-flash');
+      }
     }
     SOLAR.UIUtil.setClass(els.timeBar, 'reverse', !!SOLAR.time.reverse);
     SOLAR.UIUtil.setClass(document.body, 'time-reverse', !!SOLAR.time.reverse);
@@ -237,8 +258,22 @@ SOLAR.UITime = (function () {
     if (!els.timeJd) return;
     var text = formatJd(SOLAR.time.jd);
     if (text === U.state.lastJdText) return;
+    /* 滚动播放中不打断：自然走时文本每秒 / 每帧都在变，每次都重开补间等于
+       读数永远停在起点（高倍速下尤其明显）；让当前滚动跑完再接管。 */
+    if (SOLAR.UIFx && typeof SOLAR.UIFx.isTweening === 'function' && SOLAR.UIFx.isTweening(els.timeJd)) return;
+    /* 上一读数（lastJdText 存的是纯数字串）。自然走时每帧变化 < 1 天直接落值；
+       只有跳转 / 回到现在（delta > 1 天）才滚动——否则高倍速下 JD 会持续拖影。 */
+    var prev = U.state.lastJdText === '' ? NaN : parseFloat(U.state.lastJdText);
     U.state.lastJdText = text;
-    els.timeJd.textContent = SOLAR.t('ui.jdLabel') + ' ' + text;
+    var label = SOLAR.t('ui.jdLabel') + ' ';
+    if (SOLAR.UIFx && typeof SOLAR.UIFx.tweenText === 'function' &&
+        isFinite(prev) && Math.abs(SOLAR.time.jd - prev) > 1) {
+      SOLAR.UIFx.tweenText(els.timeJd, prev, SOLAR.time.jd, 400, function (v) {
+        return label + formatJd(v);
+      });
+    } else {
+      els.timeJd.textContent = label + text;
+    }
   }
 
   function updateClock() {

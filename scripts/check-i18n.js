@@ -144,6 +144,48 @@ function terminalKeys(allKeys) {
   return term;
 }
 
+/* 动态前缀：SOLAR.t('teach.dir.' + CARDINALS[c].id) 这类拼接键，
+   字面量正则扫不到，拼错就静默回落成路径原文。这里把「前缀 + 数据源数组」
+   解析出来逐项核对：表达式里第一个标识符就是数组名，按 var NAME = [...] 取出
+   其中的字符串字面量与 id: 'x' 字段，逐一断言前缀 + 取值存在于词包。
+   数组定位不到只 WARN 不 ERR——避免门禁因重构变得爱哭。 */
+function collectDynamicPrefixes(files) {
+  const found = [];   // { file, prefix, array }
+  const callRe = /SOLAR\.t\s*\(\s*['"]([\w]+(?:\.[\w]+)*\.)['"]\s*\+\s*([A-Za-z_$][\w$]*)/g;
+  for (const f of files) {
+    const src = fs.readFileSync(f, 'utf8');
+    let m;
+    while ((m = callRe.exec(src)) !== null) {
+      found.push({ file: f, prefix: m[1], array: m[2] });
+    }
+  }
+  return found;
+}
+
+function arrayLiterals(src, name) {
+  /* 取 var NAME = [ ... ] 的数组体（只认顶层声明，嵌套括号配平） */
+  const decl = new RegExp('\\b(?:var|const|let)\\s+' + name + '\\s*=\\s*\\[');
+  const at = src.search(decl);
+  if (at < 0) return null;
+  const open = src.indexOf('[', at);
+  if (open < 0) return null;
+  let depth = 0, i = open;
+  for (; i < src.length; i++) {
+    if (src[i] === '[') depth++;
+    else if (src[i] === ']') { depth--; if (depth === 0) break; }
+  }
+  if (depth !== 0) return null;
+  const body = src.slice(open + 1, i);
+  const out = [];
+  const idRe = /\bid\s*:\s*['"]([^'"]+)['"]/g;
+  let m;
+  while ((m = idRe.exec(body)) !== null) out.push(m[1]);
+  if (out.length) return out;
+  const strRe = /['"]([^'"]+)['"]/g;
+  while ((m = strRe.exec(body)) !== null) out.push(m[1]);
+  return out;
+}
+
 function collectConsumedKeys(files) {
   const keys = new Set();
   const re = /SOLAR\.t\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
@@ -231,6 +273,38 @@ function main() {
     console.log('OK: 所有消费键都有定义。');
   }
 
+  /* 动态拼接键：前缀 + 数据源数组逐项核对（字面量正则的盲区） */
+  const dyn = collectDynamicPrefixes(files);
+  const dynMissing = [];
+  const dynWarn = [];
+  let dynChecked = 0;
+  for (const d of dyn) {
+    const src = fs.readFileSync(d.file, 'utf8');
+    const lits = arrayLiterals(src, d.array);
+    if (!lits) {
+      dynWarn.push(path.relative(ROOT, d.file) + ' 找不到数组 ' + d.array +
+        '（前缀 ' + d.prefix + '* 未校验）');
+      continue;
+    }
+    for (const lit of lits) {
+      const key = d.prefix + lit;
+      dynChecked++;
+      if (!enTerm.has(key) && !zhTerm.has(key)) {
+        dynMissing.push(path.relative(ROOT, d.file) + ' -> "' + key + '"');
+      }
+    }
+  }
+  if (dyn.length) {
+    console.log('\n=== 动态拼接键（前缀 + 数组） ===');
+    console.log('  前缀 ' + dyn.length + ' 处，逐项核对 ' + dynChecked + ' 个键');
+    dynWarn.forEach(w => console.log('  WARN ' + w));
+    if (dynMissing.length) {
+      dynMissing.forEach(k => console.log('ERR 拼接键未定义: ' + k));
+    } else if (dynChecked > 0) {
+      console.log('OK  所有拼接键都有定义。');
+    }
+  }
+
   // 未消费键（可能通过 SOLAR.I18N[lang] 直接读，不算孤儿但列出参考）
   const unconsumed = [];
   for (const k of enTerm) if (!consumed.has(k)) unconsumed.push(k);
@@ -240,7 +314,7 @@ function main() {
     if (unconsumed.length > 30) console.log('  ... +' + (unconsumed.length - 30) + ' more');
   }
 
-  const fail = enOnly.length > 0 || zhOnly.length > 0 || missing.length > 0;
+  const fail = enOnly.length > 0 || zhOnly.length > 0 || missing.length > 0 || dynMissing.length > 0;
   process.exit(fail ? 1 : 0);
 }
 

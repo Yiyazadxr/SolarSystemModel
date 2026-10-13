@@ -30,10 +30,14 @@ node scripts/check-offline.js        # 禁止 fetch / XHR / WebSocket 等联网 
 node scripts/check-script-order.js   # index.html 加载顺序与依赖表一致
 node scripts/check-i18n.js           # en/zh 键对称 + SOLAR.t / data-i18n 消费键存在
 node scripts/check-data.js           # data.js 字段消费率（默认只报告，--strict 才失败）
-node scripts/check-assets.js         # 脚本 / 样式 / 贴图等资产存在性
+node scripts/check-assets.js         # 脚本 / 样式 / 贴图等资产存在性 + data.js 贴图路径可解析为内嵌键
 node scripts/check-startup.js        # 启动兜底与主应用握手
 node scripts/check-orbit-inset.js    # 演示模式轨道小图 AU 几何
 node scripts/check-teach-data.js     # 教学目录、来源与场景参数契约
+node scripts/check-teach-camera.js   # 退出教学模式视角重置回归（控制器 .object 与残留缩放）
+node scripts/check-teach-collapse.js # 目录面板折叠后只留一枚独立按钮（面板与恢复钮不得同时在画面）
+node scripts/check-dom-refs.js       # JS 查询的 DOM id 必须存在于 index.html 或由 JS 创建
+node scripts/check-doc-counts.js     # README 模块数 / 贴图张数 / 文件总数与代码一致
 ```
 
 - 若是手动逐文件语法检查（**必须跳过 `textures.js`**——8.5 MB base64，检查无意义且极慢）：
@@ -78,6 +82,7 @@ node scripts/check-teach-data.js     # 教学目录、来源与场景参数契�
 | `controls.js` | 相机控制、拾取、飞行、跟随、巡航、连珠切换 |
 | `ui-shared.js` | UI 共享宿主：dom 缓存 + 跨模块状态（`SOLAR.UIShared`） |
 | `ui-util.js` | 界面层基础工具：DOM 查询 / 数字与单位格式化 / 天体记录检索等纯函数，不持有 dom 缓存与跨模块状态（`SOLAR.UIUtil`） |
+| `ui-fx.js` | 界面层动效驱动：数字补间 / 动画重启 / 画质门控开关（`SOLAR.UIFx`；CSS 侧 keyframes 见 `style.css`「HUD 微动效」与文末「动效总门控」） |
 | `ui-dom.js` | 界面层 DOM 缓存：一次性取回信息卡 / 顶栏 / 设置面板 / 时间条等节点写入 `SOLAR.UIShared.dom`，并注册视图条点击监听（`SOLAR.UIDom`） |
 | `ui-nav.js` | 左侧天体导航：搜索、列表与选中联动；信息卡分区折叠（`SOLAR.UINav`） |
 | `ui-info.js` | 信息卡分区渲染（仪表盘与文字）与刷新、选中 / 高亮的跨模块转发（`SOLAR.UIInfo`） |
@@ -138,7 +143,7 @@ node scripts/check-teach-data.js     # 教学目录、来源与场景参数契�
 
 逐天体的压缩倍数另见信息卡（`SOLAR.Scene.getScaleCompress(id)`，以地球为基准，1 = 未压缩）。改 `config.profiles` 的系数后，这行数字与信息卡倍数会自动跟随，**不需要手改任何文案**。
 
-## 已知坑（实测，勿重踩）
+## 已知坑
 
 1. **太阳系世界坐标不在原点**。整个系统绕银心公转，`worldPositionOf('sun')` ≈ `[4190,-260,150]` 且随公转缓慢漂移。任何"把相机设到某个绝对坐标"的操作都必须**相对 `worldPositionOf(id)` 定位**，否则会拍到银心空域——满屏星点、没有太阳系。
 2. **有东西每帧在改写 `controls.target`**（公转带动整套相机机位）。设完相机后不要假设 `target` 仍是 `(0,0,0)`。

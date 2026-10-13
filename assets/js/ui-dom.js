@@ -57,8 +57,6 @@ SOLAR.UIDom = (function () {
     els.btnImmersive = SOLAR.UIUtil.byId('btn-immersive');
     els.btnSettings = SOLAR.UIUtil.byId('btn-settings');
     els.viewSelect = SOLAR.UIUtil.byId('view-select');
-    els.qualitySelect = SOLAR.UIUtil.byId('quality-select');
-    els.btnLang = SOLAR.UIUtil.byId('btn-lang');
     els.segScale = SOLAR.UIUtil.byId('seg-scale');
     els.modeLayer = SOLAR.UIUtil.byId('mode-layer');
     els.btnModeDemo = SOLAR.UIUtil.byId('btn-mode-demo');
@@ -81,6 +79,8 @@ SOLAR.UIDom = (function () {
     /* 左侧导航与搜索 */
     els.bodyNav = SOLAR.UIUtil.byId('body-nav');
     els.btnNavToggle = SOLAR.UIUtil.byId('btn-nav-toggle');
+    /* 收起态的独立恢复钮（面板整体隐藏后才看得见它） */
+    els.btnNavOpen = SOLAR.UIUtil.byId('btn-nav-open');
     els.bodySearch = SOLAR.UIUtil.byId('body-search');
     els.btnSearchClear = SOLAR.UIUtil.byId('btn-search-clear');
     els.searchEmpty = SOLAR.UIUtil.byId('search-empty');

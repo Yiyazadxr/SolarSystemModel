@@ -51,6 +51,43 @@ SOLAR.GlobeScenes = (function () {
     return lb.sprite;
   }
 
+  /* ---- 3D 标签的语言重贴 ----
+     标签纹理是构建时一次性烘焙的 canvas 贴图，切语言必须重建。这里登记
+     「重贴闭包」，由 relabel() 统一触发。用 holder 持有精灵引用并在重贴后
+     指向新精灵，否则第二次切语言会操作到已被移出场景的旧精灵。
+     只换精灵、保留位置与显隐，不重建几何，也不进逐帧路径。 */
+    /* relabelFns 放在 TeachGlobeShared.S 里而不是模块私有：disposeAll 要能把它
+       清空，否则二次 init 后旧闭包只增不减（持有的精灵已离场景，静默空转）。 */
+    var relabelFns = SOLAR.TeachGlobeShared.S.relabelFns;
+
+  function disposeSprite(sp) {
+    if (!sp || !sp.material) return;
+    if (sp.material.map && sp.material.map.dispose) sp.material.map.dispose();
+    if (sp.material.dispose) sp.material.dispose();
+  }
+
+  /* sprite：已加进场景的精灵；build：按当前语言生成新精灵的函数 */
+  function trackRelabel(sprite, build) {
+    var holder = { sprite: sprite };
+    relabelFns.push(function () {
+      var old = holder.sprite;
+      var parent = old && old.parent;
+      if (!parent) return;
+      var fresh = build();
+      fresh.position.copy(old.position);
+      fresh.visible = old.visible;
+      fresh.renderOrder = old.renderOrder;
+      parent.add(fresh);
+      parent.remove(old);
+      disposeSprite(old);
+      holder.sprite = fresh;
+    });
+  }
+
+  function relabel() {
+    for (var i = 0; i < relabelFns.length; i++) relabelFns[i]();
+  }
+
   /* ---- 环球航行航线（麦哲伦段 + 埃尔卡诺段，两种颜色）----
      按史实航迹关键节点 [纬度, 经度] 绘制；经度用连续值西行为负
      （跨日界线后关岛 144.75E = -215.25、好望角 18.5E = -341.5），
@@ -109,7 +146,8 @@ SOLAR.GlobeScenes = (function () {
         .addScaledVector(b, Math.sin(t * d) / s).normalize();
     }
 
-    function buildSegment(route, color, label, labelIdx) {
+    /* labelKey：i18n 键（不是字面文案），标签随语言重建 */
+    function buildSegment(route, color, labelKey, labelIdx) {
       var pts = [];
       for (i = 0; i < route.length; i++) {
         placeLatLon(pts[i] = new THREE.Vector3(), route[i][0], route[i][1], r);
@@ -137,14 +175,15 @@ SOLAR.GlobeScenes = (function () {
         color: color, transparent: true, opacity: 0.96, depthWrite: false, fog: false
       })));
       G.nodes.voyageGroup.add(line);
-      var lb = tinyLabel(label);
+      var lb = tinyLabel(SOLAR.t(labelKey));
       lb.position.copy(pts[labelIdx]).multiplyScalar(1.07);
       G.nodes.voyageGroup.add(lb);
+      trackRelabel(lb, function () { return tinyLabel(SOLAR.t(labelKey)); });
       return smooth;
     }
 
-    var magellanSm = buildSegment(magellanRoute, 0xffb45c, '麦哲伦航线', 9);
-    var elcanoSm = buildSegment(elcanoRoute, 0xff9fb5, '埃尔卡诺返航', 8);
+    var magellanSm = buildSegment(magellanRoute, 0xffb45c, 'teach.globe.magellanRoute', 9);
+    var elcanoSm = buildSegment(elcanoRoute, 0xff9fb5, 'teach.globe.elcanoRoute', 8);
 
     /* 行进指示改用小帆船（与远去船只同源模型，亮船体色便于在球面上辨认），
        替代原来的红色小球；0.55 倍 → 船长 0.10R，够示意又不喧宾夺主 */
@@ -591,17 +630,20 @@ SOLAR.GlobeScenes = (function () {
     /* 赤道半径：球心 → 赤道面（6378 km，双向箭头） */
     G.nodes.sizeGroup.add(radiusPointer(EARTH_R * 1.0, 0xe8b4a0, 'x'));
 
-    var lbPolar = tinyLabel('极半径 6357 km');
+    var lbPolar = tinyLabel(SOLAR.t('teach.globe.polarRadius') + ' 6357 km');
     lbPolar.position.set(0, EARTH_R * 1.30, 0);
     G.nodes.sizeGroup.add(lbPolar);
+    trackRelabel(lbPolar, function () { return tinyLabel(SOLAR.t('teach.globe.polarRadius') + ' 6357 km'); });
 
-    var lbEq = tinyLabel('赤道半径 6378 km');
+    var lbEq = tinyLabel(SOLAR.t('teach.globe.eqRadius') + ' 6378 km');
     lbEq.position.set(EARTH_R * 1.46, EARTH_R * 0.10, 0);
     G.nodes.sizeGroup.add(lbEq);
+    trackRelabel(lbEq, function () { return tinyLabel(SOLAR.t('teach.globe.eqRadius') + ' 6378 km'); });
 
-    var lbCirc = tinyLabel('赤道周长约 4×10⁴ km');
+    var lbCirc = tinyLabel(SOLAR.t('teach.globe.eqCirc') + ' 4×10⁴ km');
     lbCirc.position.set(-EARTH_R * 0.55, -EARTH_R * 0.34, EARTH_R * 1.14);
     G.nodes.sizeGroup.add(lbCirc);
+    trackRelabel(lbCirc, function () { return tinyLabel(SOLAR.t('teach.globe.eqCirc') + ' 4×10⁴ km'); });
 
     G.nodes.sizeGroup.visible = false;
   }
@@ -652,11 +694,16 @@ SOLAR.GlobeScenes = (function () {
     /* 本初子午线文字标注：挂在 0° 经线赤道点外侧上方，与「0°」度数标签
        （在 y+0.08R 处）错开，避免叠字；depthTest 打开，转到背面会被地球挡住。 */
     placeLatLon(tmp, 0, 0, r);
-    var lbMer0 = SOLAR.GlobeBody.makeLabel('本初子午线', 24, 0.10, true);
+    var lbMer0 = SOLAR.GlobeBody.makeLabel(SOLAR.t('teach.globe.primeMeridian'), 24, 0.10, true);
     SOLAR.TeachGlobeShared.track(lbMer0.texture);
     lbMer0.sprite.position.copy(tmp).multiplyScalar(1.02);
     lbMer0.sprite.position.y += EARTH_R * 0.22;
     G.nodes.degreeLonGroup.add(lbMer0.sprite);
+    trackRelabel(lbMer0.sprite, function () {
+      var lb = SOLAR.GlobeBody.makeLabel(SOLAR.t('teach.globe.primeMeridian'), 24, 0.10, true);
+      SOLAR.TeachGlobeShared.track(lb.texture);
+      return lb.sprite;
+    });
 
     /* 主要经线的度数：本初子午线起，每 20° 一条（与教材图 3.1-10 一致） */
     var lons = [0, 20, 40, 60, 80, 100, 120, 140, 160, 180, -160, -140, -120, -100, -80, -60, -40, -20];
@@ -676,6 +723,7 @@ SOLAR.GlobeScenes = (function () {
   /* ============ 对外（内部装配用，不对外承诺） ============ */
 
   return {
+    relabel: relabel,
     placeLatLon: placeLatLon,
     tinyLabel: tinyLabel,
     buildVoyage: buildVoyage,
