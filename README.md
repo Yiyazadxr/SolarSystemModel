@@ -27,7 +27,7 @@
 - **程序化渲染** ☀️ — 太阳米粒组织 / 临边昏暗 / 黑子 / 日冕，行星凹凸、纬向条纹、大红斑、菲涅尔大气辉光、日落色、环影与日月食投影，全部手写 GLSL
 - **银河公转与拖尾** 🌌 — 太阳系沿**真实倾角 60.2°** 的银道面绕银心公转（233 km/s，一个银河年约 50 分钟）；太阳**实际走过**的银心轨迹（含进动与振荡）任何机位**始终显示**、随距离提亮
 - **显示比例两档** 📏 — **压缩示意**（默认，便于整体观察）与**弱压缩示意**（更接近真实）可切换，只改距离与尺寸映射、**轨道周期与光照关系不变**；天体的压缩倍数在信息卡如实标注，映射锚点与"天体被放大多少倍"直接写在设置面板比例档下方
-- **时间与相机** ⏱️ — 1× → 1e9 倍速共 10 档、时间倒流、日期跳转；滚轮对准光标缩放、电影化飞行、软跟随、自动巡航、5 组预设视角、行星连珠
+- **时间与相机** ⏱️ — 1× → 1e9 倍速共 10 档、时间倒流、日期跳转；滚轮瞄准光标缩放、电影化飞行、软跟随、自动巡航、5 组预设视角、行星连珠；飞行的**距离按 log₁₀ 均分每个数量级**（3 → 80000 单位不再"头半秒掠过太阳系、之后几秒空镜"），时长按跨越的十倍档数计、上限 6.5 s（弱压缩档 4.5 s），抬升弧线只在被摄体相距够远时出现
 - **界面** 🖥️ — 可搜索天体导航、9 分区信息卡、设置面板、Bloom / 扫描线 / 暗角 / 颗粒后期、画质四档 `ULTRA / HIGH / MEDIUM / LOW`，中英双语全覆盖
 - **程序化音效** 🔊 — 选中 / 模式切换 / 开关三枚 Web Audio 实时合成音，零音频文件、零联网；**默认开启**，可在设置面板「音效」关闭（开关状态写入 localStorage）
 - **教学模式** 🎓 — 右下角入口，覆盖第 3 章认识地球、太阳系、地球转动与日地月运动共 19 个步骤，与演示模式隔离
@@ -83,12 +83,12 @@
 │   │   ├── 基础                config / data / i18n / audio / vsop87 / astro / textures-manifest / textures-loader / effects
 │   │   ├── 场景                scene-shaders / scene-shared / scene-gfx / scene-sun / scene-bodies / scene-backdrop / scene（门面）
 │   │   ├── 系统                galaxy / controls
-│   │   ├── 界面                ui-shared / ui-util / ui-dom / ui-nav / ui-info / ui-settings / ui-time / ui-shell / ui（门面）
+│   │   ├── 界面                ui-shared / ui-util / ui-fx / ui-dom / ui-nav / ui-info / ui-settings / ui-time / ui-shell / ui（门面）
 │   │   ├── 主循环              main
 │   │   └── 教学                teach-data / teach-globe-* / teach-orrery / teach-ground / teach-moonsync / teach-scenes / teach
 │   ├── vsop87/                IMCCE 官方原始要素文件及校验文件（仅供离线生成）
 │   └── textures/ vendor/      原始贴图 25 张（分块内嵌至 assets/js/textures/）；Three.js r150 + OrbitControls + 后期
-├── scripts/                   贴图生成 + 零依赖自检（语法 / ES5 / 离线 / 顺序 / i18n / 数据 / 资产 / 启动 / 轨道小图 / 教学数据）
+├── scripts/                   贴图生成 + 零依赖自检（语法 / ES5 / 离线 / 顺序 / i18n / 数据 / 资产 / 启动 / 轨道小图 / 教学数据 / 教学机位 / 教学折叠 / DOM 引用 / 文档口径）
 ├── docs/screenshots/          README 截图
 └── AGENTS.md · CLAUDE.md · LICENSE · NOTICE · README.md
 ```
@@ -98,7 +98,7 @@
 | 组 | 文件（按加载顺序） | 门面 / 对外契约 |
 | --- | --- | --- |
 | 场景 | `scene-shaders.js` → `scene-shared.js` → `scene-gfx.js` → `scene-sun.js` → `scene-bodies.js` → `scene-backdrop.js` → `scene.js` | `SOLAR.Scene` |
-| 界面 | `ui-shared.js` → `ui-util.js` → `ui-dom.js` → `ui-nav.js` → `ui-info.js` → `ui-settings.js` → `ui-time.js` → `ui-shell.js` → `ui.js` | `SOLAR.UI` |
+| 界面 | `ui-shared.js` → `ui-util.js` → `ui-fx.js` → `ui-dom.js` → `ui-nav.js` → `ui-info.js` → `ui-settings.js` → `ui-time.js` → `ui-shell.js` → `ui.js` | `SOLAR.UI` |
 | 教学地球仪 | `teach-globe-shared.js` → `teach-globe-shaders.js` → `teach-globe-body.js` → `teach-globe-scenes.js` → `teach-globe-apply.js` → `teach-globe.js` | `SOLAR.TeachGlobe` |
 
 拆分只改内部结构：跨模块调用一律运行时限定名，共享状态集中在各自的 `*Shared` 文件，逐帧 `update` 等横切逻辑留在门面。新增文件须同时更新 `index.html` 的脚本顺序与 `scripts/check-script-order.js` 的 `EXPECTED_ORDER`，否则顺序门禁直接失败。
@@ -143,7 +143,7 @@ VSOP87 接入的浏览器画面与交互尚待人工复核。
 
 ## 已知限制
 
-- `callisto.jpg`、`uranus_ring.png` 无可靠公开源，回退纯色 / 程序化渲染
+- Callisto 无可靠公开源，回退程序化渲染；天王星环为程序化绘制（`uranus_ring.webp`，见 NOTICE）
 - `file://` 下不请求磁盘贴图（CORS），全部走内嵌 base64，缺图有兜底且控制台无报错
 - 官方 r150 UMD `three.min.js` 会在载入时输出一次 `build/three.min.js` 将于 r160 移除的弃用警告；这是官方文件自带的提示。控制台冒烟检查允许这一条，其余新增 warning/error 仍需排查
 - 演示模式**无法实现严格 1:1 真实比例**（需对数深度缓冲，见 `config.js`）：弱压缩档已尽量接近真实，但天体半径 ∶ 轨道半径仍被压缩（地球约 40 倍），太阳系外缘超出银河模型的银心距标注（推导见 `config.js` → `profiles.faithful`）

@@ -671,9 +671,19 @@ var TRAIL_MAX_SUBSTEPS = 8;
           p.group.worldToLocal(S.baryLocal);
           var baryLen = S.baryLocal.length();
           if (baryLen > 1e-6) {
-            x -= S.baryLocal.x / baryLen * primaryOffset;
-            y -= S.baryLocal.y / baryLen * primaryOffset;
-            z -= S.baryLocal.z / baryLen * primaryOffset;
+            var bx = S.baryLocal.x / baryLen * primaryOffset;
+            var by = S.baryLocal.y / baryLen * primaryOffset;
+            var bz = S.baryLocal.z / baryLen * primaryOffset;
+            x -= bx; y -= by; z -= bz;
+            /* 轨道线画的是质心椭圆，而上面这一步把 Pluto 的 mesh 从质心沿
+               Charon 反向挪开了 primaryOffset；只挪星体不挪环线，贴近冥王星
+               时就会看到"轨道不穿过星球"。量级：compact 0.165 / faithful
+               0.399 单位，约合冥王星半径的 0.32 / 0.77 倍（相机贴到 3 单位
+               处即 53 / 128 像素），实测 rel=0.0013% 的对接精度完全被它盖过。
+               环线与 group 同为 systemRoot 子节点、局部坐标一致，按同一向量
+               整体平移即可重合；逐帧跟随，Charon 的 6.39 天公转自动带上，
+               不必往 astro.js 的纯开普勒层塞质心知识。 */
+            if (p.orbitLine) p.orbitLine.position.set(-bx, -by, -bz);
           }
         }
       }

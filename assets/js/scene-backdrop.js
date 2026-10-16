@@ -52,23 +52,32 @@ SOLAR.Backdrop = (function () {
      用一颗内表面贴 equirect 全景图的天球取代纯色天空：天球每帧跟随相机，
      等效无限远背景；程序化星点保留（近景仍需），两者叠加。
      全景图为 2:1 等距圆柱，球面默认 UV 与之对应，无需改 mapping。
-     低画质档不显示（见 update 中的可见性同步），避免额外显存与带宽。 */
+     低画质档不显示（见 update 中的可见性同步），避免额外显存与带宽。
+     已对齐的是「带面」：全景的银道面、程序化星点（galacticPole）与 3D 银盘
+     现在同处一个平面。未对齐的是「经度零点」——全景 u=0 对应哪个银经没有
+     可靠依据，故不强猜一个旋转量：两层沿带面方向可能仍有固定角偏移，
+     属已知限制，不做无声修正。 */
   function buildSkyDome() {
     if (S.nodes.skyDome) return;
     var r = (S.nodes.camera && S.nodes.camera.far) ? S.nodes.camera.far * 0.9 : 1e6;
     /* ESO 全景实测只含「地平线以上」天区：图像下半 50% 平均亮度 0、
-       非黑像素 0%（未拍摄区域）。因此天球只建上半球（北极→赤道 =
-       天顶→地平线）；下半球无数据，沿用场景背景色 + 程序化星点，不编造。 */
-    var geo = new THREE.SphereGeometry(r, 64, 48, 0, Math.PI * 2, 0, Math.PI / 2);
-    /* 顶点 alpha：赤道（地平线）处 0 → 向天顶 15% 高度内平滑升到 1。
+       非黑像素 0%（未拍摄区域）。因此覆盖区只取图像上半（tex_v ∈ [0.5,1]），
+       下半球没有数据，沿用场景背景色 + 程序化星点，不编造。
+       几何仍建「整球」而非上半球：天穹要按银道倾角旋转（见下），半球会
+       让某一侧视角（如沿黄道极俯视时）落到没贴图的一边、缺一块背景。
+       整球的下半球由顶点 alpha 置 0 兜住，成本只多一倍顶点。 */
+    var geo = new THREE.SphereGeometry(r, 64, 48, 0, Math.PI * 2, 0, Math.PI);
+    /* 顶点 alpha：赤道（地平线）处 0 → 向天顶 15% 高度内平滑升到 1；
+       下半球 ny < 0 一律 0（不可给负 alpha，NormalBlending 下行为未定）。
        银河带最亮的部分贴近赤道，直接硬切会与下方深空形成一条割裂的
        水平分界线；渐隐让它像真实地平线一样柔和沉入背景。
-        r150 支持 4 分量顶点色（含 alpha），配合 transparent 生效。 */
+       倾斜天球后这条渐隐带跟着银道面走，仍正好压在银河带上。 */
     var posAttr = geo.attributes.position;
     var vc = new Float32Array(posAttr.count * 4);
     for (var vi = 0; vi < posAttr.count; vi++) {
-      var ny = posAttr.getY(vi) / r;                     /* 赤道 0 → 天顶 1 */
-      var a = Math.min(1, ny / 0.15);
+      var ny = posAttr.getY(vi) / r;                     /* 南极 -1 → 赤道 0 → 天顶 1 */
+      var a = ny / 0.15;
+      if (a < 0) a = 0; else if (a > 1) a = 1;
       a = a * a * (3 - 2 * a);                           /* smoothstep */
       vc[vi * 4] = 1; vc[vi * 4 + 1] = 1; vc[vi * 4 + 2] = 1; vc[vi * 4 + 3] = a;
     }
@@ -80,13 +89,21 @@ SOLAR.Backdrop = (function () {
     S.nodes.skyDome = new THREE.Mesh(geo, mat);
     S.nodes.skyDome.frustumCulled = false;
     S.nodes.skyDome.renderOrder = -1;        // 最先绘制（背景层）
+    /* 全景是"地平线在上方"的实拍，银河带落在图像中行，贴到默认天球上正好
+       是天球赤道 = 场景 XZ 平面 = 黄道面。而程序化星点用 galacticPole()
+       把带面压向 60.2° 银道面、3D 银盘（galaxy.js frame.rotation.x）同样
+       倾斜；三者若不同步，拉远看银河时全景里的银河带与旋臂会各指一个方向，
+       （实测两带面法线夹角正是 tiltDeg）。按同一倾角转一下天球，让全景的
+       带面与另两层落到同一平面上。 */
+    S.nodes.skyDome.rotation.x = C.galaxy.tiltDeg * DEG;
     S.nodes.scene.add(S.nodes.skyDome);
     SOLAR.Gfx.safeTexture('milkyway', function (t) {
       if (!t || !S.nodes.skyDome) return;
       if (THREE.sRGBEncoding) t.encoding = THREE.sRGBEncoding;
-      /* 只采样图像上半（v ∈ [0.5,1] = 地平线→天顶）：下半是未拍摄的黑区 */
-      t.repeat.set(1, 0.5);
-      t.offset.set(0, 0.5);
+      /* 整球默认 UV 下 tex_v = uv.y：赤道环（uv.y=0.5）正好取到贴图中行，
+          也就是全景银河带所在行；上半球取到 tex_v ∈ [0.5,1] 的图像上半，
+          与「只拍过地平线以上」一致。下半球取到未拍摄的黑区，但顶点 alpha
+          已置 0，不参与绘制。 */
       S.nodes.skyDome.material.map = t;
       S.nodes.skyDome.material.color.set(0xffffff);
       S.nodes.skyDome.material.needsUpdate = true;

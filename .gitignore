@@ -2,7 +2,7 @@
 /node_modules
 /.pnpm-store
 
-# build / generated（textures.js 由脚本生成但需提交，故不忽略）
+# build / generated（assets/js/textures/ 分块与 textures-manifest.js 由脚本生成但需提交，故不忽略）
 /dist
 /out
 /build

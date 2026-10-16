@@ -18,7 +18,8 @@ This repository contains materials under different licenses:
 
 - Source code (all files except those listed below): MIT License, see LICENSE.
 - Bundled textures in assets/textures/ and their base64 form in
-  assets/js/textures.js: derived from public-domain NASA / USGS / JPL imagery.
+  assets/js/textures/ (chunked, generated): derived from public-domain NASA /
+  USGS / JPL imagery.
   See section 3. Redistribution of derivative images may be subject to the
   source agency's media-usage policy; attribution is retained here.
 - Astronomical constants and orbital elements: factual data, not copyrightable.
@@ -81,8 +82,8 @@ Sky background:
    on top, so the near-field star field is unchanged.
 
 Bodies added 2026-10-09 (all Public domain; NASA / JPL / USGS imagery mirrored on
-Wikimedia Commons, downscaled and re-encoded as WebP by
-scripts/generate-textures.js):
+Wikimedia Commons, downscaled and re-encoded as WebP offline; embedded as base64
+by scripts/generate-textures.js):
 
 - vesta.webp — Vesta global map (GeoHack source mosaic) — NASA, PD.
 - enceladus.webp — Map of Enceladus, Cassini (PIA11145) — NASA/JPL, PD.
@@ -111,14 +112,16 @@ annotations that survive reprojection; the equatorial mosaic is a partial-latitu
 band, the remaining candidates are polar projections or atlas sheets), nor for
 Titania, Eris, Haumea and Makemake; those bodies are rendered procedurally from
 their characteristic colour, albedo and surface relief (no texture entry),
-which is stated in README.md / MODIFICATION-REPORT.md.
+which is stated in README.md.
 
 All maps above are stored as WebP (lossy, quality ~90) to shrink the embedded
 payload; the original JPEG/PNG sources in assets/textures/ were replaced.
 
-assets/js/textures.js is a generated artifact: the base64 encoding of the
-files above, produced by scripts/generate-textures.js. It is committed so that
-opening index.html over file:// works without a server. Do not hand-edit it.
+The chunk files under assets/js/textures/ and the manifest
+assets/js/textures-manifest.js are generated artifacts: the base64 encoding of
+the files above, produced by scripts/generate-textures.js. They are committed so
+that opening index.html over file:// works without a server. Do not hand-edit
+them; the loader assets/js/textures-loader.js is hand-written source.
 
 Missing maps fall back to procedural rendering (solid color + shader detail);
 no runtime error is produced.

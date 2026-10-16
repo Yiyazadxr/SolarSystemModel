@@ -401,6 +401,10 @@ SOLAR.Controls = (function () {
     flight.travelDir = new THREE.Vector3();
     flight.arcUp = new THREE.Vector3();
     flight.arcSide = new THREE.Vector3();
+    /* 对数半径插值的专用缓存：stepFlight 每帧用到，不得与 tmpA~E 复用
+       （worldPos / sysOffset 也会动那几个临时量）。 */
+    flight.relNow = new THREE.Vector3();
+    flight.relTo = new THREE.Vector3();
 
     follow.prev = new THREE.Vector3();
     zoom.anchor = new THREE.Vector3();
@@ -469,10 +473,29 @@ SOLAR.Controls = (function () {
     historyView.valid = true;
   }
 
-  function computeFlightDuration(travel) {
+  /* 飞行时长同时看两件事：横向扫过多远（沿用旧的 travel 口径），以及
+     「到注视点的距离」跨过几个数量级。只按 travel 计时会让跨数量级的旅程
+     节奏失衡——线性插值下 3 -> 80000 的飞行，t=0.5 时已经走完 93% 的对数
+     航程，太阳系在半秒内掠过、之后几秒无事发生。数量级项按 1 秒/十倍加，
+     由 flyMaxDuration 统一封顶。 */
+  /* 飞行时长上限随显示比例档案切换：faithful 距离尺度约为 compact 的 50 倍，
+     同一套公式（按「到注视点的距离」跨几个十倍加时）对它天然偏长，而它内容
+     密度低、不需要那么久才能看清。档位未知时回落到 flyMaxDuration。 */
+  function flightDurationCap() {
+    var byProfile = CAM.flyMaxDurationByProfile;
+    if (!byProfile) return numberConfig('flyMaxDuration', 6500);
+    var mode = (SOLAR.Scene && typeof SOLAR.Scene.getScaleMode === 'function')
+      ? SOLAR.Scene.getScaleMode() : 'compact';
+    if (typeof byProfile[mode] === 'number') return byProfile[mode];
+    return numberConfig('flyMaxDuration', 6500);
+  }
+
+  function computeFlightDuration(travel, spanFrom, spanTo) {
     var base = numberConfig('flyDuration', 1600);
     var extra = Math.log(1 + Math.max(0, travel) / 40) * numberConfig('flyDistanceDuration', 360);
-    return clamp(base + extra, numberConfig('flyMinDuration', 1100), numberConfig('flyMaxDuration', 3800));
+    var decades = Math.abs(Math.log10(Math.max(spanTo, 1e-9) / Math.max(spanFrom, 1e-9)));
+    extra += decades * numberConfig('flyDecadeDuration', 1000);
+    return clamp(base + extra, numberConfig('flyMinDuration', 1100), flightDurationCap());
   }
 
   function configureFlightArc(travel, arcScale, sideScale) {
@@ -492,9 +515,25 @@ SOLAR.Controls = (function () {
     if (flight.arcSide.lengthSq() < 1e-8) flight.arcSide.set(0, 0, 1);
     else flight.arcSide.normalize();
 
-    var ratio = numberConfig('flyArcRatio', 0.09) * (arcScale == null ? 1 : arcScale);
+    var arcFactor = arcScale == null ? 1 : arcScale;
+    var ratio = numberConfig('flyArcRatio', 0.09) * arcFactor;
     var side = numberConfig('flyArcSideRatio', 0.16) * (sideScale == null ? 1 : sideScale);
-    flight.arc = Math.min(travel * ratio, numberConfig('flyArcMax', 260));
+    var arc = Math.min(travel * ratio, numberConfig('flyArcMax', 260));
+
+    /* 主体 -> 主体：叠加「把镜头顶高以同时容纳两个被摄体」的 van Wijk 抬升。
+       两个锚点相距越远（相对当前取景距离多跨几个十倍）抬得越高；间距不过
+       数倍取景距离时偏置吃掉了增量、弧线归零——近距平移不需要划抛物线。
+       预设视角之间没有锚主体，保持纯风格弧线，不进这条分支。 */
+    if (flight.anchorGap && arcFactor > 0) {
+      var spanMax = Math.max(flight.spanFrom, flight.spanTo);
+      var gapDecades = Math.log10(Math.max(travel, 1e-9) / Math.max(spanMax, 1e-9))
+        - numberConfig('flyArcGapDecades', 0.6);
+      if (gapDecades > 0) {
+        arc += Math.min(gapDecades * numberConfig('flyArcGapGain', 0.8) * spanMax,
+          numberConfig('flyArcMax', 260)) * arcFactor;
+      }
+    }
+    flight.arc = Math.min(arc, numberConfig('flyArcMax', 260));
     flight.arcSideAmount = side;
     flight.rollSign = flight.travelDir.x + flight.travelDir.z >= 0 ? 1 : -1;
   }
@@ -559,10 +598,17 @@ SOLAR.Controls = (function () {
     }
 
     var travel = flight.fromPos.distanceTo(flight.toPos);
+    /* 取景距离 = 相机到本次注视点的距离。半径插值与对数计时都以它为准，
+       而不是以起点到终点的直线距离为准——只有它跨越数量级时才会失衡。 */
+    flight.spanFrom = Math.max(flight.fromPos.distanceTo(flight.fromTarget), 1e-9);
+    flight.spanTo = Math.max(flight.toPos.distanceTo(flight.toTarget), 1e-9);
     flight.t0 = now();
-    flight.dur = computeFlightDuration(travel);
+    flight.dur = computeFlightDuration(travel, flight.spanFrom, flight.spanTo);
     flight.progress = 0;
     flight.rollNow = 0;
+    flight.anchorGap = !!id;
+    flight.logRadial = Math.abs(Math.log10(flight.spanTo / flight.spanFrom))
+      > numberConfig('flyLogRadialDecades', 0.3);
     configureFlightArc(travel, arcScale, sideScale);
 
     follow.id = null;
@@ -751,8 +797,44 @@ SOLAR.Controls = (function () {
       }
     }
 
-    camera.position.lerpVectors(flight.fromPos, flight.toPos, eased);
     controls.target.lerpVectors(flight.fromTarget, flight.toTarget, eased);
+    if (flight.logRadial) {
+      /* 半径按 log10 均分数量级，方向沿单位球面连续转向。反向机位的线性
+         方向会穿过零点并瞬间翻转；统一走球面路径也避免追拍终点移动时跨过
+         方向分支阈值产生跳变。终点实时更新，全部复用飞行向量。 */
+      flight.relNow.copy(flight.fromPos).sub(flight.fromTarget);
+      flight.relTo.copy(flight.toPos).sub(flight.toTarget);
+      var spanToNow = flight.relTo.length();
+      if (flight.spanFrom > 1e-9 && spanToNow > 1e-9) {
+        var directionDot = clamp(flight.relNow.dot(flight.relTo) /
+          (flight.spanFrom * spanToNow), -1, 1);
+        if (directionDot < 0.9995) {
+          flight.relNow.multiplyScalar(1 / flight.spanFrom);
+          flight.relTo.multiplyScalar(1 / spanToNow);
+          flight.relTo.addScaledVector(flight.relNow, -directionDot);
+          if (flight.relTo.lengthSq() < 1e-12) {
+            flight.relTo.set(-flight.relNow.z, 0, flight.relNow.x);
+            if (flight.relTo.lengthSq() < 1e-12) {
+              flight.relTo.set(0, -flight.relNow.z, flight.relNow.y);
+            }
+          }
+          flight.relTo.normalize();
+          var turn = Math.acos(directionDot) * eased;
+          flight.relNow.multiplyScalar(Math.cos(turn)).addScaledVector(flight.relTo, Math.sin(turn));
+        } else {
+          flight.relNow.lerp(flight.relTo, eased).normalize();
+        }
+        var rNow = Math.pow(10, (1 - eased) * Math.log10(flight.spanFrom)
+          + eased * Math.log10(spanToNow));
+        flight.relNow.multiplyScalar(rNow);
+      } else {
+        flight.relNow.lerp(flight.relTo, eased);
+      }
+      camera.position.copy(controls.target).add(flight.relNow);
+    } else {
+      camera.position.lerpVectors(flight.fromPos, flight.toPos, eased);
+      controls.target.lerpVectors(flight.fromTarget, flight.toTarget, eased);
+    }
 
     var pulse = Math.sin(Math.PI * t);
     if (flight.arc > 0 && pulse > 0) {

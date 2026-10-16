@@ -153,11 +153,12 @@ node scripts/check-doc-counts.js     # README 模块数 / 贴图张数 / 文件�
 2. **有东西每帧在改写 `controls.target`**（公转带动整套相机机位）。设完相机后不要假设 `target` 仍是 `(0,0,0)`。
 3. **`setManualQuality` 之后的画质仍可能被静默降档**（低帧触发自适应）。截图 / 做基准前务必先 `SOLAR.CONFIG.autoDegrade.enabled = false`。
 4. **`SOLAR.UI.applyLanguage('zh')` 静默无效**：返回 `'zh'` 不抛错，但界面语言不变（**已知遗留问题，未修**）。
-5. **银河盘面 = XZ 平面绕 X 轴转 60.2°**（`config.galaxy.tiltDeg`）。正侧视（相机落在盘面内）会把盘面压成**贯穿全屏的 1px 直线**，形似渲染接缝；需抬离盘面约 6° 才能得到可读的"银河带"。
+5. **银河盘面 = XZ 平面绕 X 轴转 60.2°**（`config.galaxy.tiltDeg`）。正侧视（相机落在盘面内）会把盘面压成**贯穿全屏的 1px 直线**，形似渲染接缝；需抬离盘面约 6° 才能得到可读的"银河带"。同一倾角同时约束三处，改动必须同步：`galaxy.js` 的 3D 银盘（`frame.rotation.x`）、`scene-backdrop.js` 的程序化星点（`galacticPole()`）、以及 ESO 全景天穹（`skyDome.rotation.x`，几何为整球、下半球靠顶点 alpha 置 0 挡住）。三者的带面法线两两夹角应为 0°，曾因天穹漏了这一步而差一个 `tiltDeg`。**注意天穹只对齐了「带面」，未对齐「经度零点」**——全景 `u=0` 对应哪个银经没有可靠依据，两层沿带面方向可能仍有固定角偏移，属已知限制。
 6. **无头环境只有 SwiftShader 软件渲染**，FPS 数值无参考意义（1–20）。只可用于相对比较，**禁止写入任何性能结论**。
 7. **`SOLAR.time` 已从 `ui.js` 迁到 `ui-time.js`**。外部契约不变（照旧 `SOLAR.time.xxx` 读写，`galaxy.js` / `main.js` / `teach.js` 的读法都不用改），但改时间控制逻辑请直接去 `ui-time.js` 找，`ui.js` 只是门面转发。
 8. **拆分文件的职责边界要看各自的顶部注释**，不要凭文件名猜。文档表格是导航用的，改了内部边界要同步改「架构地图」。
-9. **启动时相机不在太阳系上，预热帧会空画**。`Scene.init` 按 home 局部坐标摆相机（世界原点附近），而 `galaxy.init` 的 `applyPosition()` 已把 `systemRoot` 移到银心轨道位置（约 25000 单位外），首帧 `consumeDelta` ≈ 0、`panBy` 空转——相机整个启动期停在原点望天，加载层背后的预热帧只画背景（实测 54 个 draw call），全套 shader 编译与贴图上传被拖到 `goToPreset` 飞行途中（CPU 尖峰帧 + GPU upload stall）。`startScene` 里必须在 `Galaxy.init` 之后调 `SOLAR.Controls.primePresetView('home', PRIME_WIDE_FACTOR)` 瞬移到同视线倍距点；该函数内部按 `maxDistance` 收上限，faithful 档倍距自动退化为 1。
+9. **轨道线与星体必须同源，且要经过同一个偏置链**。`makeOrbitGeometry` 用的是 `A.orbitPath(orb, jd)`，星体用的是 `A.heliocentric + A.toScene`，两者同一套 `planetElements`，偏差本身 ≤0.02%（实测）；真正的陷阱是**只作用于星体、不作用于轨道线的偏置**：`scene-bodies.js` 的 `updatePlanet` 会按 `data.barycenter` 把 Pluto 的 mesh 沿 Charon 反向挪开 `primaryOffset`（compact 0.165 / faithful 0.399 单位，约为冥王星半径的 0.32 / 0.77 倍），因此那里同时把 `p.orbitLine.position` 按同向量平移才重合。给任何天体加"只画在星体上的偏移"时，先问轨道线要不要跟着动。历元滞后不是这个问题的成因：`refreshOrbitLines` 按当前 jd 重建、5 Hz 节流，滞后量仅 0.02 单位。
+10. **启动时相机不在太阳系上，预热帧会空画**。`Scene.init` 按 home 局部坐标摆相机（世界原点附近），而 `galaxy.init` 的 `applyPosition()` 已把 `systemRoot` 移到银心轨道位置（约 25000 单位外），首帧 `consumeDelta` ≈ 0、`panBy` 空转——相机整个启动期停在原点望天，加载层背后的预热帧只画背景（实测 54 个 draw call），全套 shader 编译与贴图上传被拖到 `goToPreset` 飞行途中（CPU 尖峰帧 + GPU upload stall）。`startScene` 里必须在 `Galaxy.init` 之后调 `SOLAR.Controls.primePresetView('home', PRIME_WIDE_FACTOR)` 瞬移到同视线倍距点；该函数内部按 `maxDistance` 收上限，faithful 档倍距自动退化为 1。
 
 ## 代码风格
 

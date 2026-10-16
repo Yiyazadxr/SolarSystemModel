@@ -31,7 +31,7 @@ function main() {
   const defined = new Set();
   const consumed = new Map();                 // id -> 引用位置列表
   let scanned = 0;
-  for (const name of fs.readdirSync(JS_DIR).filter(function (f) { return f.endsWith('.js') && f !== 'textures.js'; })) {
+  for (const name of fs.readdirSync(JS_DIR).filter(function (f) { return f.endsWith('.js'); })) {
     scanned++;
     const lines = fs.readFileSync(path.join(JS_DIR, name), 'utf8').split('\n');
     for (let ln = 0; ln < lines.length; ln++) {

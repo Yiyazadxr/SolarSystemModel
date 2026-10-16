@@ -169,7 +169,12 @@ select option { background: #06080a; color: var(--text); }
   backdrop-filter: blur(6px);
   scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .22) transparent;
 }
-  .hud-left { left: var(--hud-edge); width: var(--hud-left-w); transition: width .25s ease, padding .25s ease; }
+  .hud-left { left: var(--hud-edge); width: var(--hud-left-w); transition: width .25s ease, padding .25s ease;
+    /* 面板自身不滚动：标题行与搜索框固定，只有 #body-list 滚。
+       早先是整块 overflow-y:auto，列表一长就把「天体 + 折叠钮」和搜索框一起滚出画面，
+       滚回来还得先找到顶部。改成 flex 柱状 + 列表自滚，省掉 position:sticky
+       在半透明面板（--bg-panel 只有 .62 alpha）下的透显问题——不是覆盖而是不重叠。 */
+    overflow: hidden; display: flex; flex-direction: column; }
 /* 收起 = 面板整体隐藏，只留下面那枚独立恢复钮。
    旧做法是把面板收窄成 40px 小方块、折叠钮留在框内，结果是「外框 + 框内小钮」
    两层盒子；现在面板 display:none，两层一起消失。显隐由 .nav-open 的兄弟
@@ -230,10 +235,12 @@ select option { background: #06080a; color: var(--text); }
 .sec-caret .hud-ico { width: 9px; height: 9px; }
 .hud-right.collapsed { display: none; }
 .hud-left::-webkit-scrollbar, .hud-right::-webkit-scrollbar,
-.settings-panel::-webkit-scrollbar { width: 4px; }
+#body-list::-webkit-scrollbar, .settings-panel::-webkit-scrollbar { width: 4px; }
 .hud-left::-webkit-scrollbar-thumb, .hud-right::-webkit-scrollbar-thumb,
+#body-list::-webkit-scrollbar-thumb,
 .settings-panel::-webkit-scrollbar-thumb { background: var(--line-strong); }
 .hud-left::-webkit-scrollbar-thumb:hover, .hud-right::-webkit-scrollbar-thumb:hover,
+#body-list::-webkit-scrollbar-thumb:hover,
 .settings-panel::-webkit-scrollbar-thumb:hover { background: var(--accent-dim); }
 
 /* ---------- 左侧搜索 ---------- */
@@ -248,7 +255,15 @@ select option { background: #06080a; color: var(--text); }
 .search-empty { margin: 2px 0 8px; font-family: var(--mono); font-size: 10px; letter-spacing: .1em; color: var(--text-dim); }
 
 /* 左侧天体列表 */
-#body-list { list-style: none; margin: 0; padding: 0; }
+#body-list {
+  list-style: none; margin: 0; padding: 0;
+  /* 唯一滚动区：flex:1 吃掉面板剩余高度，min-height:0 是 flex 子项能收缩的前提
+     （否则 min-content 高度会让它溢出面板、flex 失效）。加 2px 右侧内嵌让滚动条
+     不至于贴着列内容；Firefox 的细滚动条与 webkit 的 4px 各配一份。 */
+  flex: 1 1 auto; min-height: 0;
+  overflow-y: auto; overflow-x: hidden; padding-right: 2px;
+  scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .22) transparent;
+}
 #body-list li {
   display: flex; align-items: center; gap: 10px;
   padding: 7px 8px; cursor: pointer;

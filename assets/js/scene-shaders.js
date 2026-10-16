@@ -415,11 +415,21 @@ SOLAR.Shaders = (function () {
     'uniform float uHeightScale; uniform float uSizeScale;',
     'varying vec3 vColor;',
     'void main(){',
-    '  vColor = aColor;',
     '  vec4 mv = modelViewMatrix * vec4(position, 1.0);',
     '  gl_Position = projectionMatrix * mv;',
     '  float dist = max(-mv.z, 0.001);',
-    '  gl_PointSize = clamp(aSize * uSizeScale * uHeightScale / dist, 1.0, 14.0);',
+    /* aSize * heightScale / dist 就是「真实尺寸(场景单位)换算成像素」：
+       heightScale = 画布高 / (2*tan(fov/2))，正是单个像素张角的倒数，
+       所以这一式与以物理尺寸直接除像素角完全等价，无需再引入 uPx。 */
+    '  float px = aSize * uSizeScale * uHeightScale / dist;',
+    '  float s = clamp(px, 1.0, 14.0);',
+    /* size 被 clamp 到上限后，亮度须按 (s/px)^2 一起削，总能量才在 clamp 边界连续；
+       否则颗粒继续放大时只会变大、不会变亮，飞入带内时局部糊成一片白。
+       注意此式只在上限一侧生效：px<1 被向上钳到 1.0 时 k 仍为 1，
+       点云稀疏档的亮度与辉带补偿逻辑都不受影响。 */
+    '  float k = min(1.0, (s * s) / max(px * px, 1e-12));',
+    '  gl_PointSize = s;',
+    '  vColor = aColor * k;',
     '}'
   ].join('\n');
 

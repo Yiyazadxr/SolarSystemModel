@@ -151,8 +151,17 @@ SOLAR.CONFIG = {
 
     // 电影化飞行
     flyMinDuration: 1100,
-    flyMaxDuration: 3800,
+    /* 上限提到 6.5 s：跨数量级飞行按「每个十倍 1 秒」叠加在 travel 项之上，
+       数量级项常与 travel 项同时顶到旧上限 3800，等于把刚加的对数节奏裁掉。
+       6.5 s 是跨 6~7 个十倍（行星表面 -> 银河视角）仍能保持匀速的取值。 */
+    /* 上限按显示比例档案切分：faithful 的距离比 compact 约 50 倍，同一条
+       「跨几个十倍加时」的公式对 faithful 天然偏长。faithful 内容密度低
+       （远看只剩几条轨道线），不需要 6.5 s 才能看清，压到 4.5 s 后跨档
+       飞行节奏与 compact 一致；compact 维持 6.5 s。 */
+    flyMaxDuration: 6500,
+    flyMaxDurationByProfile: { compact: 6500, faithful: 4500 },
     flyDistanceDuration: 360,
+    flyDecadeDuration: 1000,   // 「到注视点的距离」每跨一个十倍的加时（ms）
     flyArcRatio: 0.09,
     flyArcMax: 260,
     flyArcSideRatio: 0.16,
@@ -160,6 +169,14 @@ SOLAR.CONFIG = {
     /* 连珠模式左右切换：抑制弧线抬升与横摆，纯水平平移，避免抛物线上跳 */
     alignFlyArcFactor: 0.08,
     alignFlySideFactor: 0,
+    /* 主体 -> 主体飞行的 van Wijk 抬升：两个被摄体间距超过当前取景距离这个
+       倍数（取 log10 后减去的偏置）才开始抬升，0.6 十倍 ≈ 4 倍。倍率按
+       「取景距离 × 十进数」换算成场景单位，callers 的 arcScale 因子照旧相乘。 */
+    flyArcGapDecades: 0.6,
+    flyArcGapGain: 0.8,
+    /* 取景距离变化超过这个十进数才启用对数半径插值；阈值以下与原线性
+       插值完全一致，例行近景飞行零行为变化。 */
+    flyLogRadialDecades: 0.3,
 
     // 软跟随与巡航
     followManualStrength: 0.12,

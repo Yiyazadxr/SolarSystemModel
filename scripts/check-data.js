@@ -14,7 +14,6 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const DATA_FILE = path.join(ROOT, 'assets', 'js', 'data.js');
 const JS_DIR = path.join(ROOT, 'assets', 'js');
-const EXCLUDE = new Set(['textures.js']);
 /* 这些字段是数据版本/适用范围说明，不属于运行时天体属性；
    明确登记后，strict 只拦截真正意外出现的零消费字段。 */
 const INTENTIONAL_ZERO_FIELDS = new Set([
@@ -75,7 +74,7 @@ function main() {
   console.log('=== data.js 抽取字段 (' + fields.size + ') ===');
 
   const files = fs.readdirSync(JS_DIR)
-    .filter(f => f.endsWith('.js') && !EXCLUDE.has(f))
+    .filter(f => f.endsWith('.js'))
     .map(f => path.join(JS_DIR, f));
   const consumers = findConsumers(fields, files);
 
