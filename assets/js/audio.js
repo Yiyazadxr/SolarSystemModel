@@ -72,7 +72,9 @@ SOLAR.Audio = (function () {
   }
 
   function resumeIfSuspended() {
-    if (!ctx || ctx.state !== 'suspended' || !ctx.resume) return;
+    /* Safari 在电话/闹钟中断后会把 AudioContext 置为 WebKit 特有的 'interrupted'，
+       只判 'suspended' 会永远跳过 resume → 整页会话静音。凡非 running 都尝试恢复。 */
+    if (!ctx || ctx.state === 'running' || !ctx.resume) return;
     try {
       var r = ctx.resume();
       /* resume() 返回 Promise：这里只做"不产生未处理拒绝"的兜底，不构成控制流 */

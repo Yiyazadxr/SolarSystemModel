@@ -130,7 +130,7 @@ SOLAR.CONFIG = {
   camera: {
     minDistance: 3,
     maxDistance: 80000,  // 拉远可见太阳系在银河系中的位置（太阳的银心轨道半径为 25000 单位）
-    flyDuration: 1600,    // 飞行基础时长（ms），远距离会在此基础上适度延长
+    flyDuration: 1200,    // 飞行基础时长（ms），远距离会在此基础上适度延长
     followLerp: 0.08,
 
     // 轨道手感：均按真实时间计算，不依赖渲染帧率
@@ -149,21 +149,23 @@ SOLAR.CONFIG = {
     sunDistanceScale: 8,
     alignDistanceScale: 10,
 
-    // 电影化飞行
-    flyMinDuration: 1100,
-    /* 上限提到 6.5 s：跨数量级飞行按「每个十倍 1 秒」叠加在 travel 项之上，
-       数量级项常与 travel 项同时顶到旧上限 3800，等于把刚加的对数节奏裁掉。
-       6.5 s 是跨 6~7 个十倍（行星表面 -> 银河视角）仍能保持匀速的取值。 */
+    // 电影化飞行：整体按 ~25% 提速（用户反馈偏慢），比例关系与滞回结构不变
+    flyMinDuration: 850,
+    /* 上限 5 s：跨数量级飞行按「每个十倍 0.75 s」叠加在 travel 项之上，
+       数量级项常与 travel 项同时顶到上限，等于把对数节奏裁掉；5 s 是跨
+       6~7 个十倍（行星表面 -> 银河视角）仍能保持匀速的取值。 */
     /* 上限按显示比例档案切分：faithful 的距离比 compact 约 50 倍，同一条
        「跨几个十倍加时」的公式对 faithful 天然偏长。faithful 内容密度低
-       （远看只剩几条轨道线），不需要 6.5 s 才能看清，压到 4.5 s 后跨档
-       飞行节奏与 compact 一致；compact 维持 6.5 s。 */
-    flyMaxDuration: 6500,
-    flyMaxDurationByProfile: { compact: 6500, faithful: 4500 },
-    flyDistanceDuration: 360,
-    flyDecadeDuration: 1000,   // 「到注视点的距离」每跨一个十倍的加时（ms）
-    flyArcRatio: 0.09,
-    flyArcMax: 260,
+       （远看只剩几条轨道线），不需要那么久才能看清。 */
+    flyMaxDuration: 5000,
+    flyMaxDurationByProfile: { compact: 5000, faithful: 3500 },
+    flyDistanceDuration: 270,
+    flyDecadeDuration: 750,   // 「到注视点的距离」每跨一个十倍的加时（ms）
+    /* 弧线幅度：中距按 travel 比例（0.05），远距封顶（130 单位）。观感调弱过
+       一次（原 0.09 / 260）——faithful 预设切换与 compact 双击的中段上跳都
+       明显收敛，仍保留轻微电影感。 */
+    flyArcRatio: 0.05,
+    flyArcMax: 130,
     flyArcSideRatio: 0.16,
     flyRoll: 0.028,
     /* 连珠模式左右切换：抑制弧线抬升与横摆，纯水平平移，避免抛物线上跳 */
@@ -171,9 +173,10 @@ SOLAR.CONFIG = {
     alignFlySideFactor: 0,
     /* 主体 -> 主体飞行的 van Wijk 抬升：两个被摄体间距超过当前取景距离这个
        倍数（取 log10 后减去的偏置）才开始抬升，0.6 十倍 ≈ 4 倍。倍率按
-       「取景距离 × 十进数」换算成场景单位，callers 的 arcScale 因子照旧相乘。 */
+       「取景距离 × 十进数」换算成场景单位（gain 0.5 同属观感调弱，原 0.8），
+       callers 的 arcScale 因子照旧相乘；总幅度仍受 flyArcMax 约束。 */
     flyArcGapDecades: 0.6,
-    flyArcGapGain: 0.8,
+    flyArcGapGain: 0.5,
     /* 取景距离变化超过这个十进数才启用对数半径插值；阈值以下与原线性
        插值完全一致，例行近景飞行零行为变化。 */
     flyLogRadialDecades: 0.3,

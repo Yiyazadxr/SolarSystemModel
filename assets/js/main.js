@@ -83,6 +83,7 @@ window.SOLAR = window.SOLAR || {};
   var degradeSum = 0;
   var badWindows = 0;
   var goodWindows = 0;
+  var peakFps = 0;                         // 本会话观测到的最大采样窗均值：回升阈值按它封顶
 
   var currentQuality = 'high';
   var manualQuality = false;                // 用户手动选过画质后，不再自动回升
@@ -390,9 +391,17 @@ window.SOLAR = window.SOLAR || {};
     var average = degradeSum / degradeSamples.length;
     degradeSamples.length = 0;
     degradeSum = 0;
+    if (average > peakFps) peakFps = average;
 
     var threshold = config.fpsThreshold;
+    /* 回升阈值不能写死成 threshold + HYSTERESIS：60Hz vsync 下窗均值上限就是 ~60，
+       而 40+25=65 永远达不成 → 降档后永不回升。按实测峰值帧率再封一层顶
+       （留 5% 余量吃掉采样抖动），高刷屏行为不变。
+       但只有峰值明显高出降级线（≥5 fps）才敢用：峰值仅略高于 40 时
+       peak*0.95 会掉到降级线附近，形成"刚好达标就升、升完又降"的周期性摆动；
+       这类边缘机器维持旧行为（不回升）比来回翻档更稳。 */
     var upgradeThreshold = Math.min(FPS_CAP, threshold + HYSTERESIS_FPS);
+    if (peakFps > threshold + 5) upgradeThreshold = Math.min(upgradeThreshold, peakFps * 0.95);
 
     if (average < threshold) {
       badWindows++;

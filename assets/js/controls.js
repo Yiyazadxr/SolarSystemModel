@@ -25,10 +25,8 @@ SOLAR.Controls = (function () {
   var tmpA = null, tmpB = null, tmpC = null, tmpD = null, tmpE = null;
   var tmpDir = null, projA = null, projB = null;
   var rightV = null, upV = null;
-  var rayHitPoint = null;
   var candIds = null;
   var rayHitId = null;
-  var rayHitValid = false;
 
   var rangeMin = numberConfig('minDistance', 3);
   var rangeMax = numberConfig('maxDistance', 12000);
@@ -76,11 +74,12 @@ SOLAR.Controls = (function () {
     pauseUntil: 0
   };
 
-  /* 滚轮使用“剩余对数缩放量”，指数收敛可兼容滚轮与触摸板惯性。 */
+  /* 滚轮使用“剩余对数缩放量”，指数收敛可兼容滚轮与触摸板惯性。
+     focusId 供 effectiveMinDistance 做贴面保护；旧 anchor/anchorValid
+     （缩放绕锚点 pivot）已废弃——stepZoom 只沿视线缩放、不移 target，
+     逐 wheel 全量 raycast 的主要产物曾是这份死状态，现只保留 focusId 解析。 */
   var zoom = {
     remaining: 0,
-    anchor: null,
-    anchorValid: false,
     focusId: null
   };
 
@@ -389,7 +388,6 @@ SOLAR.Controls = (function () {
     projB = new THREE.Vector3();
     rightV = new THREE.Vector3();
     upV = new THREE.Vector3();
-    rayHitPoint = new THREE.Vector3();
 
     flight.fromPos = new THREE.Vector3();
     flight.fromTarget = new THREE.Vector3();
@@ -407,7 +405,6 @@ SOLAR.Controls = (function () {
     flight.relTo = new THREE.Vector3();
 
     follow.prev = new THREE.Vector3();
-    zoom.anchor = new THREE.Vector3();
     historyView.pos = new THREE.Vector3();
     historyView.target = new THREE.Vector3();
   }
@@ -432,7 +429,6 @@ SOLAR.Controls = (function () {
     cruise.timer = 0;
     cruise.pauseUntil = 0;
     zoom.remaining = 0;
-    zoom.anchorValid = false;
     zoom.focusId = null;
     historyView.valid = false;
     candIds = null;
@@ -476,26 +472,26 @@ SOLAR.Controls = (function () {
   /* 飞行时长同时看两件事：横向扫过多远（沿用旧的 travel 口径），以及
      「到注视点的距离」跨过几个数量级。只按 travel 计时会让跨数量级的旅程
      节奏失衡——线性插值下 3 -> 80000 的飞行，t=0.5 时已经走完 93% 的对数
-     航程，太阳系在半秒内掠过、之后几秒无事发生。数量级项按 1 秒/十倍加，
+     航程，太阳系在半秒内掠过、之后几秒无事发生。数量级项按 0.75 秒/十倍加，
      由 flyMaxDuration 统一封顶。 */
   /* 飞行时长上限随显示比例档案切换：faithful 距离尺度约为 compact 的 50 倍，
      同一套公式（按「到注视点的距离」跨几个十倍加时）对它天然偏长，而它内容
      密度低、不需要那么久才能看清。档位未知时回落到 flyMaxDuration。 */
   function flightDurationCap() {
     var byProfile = CAM.flyMaxDurationByProfile;
-    if (!byProfile) return numberConfig('flyMaxDuration', 6500);
+    if (!byProfile) return numberConfig('flyMaxDuration', 5000);
     var mode = (SOLAR.Scene && typeof SOLAR.Scene.getScaleMode === 'function')
       ? SOLAR.Scene.getScaleMode() : 'compact';
     if (typeof byProfile[mode] === 'number') return byProfile[mode];
-    return numberConfig('flyMaxDuration', 6500);
+    return numberConfig('flyMaxDuration', 5000);
   }
 
   function computeFlightDuration(travel, spanFrom, spanTo) {
-    var base = numberConfig('flyDuration', 1600);
-    var extra = Math.log(1 + Math.max(0, travel) / 40) * numberConfig('flyDistanceDuration', 360);
+    var base = numberConfig('flyDuration', 1200);
+    var extra = Math.log(1 + Math.max(0, travel) / 40) * numberConfig('flyDistanceDuration', 270);
     var decades = Math.abs(Math.log10(Math.max(spanTo, 1e-9) / Math.max(spanFrom, 1e-9)));
-    extra += decades * numberConfig('flyDecadeDuration', 1000);
-    return clamp(base + extra, numberConfig('flyMinDuration', 1100), flightDurationCap());
+    extra += decades * numberConfig('flyDecadeDuration', 750);
+    return clamp(base + extra, numberConfig('flyMinDuration', 850), flightDurationCap());
   }
 
   function configureFlightArc(travel, arcScale, sideScale) {
@@ -516,24 +512,26 @@ SOLAR.Controls = (function () {
     else flight.arcSide.normalize();
 
     var arcFactor = arcScale == null ? 1 : arcScale;
-    var ratio = numberConfig('flyArcRatio', 0.09) * arcFactor;
+    var ratio = numberConfig('flyArcRatio', 0.05) * arcFactor;
     var side = numberConfig('flyArcSideRatio', 0.16) * (sideScale == null ? 1 : sideScale);
-    var arc = Math.min(travel * ratio, numberConfig('flyArcMax', 260));
+    var arc = Math.min(travel * ratio, numberConfig('flyArcMax', 130));
 
     /* 主体 -> 主体：叠加「把镜头顶高以同时容纳两个被摄体」的 van Wijk 抬升。
        两个锚点相距越远（相对当前取景距离多跨几个十倍）抬得越高；间距不过
        数倍取景距离时偏置吃掉了增量、弧线归零——近距平移不需要划抛物线。
-       预设视角之间没有锚主体，保持纯风格弧线，不进这条分支。 */
+       抬升与基础弧共用 flyArcMax 总上限：长距行程基础弧先触顶时抬升不会再
+       增高（刻意保留的风格上限，长距弧线不顶到天上）。预设视角之间没有
+       锚主体，保持纯风格弧线，不进这条分支。 */
     if (flight.anchorGap && arcFactor > 0) {
       var spanMax = Math.max(flight.spanFrom, flight.spanTo);
       var gapDecades = Math.log10(Math.max(travel, 1e-9) / Math.max(spanMax, 1e-9))
         - numberConfig('flyArcGapDecades', 0.6);
       if (gapDecades > 0) {
-        arc += Math.min(gapDecades * numberConfig('flyArcGapGain', 0.8) * spanMax,
-          numberConfig('flyArcMax', 260)) * arcFactor;
+        arc += Math.min(gapDecades * numberConfig('flyArcGapGain', 0.5) * spanMax,
+          numberConfig('flyArcMax', 130)) * arcFactor;
       }
     }
-    flight.arc = Math.min(arc, numberConfig('flyArcMax', 260));
+    flight.arc = Math.min(arc, numberConfig('flyArcMax', 130));
     flight.arcSideAmount = side;
     flight.rollSign = flight.travelDir.x + flight.travelDir.z >= 0 ? 1 : -1;
   }
@@ -1022,7 +1020,11 @@ SOLAR.Controls = (function () {
 
   function updateDistanceLimits() {
     if (!controls) return;
-    var min = effectiveMinDistance();
+    /* 飞行中目的地 ≠ 当前注视点：若仍按目的地保护距离钳半径，近距离起飞
+       （如贴月面飞木星）会被 OrbitControls 立刻弹开——stepFlight 刚写完位置，
+       update() 就按木星 minDistance 把相机从月旁推出去。飞行期间退回全局
+       rangeMin，落地后（flight.active 清除）自然恢复贴面保护。 */
+    var min = flight.active ? Math.max(0.001, rangeMin) : effectiveMinDistance();
     var max = Math.max(min, rangeMax);
     controls.minDistance = min;
     controls.maxDistance = max;
@@ -1042,41 +1044,16 @@ SOLAR.Controls = (function () {
     controls.target.add(delta);
   }
 
+  /* 解析滚轮缩放的贴面保护对象：命中行星就锁 focusId，否则退回屏幕空间最近候选。
+     不再维护 zoom.anchor（stepZoom 只沿视线缩放、绝不移 target，锚点已无消费者）；
+     空白处的射线-平面求交与 rayHitPoint 拷贝一并删除，避免逐 wheel 事件白算。 */
   function setZoomAnchor(clientX, clientY) {
-    zoom.anchorValid = false;
-    rayHitValid = false;
-    rayHitId = null;
-
     var id = pickByRay(clientX, clientY);
-    if (id && rayHitValid) {
-      zoom.anchor.copy(rayHitPoint);
-      zoom.anchorValid = true;
+    if (id) {
       zoom.focusId = id;
       return;
     }
-
-    if (!raycaster || !controls) return;
-    try {
-      updateNdc(clientX, clientY);
-      raycaster.setFromCamera(ndc, camera);
-      tmpDir.copy(controls.target).sub(camera.position);
-      if (tmpDir.lengthSq() < 1e-10) tmpDir.set(0, 0, -1);
-      else tmpDir.normalize();
-      var denominator = raycaster.ray.direction.dot(tmpDir);
-      if (Math.abs(denominator) > 1e-6) {
-        tmpA.copy(controls.target).sub(raycaster.ray.origin);
-        var distance = tmpA.dot(tmpDir) / denominator;
-        if (distance > 0) {
-          zoom.anchor.copy(raycaster.ray.origin).addScaledVector(raycaster.ray.direction, distance);
-          zoom.anchorValid = true;
-        }
-      }
-      var screenId = pickByScreen(clientX, clientY);
-      zoom.focusId = screenId || null;
-    } catch (error) {
-      zoom.anchor.copy(controls.target);
-      zoom.anchorValid = true;
-    }
+    zoom.focusId = pickByScreen(clientX, clientY) || null;
   }
 
   function stepZoom(dt) {
@@ -1135,10 +1112,9 @@ SOLAR.Controls = (function () {
     return rect;
   }
 
-  /* 射线命中以距离为主；距离接近时给较大天体少量优先级。 */
+  /* 射线命中以距离为主；距离接近时给较大天体少量优先级。返回 bodyId 或 null。 */
   function pickByRay(clientX, clientY) {
     rayHitId = null;
-    rayHitValid = false;
     if (!camera || !raycaster || !SOLAR.Scene || typeof SOLAR.Scene.getPickables !== 'function') return null;
 
     var list;
@@ -1166,12 +1142,6 @@ SOLAR.Controls = (function () {
       if (score < bestScore) {
         bestScore = score;
         rayHitId = id;
-        if (hit.point && validVector(hit.point)) {
-          rayHitPoint.copy(hit.point);
-          rayHitValid = true;
-        } else {
-          rayHitValid = false;
-        }
       }
     }
     return rayHitId;

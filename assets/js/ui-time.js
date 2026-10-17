@@ -82,7 +82,13 @@ SOLAR.UITime = (function () {
     if (els.speedHint) {
       var requested = speedHuman(SOLAR.time.speed);
       var actual = speedHuman(effective);
-      els.speedHint.textContent = requested + ' · ' + SOLAR.t('ui.effective') + ' ' + actual;
+      /* effectiveSpeed 是 EMA、几乎每帧都在微变，但四舍五入到人话后常为同一串；
+         文案没变就不重写 textContent，避免每帧弄脏布局（变化高亮仍按 targetChanged 触发）。 */
+      var hint = requested + ' · ' + SOLAR.t('ui.effective') + ' ' + actual;
+      if (hint !== U.state.lastSpeedHintShown) {
+        U.state.lastSpeedHintShown = hint;
+        els.speedHint.textContent = hint;
+      }
       /* 变化高亮只在倍速真变时闪一下；每帧重启动画会变成常亮 */
       if (targetChanged && SOLAR.UIFx && typeof SOLAR.UIFx.restart === 'function') {
         SOLAR.UIFx.restart(els.speedHint, 'fx-flash');
@@ -204,11 +210,16 @@ SOLAR.UITime = (function () {
     if (dateHintTimer) window.clearTimeout(dateHintTimer);
     dateHintTimer = window.setTimeout(function () {
       dateHintTransient = false;
+      /* 复原必须绕过 updateEphemerisHint 的脏检查：瞬态提示期间星历 level
+         通常没变，缓存命中的 early-return 会把错误提示永久留在屏上。 */
+      U.state.lastEphemerisKey = null;
       updateEphemerisHint();
     }, 3200);
   }
 
-  /* 当前日期必须持续标明模型口径，避免长期表与线性外推被误读为精确星历。 */
+  /* 当前日期必须持续标明模型口径，避免长期表与线性外推被误读为精确星历。
+     level 几乎不变（VSOP87 在线时只在 |T|>20 世纪才跳档），做了脏检查：
+     不变就不重写 textContent / setClass，避免每帧弄脏布局。 */
   function updateEphemerisHint() {
     if (!els.dateHint || dateHintTransient) return;
     var status = A.ephemerisStatus ? A.ephemerisStatus(SOLAR.time.jd) : { level: 'short' };
@@ -216,6 +227,8 @@ SOLAR.UITime = (function () {
       (status.level === 'vsopOutside' ? 'ui.ephemerisVsopOutside' :
       (status.level === 'long' ? 'ui.ephemerisLong' :
       (status.level === 'extrapolated' ? 'ui.ephemerisExtrapolated' : 'ui.ephemerisShort')));
+    if (key === U.state.lastEphemerisKey) return;
+    U.state.lastEphemerisKey = key;
     els.dateHint.textContent = SOLAR.t(key);
     SOLAR.UIUtil.setClass(els.dateHint, 'error', status.level === 'extrapolated');
     SOLAR.UIUtil.setClass(els.dateHint, 'warn', status.level === 'long' || status.level === 'vsopOutside');

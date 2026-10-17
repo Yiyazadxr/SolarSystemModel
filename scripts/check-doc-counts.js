@@ -4,7 +4,9 @@
                 == index.html 里 assets/js script 条数
      2) 贴图张数：README「N 张」== assets/textures 下文件数
      3) 仓库文件数：README「当前 N 个文件」== git ls-files 条数（用受版本控制
-                的文件数而非磁盘遍历，未跟踪的临时文件不参与） */
+                的文件数而非磁盘遍历，未跟踪的临时文件不参与）
+   另校验 AGENTS.md 内部的「见已知坑 N」交叉引用：新增/重编号「已知坑」后
+   旧引用极易失效（重编号后曾出现「见已知坑 9」指向错误条目），这里补上。 */
 'use strict';
 
 const fs = require('fs');
@@ -80,6 +82,49 @@ function main() {
     else if (Number(docFiles[0]) !== want.tracked) {
       problems.push('README 写"当前 ' + docFiles[0] + ' 个文件"，git ls-files 实际 ' +
         want.tracked + ' 个（新增文件后请同步）');
+    }
+  }
+
+  /* 4) AGENTS.md「见已知坑 N」引用校验：编号必须存在，且引用行与被引坑条目
+        至少共享一个反引号标识符（重编号后「9」仍然存在、只是指向了错误条
+        目——只验编号存在性拦不住，必须做内容关联）。引用行没有标识符时
+        退化为只验编号。 */
+  const AGENTS = path.join(ROOT, 'AGENTS.md');
+  if (fs.existsSync(AGENTS)) {
+    const agents = fs.readFileSync(AGENTS, 'utf8');
+    const section = agents.match(/## 已知坑([\s\S]*?)(?=\n## |$)/);
+    const sectionText = section ? section[1] : '';
+    const pitNums = [];
+    const pitStarts = [];
+    const rePit = /^(\d+)\.\s+\*\*/gm;
+    let pm;
+    while ((pm = rePit.exec(sectionText)) !== null) { pitNums.push(Number(pm[1])); pitStarts.push(pm.index); }
+    function pitEntry(n) {
+      const i = pitNums.indexOf(n);
+      if (i < 0) return '';
+      const from = pitStarts[i];
+      const to = i + 1 < pitStarts.length ? pitStarts[i + 1] : sectionText.length;
+      return sectionText.slice(from, to);
+    }
+    const reRefLine = /^.*见已知坑\s*(\d+).*$/gm;
+    let rl;
+    while ((rl = reRefLine.exec(agents)) !== null) {
+      const line = rl[0];
+      const n = Number(rl[1]);
+      if (pitNums.indexOf(n) < 0) {
+        problems.push('AGENTS.md「见已知坑 ' + n + '」指向不存在的编号（现有 [' + pitNums.join('/') + ']）');
+        continue;
+      }
+      const tokens = (line.match(/`[^`]+`/g) || [])
+        .map(function (t) { return t.slice(1, -1); })
+        .filter(function (t) { return t.length >= 4; });
+      if (!tokens.length) continue;
+      const entry = pitEntry(n);
+      const hit = tokens.some(function (t) { return entry.indexOf(t) !== -1; });
+      if (!hit) {
+        problems.push('AGENTS.md 引用行「…见已知坑 ' + n + '…」与该坑条目无共同标识符（' +
+          tokens.join(' / ') + '），引用可能指向错误条目（重编号后请同步）');
+      }
     }
   }
 

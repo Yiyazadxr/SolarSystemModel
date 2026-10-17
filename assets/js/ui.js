@@ -16,6 +16,8 @@ SOLAR.UI = (function () {
   /* 与外部（自动降级 / 其它模块）保持同步的缓存 */
   var lastCruise = null;
   var lastAlign = null;
+  /* 银河公转读数缓存：这些量变化周期是分钟/小时级，逐帧 formatDecimal + textContent 纯浪费 */
+  var lastGalaxyCells = null;
 
   /* ============ 初始化与逐帧更新 ============ */
 
@@ -70,24 +72,42 @@ SOLAR.UI = (function () {
     SOLAR.UITime.refreshFollowState(false);
     SOLAR.UIShell.updateTooltipPosition();
 
-    /* 银河公转读数 */
+    /* 银河公转读数：先 format 再比缓存，串没变就不碰 DOM（这些量分钟级才动一位） */
     if (SOLAR.Galaxy && els.gxProgress) {
       var gi = SOLAR.Galaxy.getInfo();
-      els.gxSpeed.textContent = SOLAR.UIUtil.formatDecimal(gi.speedKms, 0) + ' km/s';
-      els.gxDist.textContent = SOLAR.UIUtil.formatDecimal(gi.distanceLy, 0) + ' ly';
-      els.gxYear.textContent = SOLAR.UIUtil.formatDecimal(gi.yearMyr, 0) + ' Myr';
-      els.gxProgress.textContent = gi.progress.toFixed(1) + '%';
+      var gxSpeed = SOLAR.UIUtil.formatDecimal(gi.speedKms, 0) + ' km/s';
+      var gxDist = SOLAR.UIUtil.formatDecimal(gi.distanceLy, 0) + ' ly';
+      var gxYear = SOLAR.UIUtil.formatDecimal(gi.yearMyr, 0) + ' Myr';
+      var gxProgress = gi.progress.toFixed(1) + '%';
+      var gxHeight = '';
       if (els.gxHeight) {
         var h = typeof gi.planeHeightLy === 'number' ? gi.planeHeightLy : 0;
-        els.gxHeight.textContent = (h >= 0 ? '+' : '−') + SOLAR.UIUtil.formatDecimal(Math.abs(h), 0) + ' ly';
+        gxHeight = (h >= 0 ? '+' : '−') + SOLAR.UIUtil.formatDecimal(Math.abs(h), 0) + ' ly';
       }
-      els.gxTravel.textContent = SOLAR.UIUtil.formatDecimal(gi.travelledLy, 0) + ' ly';
+      var gxTravel = SOLAR.UIUtil.formatDecimal(gi.travelledLy, 0) + ' ly';
+      var gxNow = lastGalaxyCells;
+      if (!gxNow || gxNow.speed !== gxSpeed || gxNow.dist !== gxDist ||
+          gxNow.year !== gxYear || gxNow.progress !== gxProgress ||
+          gxNow.height !== gxHeight || gxNow.travel !== gxTravel) {
+        lastGalaxyCells = {
+          speed: gxSpeed, dist: gxDist, year: gxYear,
+          progress: gxProgress, height: gxHeight, travel: gxTravel
+        };
+        els.gxSpeed.textContent = gxSpeed;
+        els.gxDist.textContent = gxDist;
+        els.gxYear.textContent = gxYear;
+        els.gxProgress.textContent = gxProgress;
+        if (els.gxHeight) els.gxHeight.textContent = gxHeight;
+        els.gxTravel.textContent = gxTravel;
+      }
     }
   }
 
-  /* 主循环自动调整画质时同步下拉框显示。
+  /* 主循环自动调整画质时同步分段控件显示。
      画质同时是 HUD 动效的门控之一：手动选档（ui-settings → setManualQuality）
-      与自动降级（main.js → syncQualityUi）都最终经此处。
+     与自动降级（main.js → syncQualityUi）都最终经此处。
+     注意：select 已换成 seg 分段按钮，旧 select 同步路径已废弃；
+     自动降级只走本函数，必须补 seg 高亮，否则面板显示与实际画质脱节。
      LOW 档关掉 JS 数字补间；CSS 侧无限循环装饰动画由 body.quality-low 关闭
      （style.css 末尾「动效总门控」），一次性入场动画保留。
      注意与「界面动效」总开关合并判定：用户关掉界面动效后，即使切回高画质
@@ -95,6 +115,9 @@ SOLAR.UI = (function () {
   function setQuality(name) {
     if (document.body && document.body.classList) {
       document.body.classList.toggle('quality-low', name === 'low');
+    }
+    if (els.segQuality && SOLAR.UISettings && typeof SOLAR.UISettings.setSegActive === 'function') {
+      SOLAR.UISettings.setSegActive(els.segQuality, name);
     }
     if (SOLAR.UIFx && typeof SOLAR.UIFx.setEnabled === 'function') {
       SOLAR.UIFx.setEnabled(U.state.settings.hudFx !== false && name !== 'low');
@@ -119,7 +142,13 @@ SOLAR.UI = (function () {
     select: function (id) { return SOLAR.UIInfo.select(id); },
     onSelectId: function (id) { return SOLAR.UIInfo.onSelectId(id); },
     onCruiseId: function (id) { return SOLAR.UIInfo.onCruiseId(id); },
-    applyLanguage: function (lang) { return SOLAR.UIShell.applyLanguage(lang); },
+    /* 坑 4 修复：带 lang 参数时必须走 SOLAR.setLang 真正切换 SOLAR.lang，
+       再由 setLang 回调无参 applyLanguage 重绘；直接转发给无参的
+       UIShell.applyLanguage 会把参数静默丢掉（返回 zh 但界面不变）。 */
+    applyLanguage: function (lang) {
+      if (lang && typeof SOLAR.setLang === 'function') return SOLAR.setLang(lang);
+      return SOLAR.UIShell.applyLanguage();
+    },
     showTooltip: function (id, x, y) { return SOLAR.UIShell.showTooltip(id, x, y); },
     hideTooltip: function () { return SOLAR.UIShell.hideTooltip(); },
     setProgress: function (value) { return SOLAR.UIShell.setProgress(value); },

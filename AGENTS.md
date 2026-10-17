@@ -39,7 +39,7 @@ node scripts/check-teach-data.js     # 教学目录、来源与场景参数契�
 node scripts/check-teach-camera.js   # 退出教学模式视角重置回归（控制器 .object 与残留缩放）
 node scripts/check-teach-collapse.js # 目录面板折叠后只留一枚独立按钮（面板与恢复钮不得同时在画面）
 node scripts/check-dom-refs.js       # JS 查询的 DOM id 必须存在于 index.html 或由 JS 创建
-node scripts/check-doc-counts.js     # README 模块数 / 贴图张数 / 文件总数与代码一致
+node scripts/check-doc-counts.js     # README 模块数 / 贴图张数 / 文件总数与代码一致 + AGENTS.md「见已知坑 N」引用编号有效
 ```
 
 - 若是手动逐文件语法检查（**必须跳过 `assets/js/textures/`**——纯 base64 生成物，检查无意义且极慢）：
@@ -83,7 +83,7 @@ node scripts/check-doc-counts.js     # README 模块数 / 贴图张数 / 文件�
 | `scene-backdrop.js` | 天穹与远景：ESO 银河全景 sky dome、程序化星点、小行星带与柯伊伯带、轨道线（`SOLAR.Backdrop`） |
 | `scene.js` | `SOLAR.Scene` 门面：装配上述子模块并转发；横切的逐帧 `update` 留在此 |
 | `galaxy.js` | 银河模型 + 太阳系绕银心公转 + 太阳公转拖尾（始终显示 + 距离提亮） |
-| `controls.js` | 相机控制、拾取、飞行、跟随、巡航、连珠切换；启动预热瞬移 `primePresetView`（见已知坑 9） |
+| `controls.js` | 相机控制、拾取、飞行、跟随、巡航、连珠切换；启动预热瞬移 `primePresetView`（见已知坑 10） |
 | `ui-shared.js` | UI 共享宿主：dom 缓存 + 跨模块状态（`SOLAR.UIShared`） |
 | `ui-util.js` | 界面层基础工具：DOM 查询 / 数字与单位格式化 / 天体记录检索等纯函数，不持有 dom 缓存与跨模块状态（`SOLAR.UIUtil`） |
 | `ui-fx.js` | 界面层动效驱动：数字补间 / 动画重启 / 画质门控开关（`SOLAR.UIFx`；CSS 侧 keyframes 见 `style.css`「HUD 微动效」与文末「动效总门控」） |

@@ -596,6 +596,16 @@ SOLAR.Teach = (function () {
     return null;
   }
 
+  /* 教学装置挂在场景根（systemRoot 的父级）下。窗口 load 事件触发 Teach.init 时，
+     贴图还在分块加载、Scene.init 尚未执行，getSystemRoot() 返回 null——直接取
+     .parent 会抛 TypeError（表现为每次启动都打一条"教学模式初始化失败"假警告）。
+     启动期返回 null 即可，进入教学模式时 enterMode 有自己的懒加载初始化路径。 */
+  function sceneParent() {
+    var root = (SOLAR.Scene && typeof SOLAR.Scene.getSystemRoot === 'function')
+      ? SOLAR.Scene.getSystemRoot() : null;
+    return root ? root.parent : null;
+  }
+
   /* 相机：必须走 Controls 自己的 goToView（内部 startFlight 负责补间，
       且 trackSystem=false 不会跟着银河系位移漂移）。
       直接改 camera.position 会在下一帧被 controls 的内部状态重建覆盖——已经踩过。 */
@@ -809,7 +819,7 @@ SOLAR.Teach = (function () {
     if (SOLAR.Audio && typeof SOLAR.Audio.play === 'function') SOLAR.Audio.play('mode');
     camRestoreToken++;                     // 作废上一次退出时挂起的镜头复位
     if (SOLAR.TeachScenes && !SOLAR.TeachScenes.isReady()) {
-      var scn = (SOLAR.Scene && SOLAR.Scene.getSystemRoot) ? SOLAR.Scene.getSystemRoot().parent : null;
+      var scn = sceneParent();
       if (scn && !SOLAR.TeachScenes.init(scn)) return;
     }
     active = true;
@@ -895,6 +905,8 @@ SOLAR.Teach = (function () {
     stopLoop();
     if (SOLAR.Audio && typeof SOLAR.Audio.play === 'function') SOLAR.Audio.play('mode');
 
+    /* 刻意只 hide 不 dispose：教学装置常驻复用（见 teach-scenes.js dispose 注释），
+       重进零重建成本；资源有界、不随进出增长。 */
     if (SOLAR.TeachScenes) SOLAR.TeachScenes.hide();
     if (SOLAR.Scene && SOLAR.Scene.setSolarSystemVisible) SOLAR.Scene.setSolarSystemVisible(saved.solarVisible !== false);
     if (SOLAR.Galaxy && SOLAR.Galaxy.setVisible) SOLAR.Galaxy.setVisible(saved.galaxyVisible !== false);
@@ -1036,8 +1048,9 @@ SOLAR.Teach = (function () {
       window.addEventListener('keydown', onKey);
       built = true;
 
-      /* 装置初始化需要 scene：等主场景就绪后再建 */
-      var scn = (SOLAR.Scene && SOLAR.Scene.getSystemRoot) ? SOLAR.Scene.getSystemRoot().parent : null;
+      /* 装置初始化需要 scene：主场景未就绪时 sceneParent() 返回 null，
+         留给 enterMode 首次进入时的懒加载路径。 */
+      var scn = sceneParent();
       if (scn && SOLAR.TeachScenes) SOLAR.TeachScenes.init(scn);
       return true;
     },

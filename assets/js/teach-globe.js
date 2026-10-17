@@ -148,9 +148,11 @@ SOLAR.TeachGlobe = (function () {
         var vcam = (SOLAR.Scene && SOLAR.Scene.getCamera) ? SOLAR.Scene.getCamera() : null;
         var kSmooth = 1 - Math.pow(0.002, dtSec);          /* ≈10%/帧 @60fps */
         if (vcam && !(G.anim && G.anim.spin)) {
-          var cw = vcam.getWorldPosition(new THREE.Vector3());
+          /* 逐帧零分配：复用临时向量，勿在热路径 new / clone */
+          if (!G.tmp.voyCam) { G.tmp.voyCam = new THREE.Vector3(); G.tmp.voyDir = new THREE.Vector3(); }
+          var cw = vcam.getWorldPosition(G.tmp.voyCam);
           var angCam = Math.atan2(cw.z, cw.x);
-          var dirShip = route[voyLo].clone().normalize();
+          var dirShip = G.tmp.voyDir.copy(route[voyLo]).normalize();
           var angS = Math.atan2(dirShip.z, dirShip.x);
           var dTh = (angS - angCam) - G.nodes.spinGroup.rotation.y;
           while (dTh > Math.PI) dTh -= 2 * Math.PI;

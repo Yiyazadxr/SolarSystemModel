@@ -309,6 +309,8 @@ SOLAR.UIShell = (function () {
     SOLAR.UISettings.refreshSwitches();
     U.state.lastClockSecond = null;
     U.state.lastJdText = '';
+    U.state.lastEphemerisKey = null;
+    U.state.lastSpeedHintShown = null;
     SOLAR.UITime.updateClock();
     SOLAR.UITime.updateEphemerisHint();
 

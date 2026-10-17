@@ -831,6 +831,20 @@ var TRAIL_MAX_SUBSTEPS = 8;
   }
 
   /* 形参命名为 cometObj：下面整段函数体原样复用，逐颗调用即可（无需改动内部逻辑）。 */
+  /* 离子尾 / 尘埃尾的叠加配置表：静态数据，提为模块级常量——
+     原先写在 updateOneComet 函数体内，每帧每颗彗星重建 2 个数组 + 6 个对象，
+     违反「逐帧零分配」（Scene.update → updateComets → updateOneComet 热路径）。 */
+  var COMET_ION_CFG = [
+    { wob: 1.70, ph: 0.0, spread: -1.0, gain: 1.00, size: 2.6 },
+    { wob: 1.05, ph: 2.1, spread: 0.15, gain: 0.72, size: 2.2 },
+    { wob: 0.55, ph: 4.4, spread: 1.0, gain: 0.50, size: 1.8 }
+  ];
+  var COMET_DUST_CFG = [
+    { bend: 0.30, dlen: 0.56, gain: 1.00, size: 2.2 },
+    { bend: 0.16, dlen: 0.44, gain: 0.80, size: 2.0 },
+    { bend: 0.48, dlen: 0.66, gain: 0.62, size: 1.7 }
+  ];
+
   function updateOneComet(cometObj, jd) {
     var pos = A.heliocentric(cometObj.data.orbital, jd);
     var sp = A.toScene(pos);
@@ -885,13 +899,8 @@ var TRAIL_MAX_SUBSTEPS = 8;
     var head = S.tmpV2.set(sp.x, sp.y, sp.z).addScaledVector(dir, cometObj.mesh.scale.x * 0.55);
 
     /* 离子尾：笔直背离太阳，三条叠加形成发散的等离子体束（波幅/相位/横向张开各不相同） */
-    var ION = [
-      { wob: 1.70, ph: 0.0, spread: -1.0, gain: 1.00, size: 2.6 },
-      { wob: 1.05, ph: 2.1, spread: 0.15, gain: 0.72, size: 2.2 },
-      { wob: 0.55, ph: 4.4, spread: 1.0, gain: 0.50, size: 1.8 }
-    ];
     for (var k = 0; k < cometObj.ions.length; k++) {
-      var ion = cometObj.ions[k], cfgI = ION[k] || ION[2];
+      var ion = cometObj.ions[k], cfgI = COMET_ION_CFG[k] || COMET_ION_CFG[2];
       var n = ion.max, arr = ion.pos;
       for (var i = 0; i < n; i++) {
         /* f = 1 处是彗核（最亮最小），f = 0 处是尾端（最淡最大） */
@@ -918,13 +927,8 @@ var TRAIL_MAX_SUBSTEPS = 8;
     var dl = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
     dx /= dl; dy /= dl; dz /= dl;
 
-    var DUST = [
-      { bend: 0.30, dlen: 0.56, gain: 1.00, size: 2.2 },
-      { bend: 0.16, dlen: 0.44, gain: 0.80, size: 2.0 },
-      { bend: 0.48, dlen: 0.66, gain: 0.62, size: 1.7 }
-    ];
     for (var q = 0; q < cometObj.dusts.length; q++) {
-      var dust = cometObj.dusts[q], cfgD = DUST[q] || DUST[2];
+      var dust = cometObj.dusts[q], cfgD = COMET_DUST_CFG[q] || COMET_DUST_CFG[2];
       var m = dust.max, darr = dust.pos, dlen = len * cfgD.dlen;
       for (var j = 0; j < m; j++) {
         var g = 1 - j / (m - 1);          // 与离子尾同因：j = m-1 是彗核（最亮）
