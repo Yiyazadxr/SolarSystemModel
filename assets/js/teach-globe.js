@@ -179,9 +179,9 @@ SOLAR.TeachGlobe = (function () {
         vship.quaternion.setFromRotationMatrix(G.tmp.voyMat);
         /* 垂直居中：相机绕地心升/降到小船所在纬度——只改仰角，水平方位
            保留用户拖拽的结果；target 始终锁在地心。
-           此前把 target 与相机一起平移到小船处（pan），target 一旦离开地心，
+           若把 target 与相机一起平移到小船处（pan），target 一旦离开地心，
            相机就绕着偏离地心的点转，画面里地球又平移又翻滚（所见"地球
-           上下旋转"）；现在地球只保留绕地轴的 yaw（上面的方位对齐），
+           上下旋转"）；因此地球只保留绕地轴的 yaw（上面的方位对齐），
            地轴稳定，小船仍落在画面中部。 */
         var vct = (SOLAR.Controls && SOLAR.Controls.getTarget) ? SOLAR.Controls.getTarget() : null;
         if (vcam && vct) {
@@ -268,9 +268,9 @@ SOLAR.TeachGlobe = (function () {
         udS.shadowMaterial.uniforms.uCenter.value = (1.5 - sweepS * 3.0) * G.EARTH_R;
 
         /* 日冕只在「全食」阶段展开：月影半径 0.55 个日面半径，只有偏移
-           ≤ 1 − 0.55 = 0.45 时月影才完全落进日面（真正的全食）。此前
-           阈值取 0.98，月影刚压上日面边缘日冕就变亮泛白，与真实日冕
-           只在全食瞬间出现的观感不符——把起点收到全食门槛处。 */
+           ≤ 1 − 0.55 = 0.45 时月影才完全落进日面（真正的全食）。阈值取
+           0.98 时月影刚压上日面边缘就变亮泛白，与真实日冕只在全食瞬间
+           出现的观感不符——起点收到全食门槛处。 */
         var offR = Math.abs(1.5 - sweepS * 3.0);            /* 月影中心偏移（日面半径单位） */
         var totalR = 0.45;                                   /* 全食门槛：月影完全入日面 */
         var corona = 1 - Math.min(1, Math.max(0, offR) / totalR);
@@ -313,7 +313,7 @@ SOLAR.TeachGlobe = (function () {
       if (bodyId === 'moon' && G.nodes.eclipseGroup) {
         return G.nodes.eclipseGroup.userData.moon.getWorldPosition(new THREE.Vector3());
       }
-      /* 仅显式请求 'sun' 才返回日盘。此前该分支对任意 bodyId 生效，
+      /* 仅显式请求 'sun' 才返回日盘。若该分支对任意 bodyId 生效，
          日食步骤取景时 getWorldPosition('earth') 被劫持成日盘坐标，
          相机沿「月盘→日盘」方向被推到太阳外侧背面——太阳糊满全屏、
          月影（只着色朝地半球）整体背对镜头。 */

@@ -57,7 +57,7 @@ SOLAR.I18N = {
       compareTitle: 'RELATIVE TO EARTH',
       compareEmpty: 'No comparable data',
 
-      selectHint: 'Click a body to lock camera',
+      selectHint: 'Click a body to select · double-click to fly there',
       emptyHint: 'Click empty space to deselect',
       lang: '中文',
 
@@ -72,8 +72,8 @@ SOLAR.I18N = {
       settings: 'SETTINGS',
       scaleTitle: 'SCALE', scaleCompact: 'COMPACT', scaleFaithful: 'FAITHFUL',
       scaleReal: 'REAL', scaleIconic: 'SCHEMATIC',
-      scaleNote: 'Distances and sizes are compressed for visibility (true scale would make planets invisible). The faithful tier brings outer-planet distances and relative body sizes closer to reality; per-body info cards list the actual factor.',
-      factAu: '1 AU', factBody: 'Earth radius', factExagg: 'planets', factLocal: '1 scene unit at 1 AU ≈',
+      scaleNote: 'Distances and sizes are compressed — at true scale planets would be invisible (logarithmic depth buffer required). The faithful tier keeps outer-planet distances and relative body sizes closer to reality; each body lists its compression factor in its info card.',
+      factAu: '1 AU', factBody: 'Earth radius', factExagg: 'planet magnification', factLocal: '1 scene unit at 1 AU ≈',
       sceneUnit: 'scene units',
       modeTitle: 'CHOOSE MODE', modeDemo: 'DEMO MODE', modeDemoHint: 'Explore the solar system freely',
       modeTeach: 'TEACHING MODE', modeTeachHint: 'Guided lessons, chapter by chapter',
@@ -94,7 +94,7 @@ SOLAR.I18N = {
       unitAu: 'AU',
       unitKm: 'KM',
       langTitle: 'LANGUAGE',
-      needApi: 'Greyed switches still need a scene API',
+      needApi: 'Greyed-out switches: scene API unavailable',
       sound: 'SOUND',
 
       /* ---------- 搜索 ---------- */
@@ -681,7 +681,7 @@ SOLAR.I18N = {
       compareTitle: '与地球对比',
       compareEmpty: '暂无对比数据',
 
-      selectHint: '点击天体以锁定相机',
+      selectHint: '点击天体选择 · 双击飞往该天体',
       emptyHint: '点击空白处取消选择',
       lang: 'English',
 
@@ -696,7 +696,7 @@ SOLAR.I18N = {
       settings: '设置',
       scaleTitle: '显示比例', scaleCompact: '压缩示意', scaleFaithful: '弱压缩示意',
       scaleReal: '真实比例', scaleIconic: '示意比例',
-      scaleNote: '距离与天体尺寸均为示意压缩——真实比例下行星会小到不可见（需对数深度缓冲才能实现）。弱压缩档让外行星距离与天体之间的相对大小更接近真实，同时放大天体便于观察；每个天体被压缩的倍数见其信息卡。',
+      scaleNote: '距离与天体尺寸均为示意压缩——真实比例下行星会小到不可见（需对数深度缓冲才能实现）。弱压缩档让外行星距离与天体之间的相对大小更接近真实；每个天体被压缩的倍数见其信息卡。',
       factAu: '1 AU', factBody: '地球半径', factExagg: '行星放大', factLocal: '1 AU 处 1 场景单位 ≈',
       sceneUnit: '场景单位',
       modeTitle: '选择模式', modeDemo: '进入演示模式', modeDemoHint: '自由探索太阳系全景',
@@ -718,7 +718,7 @@ SOLAR.I18N = {
       unitAu: '天文单位',
       unitKm: '千米',
       langTitle: '语言',
-      needApi: '置灰的开关尚需场景接口支持',
+      needApi: '置灰的开关：暂缺场景接口',
       sound: '音效',
 
       /* ---------- 搜索 ---------- */

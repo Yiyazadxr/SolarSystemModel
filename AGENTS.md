@@ -39,7 +39,7 @@ node scripts/check-teach-data.js     # 教学目录、来源与场景参数契�
 node scripts/check-teach-camera.js   # 退出教学模式视角重置回归（控制器 .object 与残留缩放）
 node scripts/check-teach-collapse.js # 目录面板折叠后只留一枚独立按钮（面板与恢复钮不得同时在画面）
 node scripts/check-dom-refs.js       # JS 查询的 DOM id 必须存在于 index.html 或由 JS 创建
-node scripts/check-doc-counts.js     # README 模块数 / 贴图张数 / 文件总数与代码一致 + AGENTS.md「见已知坑 N」引用编号有效
+node scripts/check-doc-counts.js     # 中英 README 的模块数 / 贴图数 / 文件总数一致 + 互链存在 + AGENTS.md「见已知坑 N」引用编号有效
 ```
 
 - 若是手动逐文件语法检查（**必须跳过 `assets/js/textures/`**——纯 base64 生成物，检查无意义且极慢）：
@@ -83,7 +83,7 @@ node scripts/check-doc-counts.js     # README 模块数 / 贴图张数 / 文件�
 | `scene-backdrop.js` | 天穹与远景：ESO 银河全景 sky dome、程序化星点、小行星带与柯伊伯带、轨道线（`SOLAR.Backdrop`） |
 | `scene.js` | `SOLAR.Scene` 门面：装配上述子模块并转发；横切的逐帧 `update` 留在此 |
 | `galaxy.js` | 银河模型 + 太阳系绕银心公转 + 太阳公转拖尾（始终显示 + 距离提亮） |
-| `controls.js` | 相机控制、拾取、飞行、跟随、巡航、连珠切换；启动预热瞬移 `primePresetView`（见已知坑 10） |
+| `controls.js` | 相机控制、拾取、飞行、跟随、巡航、连珠切换；启动预热瞬移 `primePresetView`（见已知坑 9） |
 | `ui-shared.js` | UI 共享宿主：dom 缓存 + 跨模块状态（`SOLAR.UIShared`） |
 | `ui-util.js` | 界面层基础工具：DOM 查询 / 数字与单位格式化 / 天体记录检索等纯函数，不持有 dom 缓存与跨模块状态（`SOLAR.UIUtil`） |
 | `ui-fx.js` | 界面层动效驱动：数字补间 / 动画重启 / 画质门控开关（`SOLAR.UIFx`；CSS 侧 keyframes 见 `style.css`「HUD 微动效」与文末「动效总门控」） |
@@ -97,7 +97,7 @@ node scripts/check-doc-counts.js     # README 模块数 / 贴图张数 / 文件�
 | `main.js` | 启动引导、加载进度、主循环、自适应画质 |
 | `teach-data.js` | 教学内容数据（第3章 认识地球 / 太阳系 / 自转 / 公转 / 二十四节气 / 日地月，含来源索引；层级为章 → 节 → 小节 → 步骤） |
 | `teach-globe-shared.js` | 教学地球仪共享宿主：场景图节点表 + disposal 注册表 + 临时对象池（`SOLAR.TeachGlobeShared`） |
-| `teach-globe-shaders.js` | 教学装置 GLSL 源码：地球表面 / 云层 / 地影 等 shader 字符串（原内联字符串集中于此，只放源码、不含逻辑） |
+| `teach-globe-shaders.js` | 教学装置 GLSL 源码：地球表面 / 云层 / 地影 等 shader 字符串（只放源码字符串，不含逻辑） |
 | `teach-globe-body.js` | 地球仪本体：球体、材质、自转与昼夜、朝向附件 |
 | `teach-globe-scenes.js` | 观察场景装置：远去的船只 / 月食 / 日食影锥 / 麦哲伦环球航线 / 从太空看见地球 |
 | `teach-globe-apply.js` | 教学地球仪的场景参数与示意尺度取景 |
@@ -112,7 +112,7 @@ node scripts/check-doc-counts.js     # README 模块数 / 贴图张数 / 文件�
 
 ## 模块拆分约定（scene / ui / teach-globe 已拆分，再拆时必读）
 
-为什么要拆：三个文件分别 2–3 千行，改一处要在几千行里跳转，命名空间只有一个，任何小改动都要重读整个文件。按层拆开后，单个改动的影响面收敛到一个文件，门面保持对外契约，老调用点不用动。代价是文件数增多、装配顺序变敏感，因此固定以下约定：
+拆分动机：三个大文件各自 2–3 千行，命名空间挤在一起，改一处要满文件翻找。按层拆开后，单个改动的影响面收敛到一个文件，门面保持对外契约，老调用点不用动；代价是文件数增多、装配顺序敏感，因此固定以下约定：
 
 1. **跨模块调用必须运行时限定名**（`SOLAR.Xxx.fn()`）。不得在 IIFE 顶层缓存别的模块暴露的函数引用——拆分后各文件可独立演进，顶层缓存会让"只改一边、漏另一边"。
 2. **共享状态只放各自的 `*Shared` 模块**（`SOLAR.SceneShared` / `SOLAR.UIShared` / `SOLAR.TeachGlobeShared`），私有状态留在归属模块。`*Shared` 只做宿主（表 / 池 / 注册），不写业务逻辑。
@@ -125,7 +125,7 @@ node scripts/check-doc-counts.js     # README 模块数 / 贴图张数 / 文件�
 
 - `SOLAR.setManualQuality(name)` — 手动选档。**只阻止自动"回升"，不阻止自动"降级"**。
 - `SOLAR.CONFIG.autoDegrade.enabled = false` — 关闭自适应画质。
-- `SOLAR.Scene.worldPositionOf(id)` — 天体世界坐标（**重要，见"已知坑"第 1 条**）。
+- `SOLAR.Scene.worldPositionOf(id)` — 天体世界坐标（对应「已知坑」第 1 条）。
 - `SOLAR.Scene.getTriangleCount()` / `getSunScreenFraction()` / `radiusOf(id)`
 - `SOLAR.Controls.getControls()` — 返回 OrbitControls（`.object` 是相机，`.target` 是注视点）
 - `SOLAR.Controls.goToPreset(name)` / `isFlying()` / `pick` / `hover`
@@ -152,13 +152,12 @@ node scripts/check-doc-counts.js     # README 模块数 / 贴图张数 / 文件�
 1. **太阳系世界坐标不在原点**。整个系统绕银心公转，`worldPositionOf('sun')` ≈ `[4190,-260,150]` 且随公转缓慢漂移。任何"把相机设到某个绝对坐标"的操作都必须**相对 `worldPositionOf(id)` 定位**，否则会拍到银心空域——满屏星点、没有太阳系。
 2. **有东西每帧在改写 `controls.target`**（公转带动整套相机机位）。设完相机后不要假设 `target` 仍是 `(0,0,0)`。
 3. **`setManualQuality` 之后的画质仍可能被静默降档**（低帧触发自适应）。截图 / 做基准前务必先 `SOLAR.CONFIG.autoDegrade.enabled = false`。
-4. **`SOLAR.UI.applyLanguage('zh')` 静默无效**：返回 `'zh'` 不抛错，但界面语言不变（**已知遗留问题，未修**）。
-5. **银河盘面 = XZ 平面绕 X 轴转 60.2°**（`config.galaxy.tiltDeg`）。正侧视（相机落在盘面内）会把盘面压成**贯穿全屏的 1px 直线**，形似渲染接缝；需抬离盘面约 6° 才能得到可读的"银河带"。同一倾角同时约束三处，改动必须同步：`galaxy.js` 的 3D 银盘（`frame.rotation.x`）、`scene-backdrop.js` 的程序化星点（`galacticPole()`）、以及 ESO 全景天穹（`skyDome.rotation.x`，几何为整球、下半球靠顶点 alpha 置 0 挡住）。三者的带面法线两两夹角应为 0°，曾因天穹漏了这一步而差一个 `tiltDeg`。**注意天穹只对齐了「带面」，未对齐「经度零点」**——全景 `u=0` 对应哪个银经没有可靠依据，两层沿带面方向可能仍有固定角偏移，属已知限制。
-6. **无头环境只有 SwiftShader 软件渲染**，FPS 数值无参考意义（1–20）。只可用于相对比较，**禁止写入任何性能结论**。
-7. **`SOLAR.time` 已从 `ui.js` 迁到 `ui-time.js`**。外部契约不变（照旧 `SOLAR.time.xxx` 读写，`galaxy.js` / `main.js` / `teach.js` 的读法都不用改），但改时间控制逻辑请直接去 `ui-time.js` 找，`ui.js` 只是门面转发。
-8. **拆分文件的职责边界要看各自的顶部注释**，不要凭文件名猜。文档表格是导航用的，改了内部边界要同步改「架构地图」。
-9. **轨道线与星体必须同源，且要经过同一个偏置链**。`makeOrbitGeometry` 用的是 `A.orbitPath(orb, jd)`，星体用的是 `A.heliocentric + A.toScene`，两者同一套 `planetElements`，偏差本身 ≤0.02%（实测）；真正的陷阱是**只作用于星体、不作用于轨道线的偏置**：`scene-bodies.js` 的 `updatePlanet` 会按 `data.barycenter` 把 Pluto 的 mesh 沿 Charon 反向挪开 `primaryOffset`（compact 0.165 / faithful 0.399 单位，约为冥王星半径的 0.32 / 0.77 倍），因此那里同时把 `p.orbitLine.position` 按同向量平移才重合。给任何天体加"只画在星体上的偏移"时，先问轨道线要不要跟着动。历元滞后不是这个问题的成因：`refreshOrbitLines` 按当前 jd 重建、5 Hz 节流，滞后量仅 0.02 单位。
-10. **启动时相机不在太阳系上，预热帧会空画**。`Scene.init` 按 home 局部坐标摆相机（世界原点附近），而 `galaxy.init` 的 `applyPosition()` 已把 `systemRoot` 移到银心轨道位置（约 25000 单位外），首帧 `consumeDelta` ≈ 0、`panBy` 空转——相机整个启动期停在原点望天，加载层背后的预热帧只画背景（实测 54 个 draw call），全套 shader 编译与贴图上传被拖到 `goToPreset` 飞行途中（CPU 尖峰帧 + GPU upload stall）。`startScene` 里必须在 `Galaxy.init` 之后调 `SOLAR.Controls.primePresetView('home', PRIME_WIDE_FACTOR)` 瞬移到同视线倍距点；该函数内部按 `maxDistance` 收上限，faithful 档倍距自动退化为 1。
+4. **银河盘面 = XZ 平面绕 X 轴转 60.2°**（`config.galaxy.tiltDeg`）。正侧视（相机落在盘面内）会把盘面压成**贯穿全屏的 1px 直线**，形似渲染接缝；需抬离盘面约 6° 才能得到可读的"银河带"。同一倾角同时约束三处，改动必须同步：`galaxy.js` 的 3D 银盘（`frame.rotation.x`）、`scene-backdrop.js` 的程序化星点（`galacticPole()`）、以及 ESO 全景天穹（`skyDome.rotation.x`，几何为整球、下半球靠顶点 alpha 置 0 挡住）。三者的带面法线两两夹角应为 0°，曾因天穹漏了这一步而差一个 `tiltDeg`。**注意天穹只对齐了「带面」，未对齐「经度零点」**——全景 `u=0` 对应哪个银经没有可靠依据，两层沿带面方向可能仍有固定角偏移，属已知限制。
+5. **无头环境只有 SwiftShader 软件渲染**，FPS 数值无参考意义（1–20）。只可用于相对比较，**禁止写入任何性能结论**。
+6. **`SOLAR.time` 定义在 `ui-time.js`（不是 `ui.js`）**：外部照旧用 `SOLAR.time.xxx` 读写，`ui.js` 只是门面转发；改时间控制逻辑去 `ui-time.js`。
+7. **拆分文件的职责边界要看各自的顶部注释**，不要凭文件名猜。文档表格是导航用的，改了内部边界要同步改「架构地图」。
+8. **轨道线与星体必须同源，且要经过同一个偏置链**。`makeOrbitGeometry` 用的是 `A.orbitPath(orb, jd)`，星体用的是 `A.heliocentric + A.toScene`，两者同一套 `planetElements`，偏差本身 ≤0.02%（实测）；真正的陷阱是**只作用于星体、不作用于轨道线的偏置**：`scene-bodies.js` 的 `updatePlanet` 会按 `data.barycenter` 把 Pluto 的 mesh 沿 Charon 反向挪开 `primaryOffset`（compact 0.165 / faithful 0.399 单位，约为冥王星半径的 0.32 / 0.77 倍），因此那里同时把 `p.orbitLine.position` 按同向量平移才重合。给任何天体加"只画在星体上的偏移"时，先问轨道线要不要跟着动。历元滞后不是这个问题的成因：`refreshOrbitLines` 按当前 jd 重建、5 Hz 节流，滞后量仅 0.02 单位。
+9. **启动时相机不在太阳系上，预热帧会空画**。`Scene.init` 按 home 局部坐标摆相机（世界原点附近），而 `galaxy.init` 的 `applyPosition()` 已把 `systemRoot` 移到银心轨道位置（约 25000 单位外），首帧 `consumeDelta` ≈ 0、`panBy` 空转——相机整个启动期停在原点望天，加载层背后的预热帧只画背景（实测 54 个 draw call），全套 shader 编译与贴图上传被拖到 `goToPreset` 飞行途中（CPU 尖峰帧 + GPU upload stall）。`startScene` 里必须在 `Galaxy.init` 之后调 `SOLAR.Controls.primePresetView('home', PRIME_WIDE_FACTOR)` 瞬移到同视线倍距点；该函数内部按 `maxDistance` 收上限，faithful 档倍距自动退化为 1。
 
 ## 代码风格
 
@@ -172,6 +171,7 @@ node scripts/check-doc-counts.js     # README 模块数 / 贴图张数 / 文件�
 
 - **未经明确要求，不要 commit / push / 建分支 / 发 PR。**
 - 不改 `assets/vendor/` 下的第三方文件。
+- README.md 与 README.en.md 双版同步维护；数字（模块 / 贴图 / 文件数）与互链由 `check-doc-counts` 校验，改一版记得改另一版。对外文档（CONTRIBUTING / CODE_OF_CONDUCT / Issue 表单）与本文口径保持一致。
 - 不要删除 README 中的"验证状态""已知限制"等诚实披露段落，也不要夸大验证范围（Firefox / Safari / 真实 GPU 均未实测）。
 - 视觉或渲染结论必须附证据（截图或像素统计），且**断言不等于验证**——自动化断言之后请用户帮忙目视确认。
 

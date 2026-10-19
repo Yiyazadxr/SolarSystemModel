@@ -10,7 +10,7 @@
  *
  * 约定：
  *   - 教学装置建在世界原点（与随银河公转的太阳系互不干扰），相机一律用世界坐标取景；
- *     若将来要取景真实太阳系，必须先减掉 SOLAR.Scene.getSolarBasis().position。
+ *     取景真实太阳系时必须先减掉 SOLAR.Scene.getSolarBasis().position。
  *   - 键盘：→ / 空格 下一步，← 上一步，Esc 退出教学。
  *
  * 依赖：THREE、SOLAR.TEACH_DATA、SOLAR.TeachScenes、SOLAR.Scene、SOLAR.Controls、SOLAR.Galaxy、SOLAR.Audio、SOLAR.time。
@@ -47,7 +47,7 @@ SOLAR.Teach = (function () {
   var camRestoreToken = 0;
 
   /* 二分二至速查：内部 id → 阳历日期与太阳直射纬线的 i18n 键（教材口径）。
-     节气名原先直接用中文当键、同时又当显示文案；双语后必须拆开：
+     节气名不能直接当键（双语下键与显示文案必须拆开）：
        id 只参与数据链路（data-term 属性 / gotoTerm 参数 / 两装置的 TERM_LAMBDA），
        显示一律由下方解析器取 teach.term 系列键。
      注意注释里不要写带引号的键名：check-i18n 扫消费键时不屏蔽注释，
@@ -56,8 +56,8 @@ SOLAR.Teach = (function () {
   var TERM_IDS = ['spring', 'summer', 'autumn', 'winter'];
 
   /* 解析成显示文案。刻意写成逐一分支，而不是用前缀加 id 拼出键名：
-     拼接形态下 check-i18n 只能扫到一个带星号的占位键，静态校验直接失效
-     （曾因此报消费了但未定义）。分支里键名全是字面量，门禁核对得到。 */
+     拼接形态下 check-i18n 只能扫到一个带星号的占位键，静态校验直接失效；
+     分支里键名全是字面量，门禁核对得到。 */
   function termLabel(id) {
     if (id === 'spring') return SOLAR.t('teach.term.spring');
     if (id === 'summer') return SOLAR.t('teach.term.summer');
@@ -341,8 +341,8 @@ SOLAR.Teach = (function () {
     field.appendChild(range);
     field.appendChild(speedValue);
 
-    /* 「真实比例 / 示意比例」分段已移除：教学装置统一使用示意比例
-       （各步骤 state.scale 均为 'iconic'，teach-scenes 默认档同为 iconic）。 */
+    /* 教学装置统一使用示意比例（各步骤 state.scale 均为 'iconic'，
+       teach-scenes 默认档同为 iconic），故无比例切换控件。 */
 
     var reset = h('button', 'teach-btn', SOLAR.t('teach.reset')); reset.id = 'teach-reset';
     reset.addEventListener('click', resetStep);
@@ -574,8 +574,8 @@ SOLAR.Teach = (function () {
     return v;
   }
 
-  /* 取当前相机两种控制器都要能拿到：OrbitControls 暴露 .object，自研兜底控制器
-     过去没有它，导致保存/还原机位的守卫静默失败（退出教学后视角停在装置里）。
+  /* 取当前相机：两种控制器都要能拿到（OrbitControls 与自研兜底控制器都暴露
+     .object；缺了它，保存/还原机位的守卫会静默失败，退出教学后视角停在装置里）。
      优先走 Scene 的只读接口，两条路都拿不到才返回 null。 */
   function currentCamera() {
     if (SOLAR.Scene && typeof SOLAR.Scene.getCamera === 'function') {
@@ -638,8 +638,8 @@ SOLAR.Teach = (function () {
       var eclipseFocus = SOLAR.TeachGlobe.getWorldPosition('moon');
       if (eclipseFocus) focus.copy(eclipseFocus);
       /* 相机放到月面朝地一侧的正对方向：视线沿「月球→地心」，地影
-         （锚定在朝地点）就落在月盘正中扫过。此前机位固定为 polar/azim
-         常量，视线与朝地方向不共线，阴影被投到月盘下缘。
+         （锚定在朝地点）就落在月盘正中扫过。机位若用固定 polar/azim
+         常量，视线与朝地方向不共线，阴影会被投到月盘下缘。
          日食（solareclipse）取同一公式：相机在遮挡月盘的地心侧，
          视线依次穿过月盘、日盘——遮挡关系与真实日食一致。
          用世界位置实时计算，不受装置层级与倾斜影响。 */

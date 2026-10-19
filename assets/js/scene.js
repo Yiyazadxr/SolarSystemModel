@@ -4,12 +4,12 @@
  *       scene-shared.js（SOLAR.SceneShared：S 场景节点表与临时向量 / U 共享 uniform）
  *       scene-shaders.js（SOLAR.Shaders）、scene-gfx.js（SOLAR.Gfx）
  *       scene-sun.js（SOLAR.Sun）、scene-bodies.js（SOLAR.Bodies）、scene-backdrop.js（SOLAR.Backdrop）
- *       （astro.js 不再由本文件直接调用，经 SOLAR.Bodies.* 间接使用）
+ *       （astro.js 经 SOLAR.Bodies.* 间接使用，不在本文件直接调用）
  * 可选：effects.js（后期）/ galaxy.js（银河公转，缺失时各有兜底）
  *
- * 为什么只剩门面：太阳、行星/卫星/彗星、星空与两条粒子带已分别拆到 scene-sun /
- * scene-bodies / scene-backdrop，纹理与随机流等共用工具在 scene-gfx，GLSL 源码在
- * scene-shaders，共享节点表在 scene-shared。本文件只留四类东西：
+ * 模块分工：太阳、行星/卫星/彗星、星空与粒子带分别在 scene-sun / scene-bodies /
+ * scene-backdrop，纹理与随机流在 scene-gfx，GLSL 源码在 scene-shaders，
+ * 共享节点表在 scene-shared。本文件只留四类东西：
  *   1. 渲染器 / 相机 / 太阳系根节点的生命周期与 init 装配顺序；
  *   2. 画质档（QUAL/SEGMENTS）与切档分帧调度——一次切档要穿过多个子模块；
  *   3. 共享显示倍率（S.scaleFactors）与 config.profiles 的映射应用，同样是横切关注点；
@@ -28,7 +28,7 @@ window.SOLAR = window.SOLAR || {};
 SOLAR.Scene = (function () {
   'use strict';
 
-  /* 门面不再直接调 astro.js：开普勒解算与轨道采样都走 SOLAR.Bodies.* / 子模块 */
+  /* 门面不直接调 astro.js：开普勒解算与轨道采样都走 SOLAR.Bodies.* / 子模块 */
   var C = SOLAR.CONFIG, D = SOLAR.DATA;
   var DEG = C.astro.DEG;
 
@@ -566,8 +566,8 @@ SOLAR.Scene = (function () {
       S.nodes.cometObjs[ci6].orbitLine = SOLAR.Bodies.refreshOrbitLine(S.nodes.cometObjs[ci6].orbitLine, S.nodes.cometObjs[ci6].data.orbital, 0x9fe8ff, S.orbitEpochJd || SOLAR.Bodies.currentOrbitEpoch());
     }
     /* 防御性重贴：refreshOrbitLine 实际只换 geometry、保留 material（缺失时走
-       makeOrbitLine 内部就会 markOrbitBase），所以高亮不会因重建丢失。
-       留着这一次调用，是为了将来真整条重建时高亮不丢。 */
+       makeOrbitLine 内部就会 markOrbitBase），高亮不会因重建丢失；
+       保留这一次调用，整条重建的场合也不会丢高亮。 */
     applyOrbitHighlight();
     SOLAR.Backdrop.buildBelts();
   }
@@ -674,10 +674,10 @@ SOLAR.Scene = (function () {
 
   /* ---------- 选中天体：提亮对应轨道线 ---------- */
 
-  /* 场景侧此前没有"选中"概念。这里只做一件事：记录选中 id 并把它的轨道线
-     提亮，其余轨道线回到各自基础值（由 scene-bodies 登记的 userData）。
-     只在条目被重建（refreshOrbitLine 的 line 缺失分支）时才会丢高亮，
-     因此凡是整批重建轨道线的地方都要重贴一次 applyOrbitHighlight。 */
+  /* 这里只做一件事：记录选中 id 并把它的轨道线提亮，其余轨道线回到各自
+     基础值（由 scene-bodies 登记的 userData）。只在条目被重建
+     （refreshOrbitLine 的 line 缺失分支）时才会丢高亮，因此凡是整批重建
+     轨道线的地方都要重贴一次 applyOrbitHighlight。 */
   function applyOrbitHighlight() {
     var sel = S.selectedId;
     var i, j;

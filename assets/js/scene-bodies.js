@@ -11,9 +11,8 @@
  *       scene-shaders.js（SOLAR.Shaders：PLANET / ATMO / RING / TRAIL / TAIL 五组着色器）
  *       scene-gfx.js（SOLAR.Gfx：safeTexture / radialTexture / fallbackTexture）
  *
- * 为什么单独拆出来：行星、卫星、彗星的「外观 + 运动」是同一套数据驱动的构建流程
+ * 本模块的职责：行星、卫星、彗星的「外观 + 运动」是同一套数据驱动的构建流程
  * （表面参数 → uniform → 几何 → 贴图 → 环 / 大气 / 轨道线 / 拖尾 → 逐帧更新），
- * 原先与太阳、星空、标签、时间控制混在同一个 3000 行的 IIFE 里；拆出后
  * 「一个天体怎么被画出来、怎么动」集中在这一个文件。
  *
  * 共享状态归属（权威处只在 scene-shared.js，本模块只读写字段、从不整体替换）：
@@ -830,9 +829,9 @@ var TRAIL_MAX_SUBSTEPS = 8;
     for (var ci4 = 0; ci4 < S.nodes.cometObjs.length; ci4++) updateOneComet(S.nodes.cometObjs[ci4], jd);
   }
 
-  /* 形参命名为 cometObj：下面整段函数体原样复用，逐颗调用即可（无需改动内部逻辑）。 */
-  /* 离子尾 / 尘埃尾的叠加配置表：静态数据，提为模块级常量——
-     原先写在 updateOneComet 函数体内，每帧每颗彗星重建 2 个数组 + 6 个对象，
+  /* 形参命名为 cometObj：函数体按单颗编写，逐颗调用即可。 */
+  /* 离子尾 / 尘埃尾的叠加配置表：静态数据，提为模块级常量，避免逐帧分配——
+     写在 updateOneComet 里会每帧每颗彗星重建 2 个数组 + 6 个对象，
      违反「逐帧零分配」（Scene.update → updateComets → updateOneComet 热路径）。 */
   var COMET_ION_CFG = [
     { wob: 1.70, ph: 0.0, spread: -1.0, gain: 1.00, size: 2.6 },

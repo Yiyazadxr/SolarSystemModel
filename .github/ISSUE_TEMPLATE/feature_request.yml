@@ -1,0 +1,29 @@
+name: 功能建议 / Feature request
+description: 新功能、体验改进或内容建议
+title: "[Feature] "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        项目有几条硬约束：零构建、零运行依赖、运行时不联网、`file://` 直开、ES5。
+        与约束冲突的建议可能需要先讨论取舍。You can also write in English.
+  - type: textarea
+    id: problem
+    attributes:
+      label: 想解决的问题 / The problem
+      description: 现在的体验是什么样，哪里不够用
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: 期望的效果 / Proposed solution
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 考虑过的替代方案 / Alternatives considered（可选）
+    validations:
+      required: false

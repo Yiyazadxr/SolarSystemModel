@@ -6,9 +6,8 @@
    视觉语言（圆角、玻璃、描边、投影、发光、动效节奏）必须与演示模式一致。
 
    实现方式：所有质感令牌直接取自 style.css :root（第二处定义），
-   本文件不再各写一套回退值 —— 旧实现正是因为各自持有回退值
-   （2px 硬直角 / blur(6px) / 无投影），才出现
-   「教学模式硬边扁平、演示模式玻璃胶囊」的割裂感。
+   本文件不各写一套回退值——各自持有回退值（2px 硬直角 / blur(6px) / 无投影）
+   会立刻割裂成「教学模式硬边扁平、演示模式玻璃胶囊」。
 
    做法：
      1) 面板用玻璃渐变 + 内高光 + 外投影，而不是纯色实底
@@ -32,7 +31,7 @@
   --teach-sans: var(--sans, "Inter", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif);
   --teach-mono: var(--mono, ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace);
 
-  /* 圆角 / 玻璃 / 投影：全部取自全局，不再自带回退值 */
+  /* 圆角 / 玻璃 / 投影：全部取自全局令牌，不自带回退值 */
   --teach-radius-s: var(--radius-s, 6px);      /* 小控件：按钮 / 分段 / 滑块 */
   --teach-radius-m: var(--radius-m, 10px);
   --teach-radius-l: var(--radius-l, 14px);      /* 面板：目录 / 信息窗 / 控制条 */
@@ -353,8 +352,7 @@
 }
 
 /* 收起态由 JS 驱动（teach.js 的 panelCollapsed / updatePanelVisibility）：
-   面板本体整体隐藏，只留下面这枚独立恢复钮，所以这里不再需要
-   「收窄成小方块」那套规则——画面上不允许出现第二层盒子。 */
+   面板本体整体隐藏，只留下面这枚独立恢复钮，画面上不允许出现第二层盒子。 */
 #teach-root .teach-panel-open {
   position: absolute;
   left: var(--teach-edge-gap);

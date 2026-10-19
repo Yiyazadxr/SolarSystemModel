@@ -75,11 +75,11 @@ SOLAR.CONFIG = {
        轨道比例只由 distanceExp 决定：base 是统一乘数，行星间比例（木星/地球 = 5.203^0.85 ≈4.06）恒定。
        太阳/地球尺寸比 = 63/3.4 ≈ 18（真实 109、compact 4.7）。
        orbitSegments 1024：海王星弧垂 = 36095×(2π/1024)²/8 ≈ 0.17 < 行星半径 7.9，
-         不出现"行星不在轨道上"的折线锯齿（早年 distanceBase=200 的教训）。
+         不出现"行星不在轨道上"的折线锯齿。
        地月关系：moonDistFor 锚定母星半径、与 distanceBase 无关（base 越大越安全）；
          最紧个例 Callisto 月轨 809 单位，包络 7317~8935，距土星轨道 13601 余量 4666，11 颗均不碰邻轨。
          moonDistPow=0.7：月距 = 17.6× 地球半径（占地球轨道 3.0%）；pow=1.0 在本档也安全
-           （包络介于金星/火星之间），但未授权切换，保守保留 0.7；
+           （包络介于金星/火星之间），取 0.7 更稳；
          moonSizeFactor=0.61 把月/地大小比正好还原到真实的 0.273。 */
     faithful: {
       distanceBase: 2000, distanceExp: 0.85, sizeBase: 0.015, sizeExp: 0.62,
@@ -149,7 +149,7 @@ SOLAR.CONFIG = {
     sunDistanceScale: 8,
     alignDistanceScale: 10,
 
-    // 电影化飞行：整体按 ~25% 提速（用户反馈偏慢），比例关系与滞回结构不变
+    // 电影化飞行：时长按观感整体提速约 25%，比例关系与滞回结构不变
     flyMinDuration: 850,
     /* 上限 5 s：跨数量级飞行按「每个十倍 0.75 s」叠加在 travel 项之上，
        数量级项常与 travel 项同时顶到上限，等于把对数节奏裁掉；5 s 是跨
@@ -161,9 +161,8 @@ SOLAR.CONFIG = {
     flyMaxDurationByProfile: { compact: 5000, faithful: 3500 },
     flyDistanceDuration: 270,
     flyDecadeDuration: 750,   // 「到注视点的距离」每跨一个十倍的加时（ms）
-    /* 弧线幅度：中距按 travel 比例（0.05），远距封顶（130 单位）。观感调弱过
-       一次（原 0.09 / 260）——faithful 预设切换与 compact 双击的中段上跳都
-       明显收敛，仍保留轻微电影感。 */
+    /* 弧线幅度：中距按 travel 比例（0.05），远距封顶（130 单位）。取值偏弱：
+       faithful 预设切换与 compact 双击的中段上跳都明显收敛，仍保留轻微电影感。 */
     flyArcRatio: 0.05,
     flyArcMax: 130,
     flyArcSideRatio: 0.16,
@@ -173,8 +172,8 @@ SOLAR.CONFIG = {
     alignFlySideFactor: 0,
     /* 主体 -> 主体飞行的 van Wijk 抬升：两个被摄体间距超过当前取景距离这个
        倍数（取 log10 后减去的偏置）才开始抬升，0.6 十倍 ≈ 4 倍。倍率按
-       「取景距离 × 十进数」换算成场景单位（gain 0.5 同属观感调弱，原 0.8），
-       callers 的 arcScale 因子照旧相乘；总幅度仍受 flyArcMax 约束。 */
+       「取景距离 × 十进数」换算成场景单位（gain 0.5，同样取偏弱值），
+       调用方的 arcScale 因子照旧相乘；总幅度仍受 flyArcMax 约束。 */
     flyArcGapDecades: 0.6,
     flyArcGapGain: 0.5,
     /* 取景距离变化超过这个十进数才启用对数半径插值；阈值以下与原线性

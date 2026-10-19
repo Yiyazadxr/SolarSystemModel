@@ -32,8 +32,7 @@ SOLAR.GlobeBody = (function () {
 
   /* 仅本模块读写的量：earthMat（喂给 earthMesh 构造）、axis 三兄弟（axisNode 读取用于
      摆标签，axisTop/axisBottom 只写不读）、埃拉托色尼的 eratoArc/eratoLabel/eratoRayLabel
-     （更新时读取）与 eratoRays/eratoRadials（只写不读的遗留表）。
-     删除属行为变更，不发生在纯搬运中。 */
+     （更新时读取）与 eratoRays/eratoRadials（只写不读）。 */
   var earthMat = null;
   var axisNode = null, axisTop = null, axisBottom = null;
   var eratoRays = [], eratoRadials = [];
@@ -278,7 +277,7 @@ SOLAR.GlobeBody = (function () {
   }
 
   /* 重要经纬线：单独一份，每条都可开关，用 Torus（有粗度）绘制以便在投影上看得清。
-     配色走低饱和的制图色（暖白 / 琥珀 / 淡青 / 陶土橙），替代原来的高饱和荧光色。 */
+     配色用低饱和的制图色（暖白 / 琥珀 / 淡青 / 陶土橙），不用高饱和荧光色。 */
   function buildHighlights() {
     addHlCircle('equator', 0, 0xffe3b0);
     addHlCircle('tropic_n', 23.5, 0xf0b95c);

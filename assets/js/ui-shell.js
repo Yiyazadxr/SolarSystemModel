@@ -389,8 +389,7 @@ SOLAR.UIShell = (function () {
     }
 
     /* 阶段划分与 main.js 的加载流程对齐：0~85% 是贴图分块加载与预热
-       （TEXTURE_PHASE），之后才是场景构建、贴图应用与首帧编译。
-       旧阈值 0.18/0.45/0.72 是"边构建边解码"时代的产物，贴图前置后不再适用。 */
+       （TEXTURE_PHASE），之后才是场景构建、贴图应用与首帧编译。 */
     var stage = value < 0.85 ? 0 : (value < 0.90 ? 1 : (value < 0.94 ? 2 : (value < 0.97 ? 3 : (value < 0.995 ? 4 : 5))));
     if (stage === load.stage) return;
     load.stage = stage;

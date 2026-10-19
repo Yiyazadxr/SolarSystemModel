@@ -1,7 +1,7 @@
 /* ===========================================================
    太阳系 3D — 黑白科幻 HUD 样式
    =========================================================== */
-/* 阶段6 B5：HUD 科幻字体 Orbitron（OFL 1.1 许可，来源 @fontsource/google-fonts）
+/* HUD 科幻字体 Orbitron（OFL 1.1 许可，来源 @fontsource/google-fonts）
    仅内嵌 latin 子集（400/700 各约 6KB）；中文与其余字符回退系统字体，不受影响。
    file:// 下与页面同源，直接加载，无外部请求。 */
 @font-face {
@@ -171,14 +171,12 @@ select option { background: #06080a; color: var(--text); }
 }
   .hud-left { left: var(--hud-edge); width: var(--hud-left-w); transition: width .25s ease, padding .25s ease;
     /* 面板自身不滚动：标题行与搜索框固定，只有 #body-list 滚。
-       早先是整块 overflow-y:auto，列表一长就把「天体 + 折叠钮」和搜索框一起滚出画面，
-       滚回来还得先找到顶部。改成 flex 柱状 + 列表自滚，省掉 position:sticky
+       若整块 overflow-y:auto，列表一长就会把「天体 + 折叠钮」和搜索框一起滚出画面、
+       滚回来还得先找到顶部；flex 柱状 + 列表自滚省掉 position:sticky
        在半透明面板（--bg-panel 只有 .62 alpha）下的透显问题——不是覆盖而是不重叠。 */
     overflow: hidden; display: flex; flex-direction: column; }
-/* 收起 = 面板整体隐藏，只留下面那枚独立恢复钮。
-   旧做法是把面板收窄成 40px 小方块、折叠钮留在框内，结果是「外框 + 框内小钮」
-   两层盒子；现在面板 display:none，两层一起消失。显隐由 .nav-open 的兄弟
-   选择器跟随 .collapsed，JS 不需要额外同步状态。 */
+/* 收起 = 面板整体隐藏，只留下面那枚独立恢复钮（避免「外框 + 框内小钮」两层盒子）。
+   显隐由 .nav-open 的兄弟选择器跟随 .collapsed，JS 不需要额外同步状态。 */
 .hud-left.collapsed { display: none; }
 .nav-open {
   position: absolute;
@@ -518,9 +516,8 @@ select option { background: #06080a; color: var(--text); }
 @media (max-width: 1600px) { .galaxy-hud span:nth-child(7) { display: none; } }
 @media (max-width: 1250px) { .galaxy-hud span:nth-child(n+5) { display: none; } }
 
-/* 左侧导航收起态的旧规则（收窄成 38px 竖排标题把手、折叠钮留在框内）已删除：
-   收敛为「面板 display:none + 一枚独立恢复钮」，见 .hud-left.collapsed 与 .nav-open。
-   留意 .panel-head 曾被 L165 的规则 display:none，竖排标题其实从来没显示出来过。 */
+/* 导航收起态的规则在 .hud-left.collapsed / .nav-open 处：面板 display:none +
+   一枚独立恢复钮，画面上不允许出现第二层盒子。 */
 
 /* ---------- 模式选择（加载完成后：演示 / 教学） ---------- */
 #mode-layer {
@@ -624,9 +621,9 @@ body.align-mode .align-arrow { display: flex; }
   background: rgba(127, 252, 216, .08);
 }
   .sun-view-bar.is-hidden { display: none; }
-  /* 这条规则原先丢了选择器：裸声明会被解析器整段丢弃，快捷键弹层因此一直没有
-     内边距，文字贴着玻璃边缘（丢失的那段尾部还多出一个右花括号）。
-     背景 / 模糊 / 阴影由下方 917 行的 .shortcuts 负责，这里只补字体与内边距。 */
+  /* 这条规则必须带选择器：裸声明会被解析器整段丢弃（丢了选择器就没有内边距，
+     文字直接贴着玻璃边缘）。背景 / 模糊 / 阴影由下方 917 行的 .shortcuts 负责，
+     这里只补字体与内边距。 */
   .shortcuts {
     font-family: var(--mono); font-size: 10px; letter-spacing: .06em; color: var(--text-dim);
     border: 1px solid var(--line);

@@ -155,7 +155,7 @@ SOLAR.UISettings = (function () {
     else if (name === 'scanline') applyOverlay('scanline', value);
     else if (name === 'vignette') applyOverlay('vignette', value);
     else if (name === 'gasFx') {
-      /* 气态动效：作用待定，状态先存于 settings；场景侧接口就绪后在此接线 */
+      /* 气态动效：场景侧提供接口才生效（缺失时开关置灰） */
       if (SOLAR.Scene && typeof SOLAR.Scene.setGasFx === 'function') SOLAR.Scene.setGasFx(value);
     }
     else if (name === 'hudFx') applyHudFx(value);
@@ -260,9 +260,8 @@ SOLAR.UISettings = (function () {
   }
 
   /* 显示比例：压缩示意 / 弱压缩示意（演示模式专用）。
-     与教学装置的「真实比例 / 示意比例」是两套独立语义 —— 演示模式因深度缓冲精度
-     限制无法使用真实比例（见 config.profiles 注释），教学装置则用真实比例，
-     两者互不影响，也不再互相同步。 */
+     演示模式因深度缓冲精度限制无法使用真实比例（见 config.profiles 注释），
+     教学装置在示意尺度内自管，两者互不影响。 */
   function applyScaleMode(name) {
     if (name !== 'compact' && name !== 'faithful') return;
     setSegActive(els.segScale, name);
@@ -281,7 +280,7 @@ SOLAR.UISettings = (function () {
     refreshScaleNote();
   }
 
-  /* 教学模式内部切换比例时回调（教学装置用自己的真实/示意两档，与演示模式解耦） */
+  /* 教学侧比例档的显示同步入口（教学装置自管比例，与演示模式解耦） */
   function setScale(name) {
     if (name !== 'real' && name !== 'iconic') return;
     setSegActive(els.segScale, name === 'real' ? 'faithful' : 'compact');

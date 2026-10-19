@@ -370,7 +370,7 @@
   <div class="loader-stars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
   <div class="loader-scan" aria-hidden="true"></div>
   <div class="loader">
-    <!-- 四角瞄框：取景器语言，替代旧的两角 pseudo -->
+    <!-- 四角瞄框：取景器语言 -->
     <i class="loader-corner tl" aria-hidden="true"></i>
     <i class="loader-corner tr" aria-hidden="true"></i>
     <i class="loader-corner bl" aria-hidden="true"></i>
@@ -491,7 +491,7 @@
 <script src="assets/js/vsop87.js"></script>
 <script src="assets/js/astro.js"></script>
 <!-- 贴图：清单与加载器是静态小文件；大块 base64（assets/js/textures/*.js）由
-     加载器在加载层可见后逐块注入，避免旧单文件 11MB 首屏同步解析把进度压在 0% -->
+     加载器在加载层可见后逐块注入，避免 11MB base64 首屏同步解析把进度压在 0% -->
 <script src="assets/js/textures-manifest.js"></script>
 <script src="assets/js/textures-loader.js"></script>
 <script src="assets/js/effects.js"></script>
@@ -518,7 +518,7 @@
 <script src="assets/js/ui.js"></script>
 <script src="assets/js/main.js"></script>
 
-<!-- 教学模式：内容数据 -> 地球仪装置（共享/着色器/本体/场景/参数/门面）-> 旧三球仪 -> 调度层 -> 主控（依赖主场景就绪，故在 load 后初始化） -->
+<!-- 教学模式：内容数据 -> 地球仪装置（共享/着色器/本体/场景/参数/门面）-> 三球仪 / 平地观日 / 简易地月 -> 调度层 -> 主控（依赖主场景就绪，故在 load 后初始化） -->
 <script src="assets/js/teach-data.js"></script>
 <script src="assets/js/teach-globe-shared.js"></script>
 <script src="assets/js/teach-globe-shaders.js"></script>

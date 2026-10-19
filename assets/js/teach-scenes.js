@@ -122,8 +122,8 @@ SOLAR.TeachScenes = (function () {
     /* 刻意常驻复用：退出教学只 hide()（见 teach.js exitMode），不调用本 dispose。
        四套装置的场景图 / 几何 / 材质 / canvas 标签在页面生命周期内只建一次，
        重进教学零重建成本；资源有界、不随进出增长。track/disposeAll 注册表
-       保留作显式销毁入口（如将来接"重置教学进度"或整页 teardown 再启用），
-       当前策略下它是刻意不走的死路径——改策略时须同时改 exitMode 注释。 */
+       是显式销毁入口（整页 teardown 等场合再用），当前策略下刻意不走——
+       改策略时须同时改 exitMode 注释。 */
     dispose: function () {
       if (SOLAR.TeachGlobe) SOLAR.TeachGlobe.dispose();
       if (SOLAR.TeachOrrery) SOLAR.TeachOrrery.dispose();

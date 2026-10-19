@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 /* check-syntax.js — 零依赖：node --check 语法校验
  * 输入：assets/js/*.js 白名单（base64 生成物在 assets/js/textures/ 子目录，
- *       readdirSync 非递归天然跳过——与旧 textures.js 的跳过理由相同：
- *       全是 base64 大行，编译检查无意义且极慢）
+ *       readdirSync 非递归天然跳过：全是 base64 大行，编译检查无意义且极慢）
  * 输出：OK: file.js 或 ERR: file.js:line:col - msg
  */
 'use strict';

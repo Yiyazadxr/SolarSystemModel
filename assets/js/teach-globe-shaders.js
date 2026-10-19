@@ -2,8 +2,7 @@
  * 教学装置：地球仪（globe）—— 场景层 GLSL 源码
  * 用途：从 teach-globe.js 拆出的着色器字符串集中地，只放源码、不放构造逻辑。
  *       GLOBE_VERT/GLOBE_FRAG 地表与云层共用；CLOUD_FRAG 云层遮罩；
- *       ECLIPSE_VERT/ECLIPSE_FRAG 原先是 buildEclipse 里的 inline 字符串，
- *       拆模块时提升为命名变量（字符串内容一字未改）。
+ *       ECLIPSE_VERT/ECLIPSE_FRAG 用于月食地影与日食影锥。
  *
  * 坐标约定：与 teach-globe-shared.js 同一套（Y 轴向上、黄道面 = XZ 平面、
  *       sunDir = (cos λ, 0, sin λ)）。shader 里一律用世界空间法线与太阳方向求点积，
@@ -44,8 +43,7 @@ SOLAR.GlobeShaders = (function () {
     '}'
   ].join('\n');
 
-  /* 以下两个是地球仪最早版本留下的通用模板，当前没有任何构造点引用；
-     拆分时照搬保留（删除属于行为变更，不发生在纯搬运中）。 */
+  /* 以下两个是地球仪早期版本的通用模板，当前没有构造点引用，保留备查。 */
   var BASIC_VERT = [
     'void main(){',
     '  gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);',

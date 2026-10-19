@@ -27,7 +27,7 @@ SOLAR.TeachGround = (function () {
   var SPRING_DAY = 80;            /* 春分 ≈ 一年中的第 80 天 */
   /* 二分二至 -> λ（度）。键用内部 id（spring/summer/autumn/winter），
      与 teach.js 的 TERM_INFO、teach-orrery 的 TERM_LAMBDA 一致；
-     节气名原先直接用中文当键，双语后必须拆成 id + 显示文案。 */
+     显示文案走 i18n，不把节气名当键。 */
   var TERM_LAMBDA = { spring: 0, summer: 90, autumn: 180, winter: 270 };
 
   /* 三条轨迹弧：赤纬、颜色、id（春秋分共用一条弧）。

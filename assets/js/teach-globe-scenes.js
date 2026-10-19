@@ -94,8 +94,8 @@ SOLAR.GlobeScenes = (function () {
      sin/cos 转换模 360 自动归一，CatmullRom 插值不在日界线上跳变。 */
   function buildVoyage() {
     G.nodes.voyageGroup = new THREE.Group();
-    /* 航迹画在地球表面，必须挂 spinGroup 随地球一起转：此前挂在 extraGroup
-       （不随自转），步骤的 spinDeg 让地球转过任意角度时航线就会整体偏离
+    /* 航迹画在地球表面，必须挂 spinGroup 随地球一起转：挂在 extraGroup
+       （不随自转）时，步骤的 spinDeg 让地球转过任意角度后航线会整体偏离
        大陆（表现为航线穿过南美、贴错澳洲）。 */
     G.nodes.spinGroup.add(G.nodes.voyageGroup);
 
@@ -185,8 +185,8 @@ SOLAR.GlobeScenes = (function () {
     var magellanSm = buildSegment(magellanRoute, 0xffb45c, 'teach.globe.magellanRoute', 9);
     var elcanoSm = buildSegment(elcanoRoute, 0xff9fb5, 'teach.globe.elcanoRoute', 8);
 
-    /* 行进指示改用小帆船（与远去船只同源模型，亮船体色便于在球面上辨认），
-       替代原来的红色小球；0.55 倍 → 船长 0.10R，够示意又不喧宾夺主 */
+    /* 行进指示用小帆船（与远去船只同源模型，亮船体色便于在球面上辨认）；
+       0.55 倍 → 船长 0.10R，够示意又不喧宾夺主 */
     var dot = buildShipModel(0.55, 0xffc98a);
     dot.traverse(function (o) { if (o.isMesh) o.renderOrder = 4; });
     G.nodes.voyageGroup.add(dot);
@@ -286,8 +286,8 @@ SOLAR.GlobeScenes = (function () {
     G.nodes.horizonGroup = new THREE.Group();
     G.nodes.extraGroup.add(G.nodes.horizonGroup);
     /* 海面用真实球面（半径由 HORIZON_SEA_R 决定，球心在 y=-Rs）：地平线由球体
-       曲率自然形成，船的「下沉」是被球面遮挡的物理结果——船身先没、桅杆后没
-       不再是人为下压曲线。旧抛物面网格边界可见（湖面感）且下沉量失真，已替换。
+       曲率自然形成，船的「下沉」是被球面遮挡的物理结果——船身先没、桅杆后没，
+       不是人为下压曲线。抛物面网格方案湖面感重、下沉量失真，已弃用。
        整组放大 4 倍：相机走 globe rig（dist≥3），放大后等效眼高贴近海面。 */
     G.nodes.horizonGroup.scale.setScalar(4);
 
@@ -331,7 +331,7 @@ SOLAR.GlobeScenes = (function () {
     G.nodes.eclipseGroup.add(moon);
     /* 地影锚定「世界几何」而非视空间：轴 = 地心→月球方向（地影从地球伸向
        月球，阴影永远落在月面朝地球的一面）；扫动方向 = 世界 UP × 轴
-       （近似黄道面内的东西向）。此前阴影沿视空间 X 扫动，本步骤相机
+       （近似黄道面内的东西向）。若阴影沿视空间 X 扫动，本步骤相机
        target 就是月球，一拖拽月面视角在转、阴影却焊在屏幕右侧，几何脱钩。 */
     G.nodes.eclipseShadowMaterial = SOLAR.TeachGlobeShared.track(new THREE.ShaderMaterial({
       transparent: true,
@@ -347,7 +347,7 @@ SOLAR.GlobeScenes = (function () {
          即本影半径 ≈ 1.0、半影外缘 ≈ 1.35 个月盘半径——
          全食阶段本影恰好盖满月盘（边缘 d=1.0 < 1.02），且边界弧的
          曲率明显（弦高 ≈ 0.45 个月盘半径），「地影呈弧形 → 地球是球体」
-         的教学论点在画面上直接可读；旧阈值（0.65~0.90）弧太平、近似直线。 */
+         的教学论点在画面上直接可读；阈值取 0.65~0.90 时弧太平、近似直线。 */
       /* 只在「朝向地球的半个球面」着色，且边界平滑渐隐：地影从地球一侧
          投来，月球背对地球的一面照不到地影（相机绕到那一侧应看到全亮的
          月面）。「到地影轴的距离」是贯穿整个球的圆柱，正反两面都满足，

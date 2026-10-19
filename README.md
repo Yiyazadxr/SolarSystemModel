@@ -11,7 +11,7 @@
 [![Offline 100%](https://img.shields.io/badge/offline-100%25-2ea44f?style=flat-square)](#运行)
 [![Zero runtime deps](https://img.shields.io/badge/runtime_deps-0-blueviolet?style=flat-square)](#技术栈)
 
-[提交 Issue](https://github.com/Yiyazadxr/SolarSystemModel/issues) · [许可](#许可)
+[English](./README.en.md) · [提交 Issue](https://github.com/Yiyazadxr/SolarSystemModel/issues) · [贡献指南](./CONTRIBUTING.md) · [许可](#许可)
 
 <p align="center">
   <img src="./docs/screenshots/home-overview.png" alt="太阳系 3D 展示主界面" width="920">
@@ -25,11 +25,11 @@
 
 - **真实天体** 🪐 — 太阳、八大行星、冥王星、11 颗主要卫星、小行星带、柯伊伯带与 1P/Halley 彗星；八行星用 VSOP87 要素级数（地球轨道为地月质心），其他天体沿用 JPL 近似根数
 - **程序化渲染** ☀️ — 太阳米粒组织 / 临边昏暗 / 黑子 / 日冕，行星凹凸、纬向条纹、大红斑、菲涅尔大气辉光、日落色、环影与日月食投影，全部手写 GLSL
-- **银河公转与拖尾** 🌌 — 太阳系沿**真实倾角 60.2°** 的银道面绕银心公转（233 km/s，一个银河年约 50 分钟）；太阳**实际走过**的银心轨迹（含进动与振荡）任何机位**始终显示**、随距离提亮
-- **显示比例两档** 📏 — **压缩示意**（默认，便于整体观察）与**弱压缩示意**（更接近真实）可切换，只改距离与尺寸映射、**轨道周期与光照关系不变**；天体的压缩倍数在信息卡如实标注，映射锚点与"天体被放大多少倍"直接写在设置面板比例档下方
-- **时间与相机** ⏱️ — 1× → 1e9 倍速共 10 档、时间倒流、日期跳转；滚轮瞄准光标缩放、电影化飞行、软跟随、自动巡航、5 组预设视角、行星连珠；飞行的**距离按 log₁₀ 均分每个数量级**（3 → 80000 单位不再"头半秒掠过太阳系、之后几秒空镜"），时长按跨越的十倍档数计、上限 6.5 s（弱压缩档 4.5 s），抬升弧线只在被摄体相距够远时出现
+- **银河公转与拖尾** 🌌 — 太阳系沿**真实倾角 60.2°** 的银道面绕银心公转（233 km/s，一个银河年约 50 分钟）；太阳实际走过的银心轨迹（含进动与振荡）任何机位均显示，随相机拉远轻微提亮
+- **显示比例两档** 📏 — **压缩示意**（默认）与**弱压缩示意**可切换，只改距离与尺寸映射，轨道周期与光照关系不变；每个天体的压缩倍数在信息卡标注，锚点处的比例换算写在设置面板比例档下方
+- **时间与相机** ⏱️ — 1× → 1e9 倍速共 10 档、时间倒流、日期跳转；滚轮瞄准光标缩放、电影化飞行、软跟随、自动巡航、5 组预设视角与行星连珠；飞行距离按 log₁₀ 均分每个数量级，时长按跨越的十倍档数叠加、上限 5 s（弱压缩档 3.5 s），抬升弧线只在被摄体相距够远时出现
 - **界面** 🖥️ — 可搜索天体导航、9 分区信息卡、设置面板、Bloom / 扫描线 / 暗角 / 颗粒后期、画质四档 `ULTRA / HIGH / MEDIUM / LOW`，中英双语全覆盖
-- **程序化音效** 🔊 — 选中 / 模式切换 / 开关三枚 Web Audio 实时合成音，零音频文件、零联网；**默认开启**，可在设置面板「音效」关闭（开关状态写入 localStorage）
+- **程序化音效** 🔊 — 选中 / 模式切换 / 开关三枚 Web Audio 实时合成音，零音频文件、零联网；默认开启，可在设置面板「音效」关闭（开关状态写入 localStorage）
 - **教学模式** 🎓 — 右下角入口，覆盖第 3 章认识地球、太阳系、地球转动与日地月运动共 19 个步骤，与演示模式隔离
 
 ## 教学模式
@@ -90,7 +90,8 @@
 │   └── textures/ vendor/      原始贴图 25 张（分块内嵌至 assets/js/textures/）；Three.js r150 + OrbitControls + 后期
 ├── scripts/                   贴图生成 + 零依赖自检（语法 / ES5 / 离线 / 顺序 / i18n / 数据 / 资产 / 启动 / 轨道小图 / 教学数据 / 教学机位 / 教学折叠 / DOM 引用 / 文档口径）
 ├── docs/screenshots/          README 截图
-└── AGENTS.md · CLAUDE.md · LICENSE · NOTICE · README.md
+├── .github/ISSUE_TEMPLATE/    Issue 表单（Bug 报告 / 功能建议）
+└── AGENTS.md · CLAUDE.md · CODE_OF_CONDUCT.md · CONTRIBUTING.md · LICENSE · NOTICE · README.md · README.en.md
 ```
 
 各模块职责见 [AGENTS.md](./AGENTS.md) 的架构地图：
@@ -119,7 +120,7 @@
 ## 性能
 
 - 180 FPS 上限；帧时间累加器不漂移、dt 钳制、切标签页自动暂停
-- 自适应画质：每 90 帧一窗口，均值 < 40 FPS 连续 2 次降一档，> 65 FPS 连续 3 次升一档，带 4 s 冷却；手动选档后不再自动**回升**，自动**降级**始终作为兜底
+- 自适应画质：每 90 帧一窗口，均值 < 40 FPS 连续 2 次降一档；回升线取 65 FPS 与实测峰值帧率 95% 的较小值（60Hz 屏不会被 vsync 卡死），高帧连续 3 次升一档，带 4 s 冷却；手动选档后不再自动**回升**，自动**降级**始终作为兜底
 - 分层 Bloom：自发光物体单独渲到半分辨率 RT、行星当遮挡体，靠近太阳时只压低强度并加强高光压缩（ULTRA / HIGH / MEDIUM 生效，LOW 关闭）
 - 逐帧零 `new`、悬停拾取节流 ~70ms、拖尾按 `drawRange` 增量更新
 
@@ -134,10 +135,9 @@
 | 读数 / 网络 / 存储 | 内存读数依赖 `performance.memory`（**仅 Chromium 系**）；运行时不发外部请求，不使用 Cookie；仅音效开关状态写入 `localStorage`（禁用存储时退化为不记忆，功能不受影响） |
 | 分辨率 | 适配至约 1100×700 及以上，移动端未适配 |
 
-**验证状态**：脚本门禁在 Node 环境运行；此前主要演示路径曾在 **Chromium 无头环境**（SwiftShader 软件渲染）检查。Three.js r150 升级后的浏览器画面与交互、`distanceBase 2000` 尺度重构与太阳公转拖尾**尚未**经无头截图复核，正在人工验证中；新增教学场景的逐步目视回归待执行。**Firefox / Safari 与真实 GPU 环境尚未实测**。
+**验证状态**：脚本门禁全部在 Node 环境运行；主要演示路径在 **Chromium 无头环境**（SwiftShader 软件渲染）做过冒烟，画面与交互的完整回归以人工目视为准，教学场景的逐步目视回归待执行。**Firefox / Safari 与真实 GPU 环境尚未实测**。
 
 VSOP87 原始级数对 IMCCE 官方主版本 80 组历元 × 6 要素对拍最大差 4.975e-11；生成版保留 23,103 项（942,392 B），相对全量在 J2000 ±4,000 年网格上的最大单要素差 1.206e-5（a 为 AU，其余为弧度）。
-VSOP87 接入的浏览器画面与交互尚待人工复核。
 
 **可复现性**：程序化星场、小行星带与柯伊伯带由固定种子生成（`config.procedural.seed` + 自研 LCG，与浏览器 `Math.random` 无关）。同一页面每次加载完全一致；URL 加 `#seed=1234`（或 `SOLAR.Scene.setProceduralSeed(n)`）可确定性地换一批粒子。做截图对比或像素统计时请记录所用种子，否则结论无法复现。
 
@@ -155,7 +155,7 @@ VSOP87 接入的浏览器画面与交互尚待人工复核。
 
 ## 规模
 
-当前 117 个文件（git 跟踪口径）、约 30 MB：`assets/js/` 约 12.6 MB（含 `textures/` 分块贴图约 10.9 MB base64）、`assets/textures/` 约 8.2 MB（原始贴图 25 张）、`assets/vendor/` 0.6 MB，其余 < 1 MB。`assets/js/` 共 41 个模块——`scene` / `ui` / `teach-globe` 拆分多出的 23 个文件都是纯源码，总体积增长可忽略。
+当前 122 个文件（git 口径，不含忽略列表）、约 30 MB：`assets/js/` 约 12.6 MB（含 `textures/` 分块贴图约 10.9 MB base64）、`assets/textures/` 约 8.2 MB（原始贴图 25 张）、`assets/vendor/` 0.6 MB，其余 < 1 MB。`assets/js/` 共 41 个模块——`scene` / `ui` / `teach-globe` 拆分多出的文件都是纯源码，总体积增长可忽略。
 
 ## 许可
 
@@ -165,6 +165,10 @@ VSOP87 接入的浏览器画面与交互尚待人工复核。
 - **贴图资源**：来自 NASA、USGS 等机构的公有领域影像与 Solar System Scope（CC BY 4.0），分发时遵守来源机构政策，署名见 NOTICE
 - **第三方组件**：Three.js r150.1、OrbitControls、后期处理（均为 MIT，© three.js authors）
 - **品牌名称与标识**：不在开源许可范围内，不得用作品牌名称或暗示背书
+
+## 参与贡献
+
+欢迎提交 Issue 与 Pull Request。改动约束、门禁清单与提交流程见 [CONTRIBUTING.md](./CONTRIBUTING.md)，社区行为准则见 [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)。
 
 ## 致谢
 

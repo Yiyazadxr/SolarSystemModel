@@ -61,7 +61,7 @@ SOLAR.UITime = (function () {
     var effective = Math.abs(typeof SOLAR.time.effectiveSpeed === 'number' ? SOLAR.time.effectiveSpeed : speed);
     /* 目标值（含倒流符号）真变了才（重）启数字滚动。门面 tick 会因
        effectiveSpeed 每帧变化而调用本函数——若无脑重开补间，滚动永远停在
-       起点，还会和即时落值抢写 textContent（曾出现 10x→1x→又爬回 10x）。 */
+       起点，还会和即时落值抢写 textContent（表现为倍速 10x→1x→又爬回 10x）。 */
     var signed = (SOLAR.time.reverse ? -1 : 1) * speed;
     var targetChanged = signed !== U.state.lastSpeedTarget;
     if (targetChanged) U.state.lastSpeedTarget = signed;

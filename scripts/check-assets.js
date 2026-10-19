@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 /* check-assets.js — 零依赖：资产完整性检查
  * 规则：
- *  1. assets/js/textures/ 分块贴图 + textures-manifest.js + textures-loader.js 存在，
- *     旧单文件 textures.js 已删除
+ *  1. assets/js/textures/ 分块贴图 + textures-manifest.js + textures-loader.js 存在
  *  2. assets/vendor/ 下所有文件被 index.html 引用
  *  3. index.html 中 <script src> 全部存在
  *  4. assets/textures/ 中的源贴图在各分块中有对应键
@@ -49,7 +48,7 @@ function exists(p) {
 function main() {
   let fail = 0;
 
-  // 1. 分块贴图 / 清单 / 加载器存在性，旧单文件已清理
+  // 1. 分块贴图 / 清单 / 加载器存在性（旧单文件不应再存在）
   const chunks = chunkFiles();
   if (chunks.length) {
     let kb = 0;
@@ -142,7 +141,7 @@ function main() {
   }
 
   // 6. data.js 贴图路径 -> 分块内嵌键的可解析性（回归门禁）
-  //    46f51fc 贴图转 WebP 时漏改 scene-gfx 的键名剥离正则，导致全量贴图
+  //    贴图转 WebP 时曾漏改 scene-gfx 的键名剥离正则，导致全量贴图
   //    静默走纯色兜底（行星只剩程序化条纹、卫星变灰球）。这里直接复用
   //    scene-gfx.js 的正则源码做断言：正则必须覆盖 webp，且 data.js 每条
   //    贴图路径剥离扩展名后都能在分块贴图里找到内嵌键。

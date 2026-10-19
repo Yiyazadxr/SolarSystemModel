@@ -75,9 +75,8 @@ SOLAR.Controls = (function () {
   };
 
   /* 滚轮使用“剩余对数缩放量”，指数收敛可兼容滚轮与触摸板惯性。
-     focusId 供 effectiveMinDistance 做贴面保护；旧 anchor/anchorValid
-     （缩放绕锚点 pivot）已废弃——stepZoom 只沿视线缩放、不移 target，
-     逐 wheel 全量 raycast 的主要产物曾是这份死状态，现只保留 focusId 解析。 */
+     focusId 供 effectiveMinDistance 做贴面保护：命中行星锁住它，
+     否则退回屏幕空间最近候选。缩放不移动 target，不需要缩放锚点。 */
   var zoom = {
     remaining: 0,
     focusId: null
@@ -202,8 +201,8 @@ SOLAR.Controls = (function () {
     api.enabled = true;
     /* 与 OrbitControls 保持同一种形状：外部（teach.js 的教学机位保存/还原、
       teach-ground / teach-orrery 取相机）一律按 controls.object 取相机。
-      自研控制器此前不暴露 object，那些调用只能静默放弃——表现为退出教学模式后
-      视角没被还原，且只在回落到自研控制器的环境里出现（偶发、难复现）。 */
+      缺了 object，那些调用会静默放弃——表现为退出教学模式后视角没被还原，
+      且只在回落到自研控制器的环境里出现（偶发、难复现）。 */
     api.object = cam;
     api.target = new THREE.Vector3();
     api.enableDamping = true;
@@ -469,7 +468,7 @@ SOLAR.Controls = (function () {
     historyView.valid = true;
   }
 
-  /* 飞行时长同时看两件事：横向扫过多远（沿用旧的 travel 口径），以及
+  /* 飞行时长同时看两件事：横向扫过多远（travel 口径），以及
      「到注视点的距离」跨过几个数量级。只按 travel 计时会让跨数量级的旅程
      节奏失衡——线性插值下 3 -> 80000 的飞行，t=0.5 时已经走完 93% 的对数
      航程，太阳系在半秒内掠过、之后几秒无事发生。数量级项按 0.75 秒/十倍加，
@@ -775,7 +774,7 @@ SOLAR.Controls = (function () {
     var t = clamp((now() - flight.t0) / Math.max(flight.dur, 1), 0, 1);
     /* 比例档切换需要尽快离开旧距离，否则太阳半径已经变档、镜头却还贴在
        原位置，会短暂出现“太阳吞屏”的错觉。使用平滑的 ease-out，起步更快，
-       仍保持位置连续且没有抬升弧线；普通天体飞行继续使用原曲线。 */
+       仍保持位置连续且没有抬升弧线；普通天体飞行继续用默认曲线。 */
     var eased = flight.flatMotion ? (1 - Math.pow(1 - t, 3)) : smootherStep(t);
 
     /* 天体与太阳系根节点都可能在飞行中移动，终点每帧实时重算。 */
@@ -1045,8 +1044,7 @@ SOLAR.Controls = (function () {
   }
 
   /* 解析滚轮缩放的贴面保护对象：命中行星就锁 focusId，否则退回屏幕空间最近候选。
-     不再维护 zoom.anchor（stepZoom 只沿视线缩放、绝不移 target，锚点已无消费者）；
-     空白处的射线-平面求交与 rayHitPoint 拷贝一并删除，避免逐 wheel 事件白算。 */
+     缩放只沿视线进行、不移 target，无需维护锚点，也省掉逐 wheel 的射线-平面求交。 */
   function setZoomAnchor(clientX, clientY) {
     var id = pickByRay(clientX, clientY);
     if (id) {
@@ -1085,11 +1083,10 @@ SOLAR.Controls = (function () {
       return;
     }
 
-    /* 只沿视线（camera.position - target）方向缩放，绝不移动 target。
-       旧实现把 target 也绕 zoom.anchor 一起缩放：当光标停在行星上时 anchor 是
-       「表面命中点」而非球心，target 会被推离球心造成画面平移；紧接着跟随逻辑
-       每帧又把 target 拉回天体世界位置，于是表现为「先平移一段再弹回原位」。
-       行星显示半径越大偏离越明显（弱压缩示意档），缩放手感抖动也因此而来。 */
+    /* 只沿视线（camera.position - target）方向缩放，绝不移动 target：
+       若把 target 也绕表面命中点缩放，target 会被推离球心造成画面平移，
+       而跟随逻辑每帧又把 target 拉回天体世界位置，表现为「先平移一段再弹回原位」。
+       行星显示半径越大偏离越明显（弱压缩示意档），缩放手感抖动也源于此。 */
     tmpA.copy(camera.position).sub(controls.target).multiplyScalar(scale);
     camera.position.copy(controls.target).add(tmpA);
 

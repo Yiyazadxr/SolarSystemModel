@@ -106,8 +106,8 @@ SOLAR.UI = (function () {
   /* 主循环自动调整画质时同步分段控件显示。
      画质同时是 HUD 动效的门控之一：手动选档（ui-settings → setManualQuality）
      与自动降级（main.js → syncQualityUi）都最终经此处。
-     注意：select 已换成 seg 分段按钮，旧 select 同步路径已废弃；
-     自动降级只走本函数，必须补 seg 高亮，否则面板显示与实际画质脱节。
+     顶栏画质控件为 seg 分段按钮；自动降级只走本函数，必须补 seg 高亮，
+     否则面板显示与实际画质脱节。
      LOW 档关掉 JS 数字补间；CSS 侧无限循环装饰动画由 body.quality-low 关闭
      （style.css 末尾「动效总门控」），一次性入场动画保留。
      注意与「界面动效」总开关合并判定：用户关掉界面动效后，即使切回高画质
@@ -142,9 +142,9 @@ SOLAR.UI = (function () {
     select: function (id) { return SOLAR.UIInfo.select(id); },
     onSelectId: function (id) { return SOLAR.UIInfo.onSelectId(id); },
     onCruiseId: function (id) { return SOLAR.UIInfo.onCruiseId(id); },
-    /* 坑 4 修复：带 lang 参数时必须走 SOLAR.setLang 真正切换 SOLAR.lang，
-       再由 setLang 回调无参 applyLanguage 重绘；直接转发给无参的
-       UIShell.applyLanguage 会把参数静默丢掉（返回 zh 但界面不变）。 */
+    /* 带 lang 参数时必须走 SOLAR.setLang 真正切换 SOLAR.lang，再由 setLang
+       回调无参 applyLanguage 重绘；直接转发给无参的 UIShell.applyLanguage
+       会把参数静默丢掉（返回 zh 但界面不变）。 */
     applyLanguage: function (lang) {
       if (lang && typeof SOLAR.setLang === 'function') return SOLAR.setLang(lang);
       return SOLAR.UIShell.applyLanguage();

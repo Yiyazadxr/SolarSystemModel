@@ -7,10 +7,9 @@
  *       scene-shaders.js（SOLAR.Shaders：STAR / SPIKE / BELT / BAND 四组着色器）
  *       scene-gfx.js（SOLAR.Gfx：safeTexture / bvToRgb / disposePoints / 程序化随机流）
  *
- * 为什么单独拆出来：星空、天穹、两条粒子带都是「与行星 / 彗星无关的背景层」——
+ * 本模块的边界：星空、天穹、两条粒子带是「与行星 / 彗星无关的背景层」——
  * 远景的显隐规则与行星完全不同：星点要跟随相机（恒星在无穷远）、天球只在非低
- * 画质档显示、辉带要按相机仰角补正点云的亮度缺口。这些逻辑原先与行星、标签、
- * 时间控制混在同一个 3000 行的 IIFE 里，改一处星空分布要通读全文；拆出后
+ * 画质档显示、辉带要按相机仰角补正点云的亮度缺口；
  * 「远景长什么样、按什么规则显隐」集中在这一个文件。
  *
  * 本模块不持有 scene / camera / systemRoot：三者均由门面 init 时创建并写入
@@ -23,7 +22,7 @@
  *         写入并回放给已建对象，语义与原模块级变量一致；
  *   S.quality / S.qv / S.qualityName
  *      —— 画质档（星点数、带粒子数、星芒开关与倍率）由门面 setQuality 写入。
- * 注：轨道线（makeOrbitLine）尚未纳入本模块，仍在门面；后续按同一批搬运范围迁入。
+ * 注：轨道线（makeOrbitLine）不在本模块，仍在门面。
  *
  * 语法：ES5 + IIFE
  */
@@ -48,7 +47,7 @@ SOLAR.Backdrop = (function () {
     return new THREE.Vector3(0, Math.cos(a), Math.sin(a));
   }
 
-  /* 阶段5 B3：真实全天银河背景（ESO/S. Brunier，CC BY 4.0，见 NOTICE）
+  /* 真实全天银河背景（ESO/S. Brunier，CC BY 4.0，见 NOTICE）
      用一颗内表面贴 equirect 全景图的天球取代纯色天空：天球每帧跟随相机，
      等效无限远背景；程序化星点保留（近景仍需），两者叠加。
      全景图为 2:1 等距圆柱，球面默认 UV 与之对应，无需改 mapping。

@@ -36,9 +36,9 @@ SOLAR.TeachOrrery = (function () {
 
   /* 二十四节气：以立春为首，第 n 个对应 λ = -45° + n*15°。
      刻度与标签必须标在【地球所在的轨道位置】，即日心黄经 λ+180° 方向——
-     此前标在 λ 方向（太阳侧），点「冬至」地球却停在「夏至」标签旁。 */
+     标在 λ 方向（太阳侧）会错位：点「冬至」地球却停在「夏至」标签旁。 */
   /* 二十四节气：数组只存 i18n 子键，顺序即黄经每前进 15° 一个节气；
-     显示文案由 SOLAR.t 取（中文原名已移入 i18n.js 的 teach.t24）。
+     显示文案由 SOLAR.t 取（见 i18n.js 的 teach.t24）。
      顺序索引还有一个用途：二分二至恰好落在 t % 6 === 3（见 buildMarks）。 */
   var TERM_KEYS = ['lichun', 'yushui', 'jingzhe', 'chunfen', 'qingming', 'guyu',
     'lixia', 'xiaoman', 'mangzhong', 'xiazhi', 'xiaoshu', 'dashu',
@@ -287,7 +287,7 @@ var skipBase = false;
       var lb = makeLabel(SOLAR.t('teach.t24.' + TERM_KEYS[t]), 44, SEASON_COLORS[Math.floor(t / 6)]);
       track(lb.texture);
       /* 二分二至在序列里的位置固定：第 4 / 10 / 16 / 22 项，即 t % 6 === 3。
-         原先靠比对中文名，抽键后改用索引，两种语言下判定一致。 */
+         按索引判定（而不是比对中文名），两种语言下一致。 */
       var big = (t % 6 === 3);
       var lamF = (135 + t * 15) * DEG;
       lb.sprite.position.set(Math.cos(lamF) * 1.12, 0.06, Math.sin(lamF) * 1.12);
@@ -557,8 +557,8 @@ var skipBase = false;
   function updateLabelScale() {
     if (!cam || !markGroup.visible) return;
     var d = cam.position.length();                  // 装置原点即太阳位置
-    /* 屏幕占比系数（0.016 → 0.020，约放大 25%）：24 个标签摆在半径 1.06×orbit 的
-       圆上，iconic 档相邻间距约 7.8 单位，标签最宽约 2.6（两字），仍有充足余量。 */
+    /* 屏幕占比系数 0.020：24 个标签摆在半径 1.06×orbit 的圆上，
+       iconic 档相邻间距约 7.8 单位，标签最宽约 2.6（两字），余量充足。 */
     var s = d * 0.020;                              // 目标屏幕占比
     for (var i = 0; i < termLabels.length; i++) {
       var lb = termLabels[i];
@@ -649,8 +649,8 @@ var skipBase = false;
       moonOrbitLine.scale.setScalar(profile.moonDist);
       moonOrbitLine.rotation.x = -moonTilt;
     }
-    /* 交点线（白道面与黄道面的交线）单独由 moonNodeLine 控制，不再跟随
-       moonOrbit：否则开「月球轨道」会平白多出一根横穿地球的长线，
+    /* 交点线（白道面与黄道面的交线）单独由 moonNodeLine 控制，不挂在
+       moonOrbit 下：否则开「月球轨道」会平白多出一根横穿地球的长线，
        容易被误认成太阳光线或地轴。 */
     if (moonNodeLine) {
       moonNodeLine.visible = !!p.moonNodeLine;

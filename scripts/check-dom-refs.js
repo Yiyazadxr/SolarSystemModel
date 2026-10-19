@@ -1,8 +1,8 @@
 /* DOM 引用体检：JS 里 getElementById / byId / querySelector('#x') 查的 id，
    必须要么在 index.html 里静态存在，要么由 JS 自己创建（el.id = 'x'）。
-   历史上出过两次同类事故：画质控件从 <select> 换成分段按钮 #seg-quality、
-   语言切换从顶栏按钮换成 #seg-lang，旧引用全是 if(x) 空转的死路径——
-   看得见、跑得到、但永远不执行。本脚本把这类漂移变成构建期报错。 */
+   典型事故：画质控件从 <select> 换成分段按钮 #seg-quality、语言切换从顶栏按钮
+   换成 #seg-lang 后，遗留引用全是 if(x) 空转的死路径——看得见、跑得到、
+   但永远不执行。本脚本把这类漂移变成构建期报错。 */
 'use strict';
 
 const fs = require('fs');

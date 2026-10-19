@@ -1,0 +1,69 @@
+name: Bug 报告 / Bug report
+description: 运行时错误、显示异常或性能问题；请先看 README 的「已知限制」
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        尽量附上截图；视觉类问题请在步骤里写明 URL 中的 `#seed=` 种子，否则无法复现。
+        You can also write the report in English.
+  - type: dropdown
+    id: open-method
+    attributes:
+      label: 打开方式 / How did you open it
+      options:
+        - file:// 直接打开 index.html
+        - 本地服务器（python -m http.server 等）
+        - 其他方式
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: 浏览器与系统 / Browser and OS
+      description: 浏览器及版本；有独显 / 集显信息可一并写上
+      placeholder: 例：Edge 141 · Windows 11 · RTX 4060
+    validations:
+      required: true
+  - type: dropdown
+    id: quality
+    attributes:
+      label: 画质档位 / Quality tier
+      options:
+        - ULTRA
+        - HIGH（默认 / default）
+        - MEDIUM
+        - LOW
+        - 不确定 / not sure
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤 / Steps to reproduce
+      placeholder: |
+        1. 打开 index.html
+        2. 选中木星并拉近
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期结果 / Expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际结果 / Actual
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 控制台输出 / Console output（可选）
+      description: F12 → Console。官方 three.min.js 载入时的一次弃用警告可忽略
+    validations:
+      required: false

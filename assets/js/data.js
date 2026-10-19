@@ -305,7 +305,7 @@ SOLAR.DATA = {
       orbitInclinationDeg: 0.192, inclinationReference: 'parentEquator',
       ascendingNodeDeg: 309.1, argPeriapsisDeg: 43.8, meanAnomalyDeg: 87.4, color: 0x6f6257,
       gravity: 1.235, texture: null, tempC: -139, summaryKey: 'moons.callisto.desc' },
-    /* Enceladus / Triton 的要素此前已录入；这里补上真实影像贴图
+    /* Enceladus / Triton 使用真实影像贴图
        （Cassini / Voyager 2 全球镶嵌图，Public domain，见 NOTICE）。 */
     { id: 'enceladus', parent: 'saturn', radiusKm: 252.1, massKg: 1.08022e20, orbitKm: 238020,
       periodDays: 1.37022, rotationH: 32.8853, tidallyLocked: true, eccentricity: 0.0047,
@@ -388,7 +388,7 @@ SOLAR.DATA = {
     kuiper:   { innerAu: 30.0, outerAu: 50.0, thicknessAu: 0.9, inclinationDeg: 8, color: 0x7f7f7f, bandOpacity: 0.16 }
   },
 
-  /* 数据版本说明：卫星总数按需求采用 95 / 146 / 28 / 16 的确认口径。 */
+  /* 数据版本说明：卫星计数采用 95 / 146 / 28 / 16 的确认口径。 */
   scienceMeta: {
     orbitalModel: 'JPL approximate Keplerian elements',
     shortTermRange: '1800-2050',

@@ -282,7 +282,7 @@ window.SOLAR = window.SOLAR || {};
       confirmReady();
     });
     /* 模式选择层由 hideLoading 在进度条走满 100% 后自行触发（ui.js），
-       这里不再直接调用，避免进度未走完就弹窗。 */
+       不在此处调用，避免进度未走完就弹窗。 */
   }
 
   /* 首帧和加载层都完成才解除启动看门狗；单有进度满格不代表场景可渲染。 */
@@ -332,8 +332,8 @@ window.SOLAR = window.SOLAR || {};
 
   /* ================= 自适应画质 ================= */
 
-  /* 把当前画质档同步给界面层：顶栏画质控件早已从 <select> 换成分段按钮
-     #seg-quality，旧 select 的查询成了空转死路径，这里只走 UI 接口。 */
+  /* 把当前画质档同步给界面层：顶栏画质控件为分段按钮 #seg-quality，
+     这里只走 UI 接口。 */
   function syncQualityUi(name) {
     /* 可选扩展：若 UI 提供了同步接口则一并调用 */
     if (SOLAR.UI && typeof SOLAR.UI.setQuality === 'function') {
@@ -399,7 +399,7 @@ window.SOLAR = window.SOLAR || {};
        （留 5% 余量吃掉采样抖动），高刷屏行为不变。
        但只有峰值明显高出降级线（≥5 fps）才敢用：峰值仅略高于 40 时
        peak*0.95 会掉到降级线附近，形成"刚好达标就升、升完又降"的周期性摆动；
-       这类边缘机器维持旧行为（不回升）比来回翻档更稳。 */
+       这类边缘机器维持不回升，比来回翻档更稳。 */
     var upgradeThreshold = Math.min(FPS_CAP, threshold + HYSTERESIS_FPS);
     if (peakFps > threshold + 5) upgradeThreshold = Math.min(upgradeThreshold, peakFps * 0.95);
 
@@ -808,10 +808,9 @@ window.SOLAR = window.SOLAR || {};
     loadingStart = nowMs();
     loadingFallback = window.setTimeout(completeLoading, LOADING_FALLBACK_MS);
 
-    /* 贴图分块加载先行（替代旧的首屏同步解析 11MB 单文件 textures.js）：
-       此时加载层已可见，textures-loader.js 逐块注入 + 逐张预热解码，进度按
-       base64 字节加权，占前 TEXTURE_PHASE 份额；主线程在块与块之间空闲，
-       进度补间与加载层动画不会被一个长任务打断。 */
+    /* 贴图分块加载先行：此时加载层已可见，textures-loader.js 逐块注入 +
+       逐张预热解码，进度按 base64 字节加权，占前 TEXTURE_PHASE 份额；
+       主线程在块与块之间空闲，进度补间与加载层动画不会被一个长任务打断。 */
     if (!SOLAR.TextureLoader || typeof SOLAR.TextureLoader.loadAll !== 'function') {
       showStartupError('贴图加载器缺失，请刷新页面 / Texture loader missing; please refresh the page');
       return;
@@ -868,8 +867,8 @@ window.SOLAR = window.SOLAR || {};
       document.addEventListener('visibilitychange', onVisibilityChange);
 
       /* 纹理数为 0 时 LoadingManager 不会回调：短延时后直接补满进度（仍有最短动画时长）。
-         判据用 TEXTURE_PHASE 而不是 0——分块加载的前几百毫秒本来就没有场景侧回调，
-         旧判据会在贴图加载途中就把进度条一次性推到 100% 然后干等。 */
+         判据用 TEXTURE_PHASE：分块加载的前几百毫秒本来就没有场景侧回调，
+         只认 0 会在贴图加载途中就把进度条一次性推到 100% 然后干等。 */
       window.setTimeout(function () {
         if (progressTarget <= TEXTURE_PHASE) onLoadProgress(1);
       }, LOADING_IDLE_MS);

@@ -3,7 +3,7 @@
  * 生成 assets/js/textures/ 分块贴图 + assets/js/textures-manifest.js ——
  * 把 assets/textures/ 下的原始贴图编码为内嵌 base64，按优先级分组，
  * 以便 index.html 在 file:// 协议下直接双击运行（不请求磁盘文件，避免 CORS），
- * 并由 textures-loader.js 在加载层可见后逐块注入，避免旧单文件（11 MB）
+ * 并由 textures-loader.js 在加载层可见后逐块注入，避免 11 MB 整包
  * 在首屏同步解析时长时间阻塞主线程（进度条压在 0% 不动）。
  *
  * 用法：
@@ -36,7 +36,7 @@ var MIME = {
 
 /* 加载优先级分组：顺序即注入顺序。core 放「一进首页就能看到的」——
    太阳 / 银河天穹 / 内行星 / 地月系；巨行星卫星要放大才可见，排后面。
-   sun.webp 场景里走程序化着色并未直接使用，但仍随目录全量内嵌（历史行为）。 */
+   sun.webp 场景里走程序化着色、未直接使用，仍随目录全量内嵌。 */
 var GROUPS = [
   { name: 'core', note: '首页可见：太阳 / 银河 / 内行星 / 地月系', keys: [
     'sun', 'milkyway', 'mercury', 'venus', 'earth', 'earth_night', 'earth_clouds', 'earth_specular', 'mars', 'moon'
