@@ -2,16 +2,18 @@
 
 # SOLAR SYSTEM · 3D Solar System
 
+[简体中文](./README.md) · **English**
+
 A zero-setup single-page 3D solar system: eight planets driven by VSOP87 J2000 element series, the whole system orbiting the galactic centre, a sci-fi monochrome HUD and a Chinese/English UI. Everything is bundled locally — **nothing is fetched at runtime**.
 
-[![Stars](https://img.shields.io/github/stars/Yiyazadxr/SolarSystemModel?style=flat-square)](https://github.com/Yiyazadxr/SolarSystemModel/stargazers)
+[![Stars](https://img.shields.io/github/stars/Yiyazadxr/SolarSystem-Model?style=flat-square)](https://github.com/Yiyazadxr/SolarSystem-Model/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](./LICENSE)
 [![Three.js](https://img.shields.io/badge/Three.js-r150-000000?style=flat-square&logo=threedotjs&logoColor=white)](https://threejs.org)
 [![Build: none](https://img.shields.io/badge/build-none%20(零构建)-brightgreen?style=flat-square)](#run)
 [![Offline 100%](https://img.shields.io/badge/offline-100%25-2ea44f?style=flat-square)](#run)
 [![Zero runtime deps](https://img.shields.io/badge/runtime_deps-0-blueviolet?style=flat-square)](#tech-stack)
 
-[简体中文](./README.md) · [Open an issue](https://github.com/Yiyazadxr/SolarSystemModel/issues) · [Contributing](./CONTRIBUTING.md) · [License](#license)
+[Code of Conduct](./CODE_OF_CONDUCT.md) · [Security](./SECURITY.md) · [Open an issue](https://github.com/Yiyazadxr/SolarSystem-Model/issues) · [Contributing](./CONTRIBUTING.md) · [License](#license)
 
 <p align="center">
   <img src="./docs/screenshots/home-overview.png" alt="Main view of the 3D solar system" width="920">
@@ -155,7 +157,7 @@ The VSOP87 series matches the official IMCCE main version to a maximum differenc
 
 ## Size
 
-122 files in the repository (git view, ignoring `.gitignore` entries), about 30 MB: `assets/js/` ≈ 12.6 MB (including ≈ 10.9 MB of base64 texture chunks), `assets/textures/` ≈ 8.2 MB (25 textures), `assets/vendor/` 0.6 MB, everything else under 1 MB. `assets/js/` holds 41 modules; the extra files from the `scene` / `ui` / `teach-globe` split are plain source with negligible total size.
+124 files in the repository (git view, ignoring `.gitignore` entries), about 30 MB: `assets/js/` ≈ 12.6 MB (including ≈ 10.9 MB of base64 texture chunks), `assets/textures/` ≈ 8.2 MB (25 textures), `assets/vendor/` 0.6 MB, everything else under 1 MB. `assets/js/` holds 41 modules; the extra files from the `scene` / `ui` / `teach-globe` split are plain source with negligible total size.
 
 ## License
 

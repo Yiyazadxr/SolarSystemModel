@@ -171,7 +171,7 @@ node scripts/check-doc-counts.js     # 中英 README 的模块数 / 贴图数 / 
 
 - **未经明确要求，不要 commit / push / 建分支 / 发 PR。**
 - 不改 `assets/vendor/` 下的第三方文件。
-- README.md 与 README.en.md 双版同步维护；数字（模块 / 贴图 / 文件数）与互链由 `check-doc-counts` 校验，改一版记得改另一版。对外文档（CONTRIBUTING / CODE_OF_CONDUCT / Issue 表单）与本文口径保持一致。
+- README.md 与 README.en.md 双版同步维护；数字（模块 / 贴图 / 文件数）与互链由 `check-doc-counts` 校验，改一版记得改另一版。对外文档（CONTRIBUTING / CODE_OF_CONDUCT / SECURITY / Issue 表单）与本文口径保持一致。
 - 不要删除 README 中的"验证状态""已知限制"等诚实披露段落，也不要夸大验证范围（Firefox / Safari / 真实 GPU 均未实测）。
 - 视觉或渲染结论必须附证据（截图或像素统计），且**断言不等于验证**——自动化断言之后请用户帮忙目视确认。
 

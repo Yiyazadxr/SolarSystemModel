@@ -2,16 +2,18 @@
 
 # SOLAR SYSTEM · 太阳系 3D 展示
 
+**简体中文** · [English](./README.en.md)
+
 一个开箱即用的单页 3D 太阳系：八行星使用 VSOP87 J2000 要素星历、太阳系整体绕银心公转、科幻黑白 HUD、中英双语，全部资源本地化（**运行时不访问外网**）。
 
-[![Stars](https://img.shields.io/github/stars/Yiyazadxr/SolarSystemModel?style=flat-square)](https://github.com/Yiyazadxr/SolarSystemModel/stargazers)
+[![Stars](https://img.shields.io/github/stars/Yiyazadxr/SolarSystem-Model?style=flat-square)](https://github.com/Yiyazadxr/SolarSystem-Model/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](./LICENSE)
 [![Three.js](https://img.shields.io/badge/Three.js-r150-000000?style=flat-square&logo=threedotjs&logoColor=white)](https://threejs.org)
 [![Build: none](https://img.shields.io/badge/build-none%20(零构建)-brightgreen?style=flat-square)](#运行)
 [![Offline 100%](https://img.shields.io/badge/offline-100%25-2ea44f?style=flat-square)](#运行)
 [![Zero runtime deps](https://img.shields.io/badge/runtime_deps-0-blueviolet?style=flat-square)](#技术栈)
 
-[English](./README.en.md) · [提交 Issue](https://github.com/Yiyazadxr/SolarSystemModel/issues) · [贡献指南](./CONTRIBUTING.md) · [许可](#许可)
+[行为准则](./CODE_OF_CONDUCT.md) · [安全策略](./SECURITY.md) · [提交 Issue](https://github.com/Yiyazadxr/SolarSystem-Model/issues) · [贡献指南](./CONTRIBUTING.md) · [许可](#许可)
 
 <p align="center">
   <img src="./docs/screenshots/home-overview.png" alt="太阳系 3D 展示主界面" width="920">
@@ -155,7 +157,7 @@ VSOP87 原始级数对 IMCCE 官方主版本 80 组历元 × 6 要素对拍最�
 
 ## 规模
 
-当前 122 个文件（git 口径，不含忽略列表）、约 30 MB：`assets/js/` 约 12.6 MB（含 `textures/` 分块贴图约 10.9 MB base64）、`assets/textures/` 约 8.2 MB（原始贴图 25 张）、`assets/vendor/` 0.6 MB，其余 < 1 MB。`assets/js/` 共 41 个模块——`scene` / `ui` / `teach-globe` 拆分多出的文件都是纯源码，总体积增长可忽略。
+当前 124 个文件（git 口径，不含忽略列表）、约 30 MB：`assets/js/` 约 12.6 MB（含 `textures/` 分块贴图约 10.9 MB base64）、`assets/textures/` 约 8.2 MB（原始贴图 25 张）、`assets/vendor/` 0.6 MB，其余 < 1 MB。`assets/js/` 共 41 个模块——`scene` / `ui` / `teach-globe` 拆分多出的文件都是纯源码，总体积增长可忽略。
 
 ## 许可
 
